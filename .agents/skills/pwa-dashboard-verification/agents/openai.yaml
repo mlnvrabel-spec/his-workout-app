@@ -1,0 +1,4 @@
+interface:
+  display_name: "PWA Dashboard Verification"
+  short_description: "Verify dashboard behavior and PWA offline paths."
+  default_prompt: "Use $pwa-dashboard-verification to verify the dashboard before handoff."

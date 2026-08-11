@@ -23,3 +23,9 @@ node test_core.mjs
 python backend/test_api.py
 python -m compileall -q backend
 ```
+
+The provider-neutral agent setup is verified together with the frontend checks:
+
+```powershell
+npm.cmd run verify
+```

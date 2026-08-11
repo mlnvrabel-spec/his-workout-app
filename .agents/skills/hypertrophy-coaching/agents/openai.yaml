@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hypertrophy Coaching"
+  short_description: "Safely evolve evidence-based workout coaching behavior."
+  default_prompt: "Use $hypertrophy-coaching to update the coaching workflow safely."

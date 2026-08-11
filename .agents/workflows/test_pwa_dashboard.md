@@ -7,7 +7,7 @@ description: How to test the PWA dashboard in the browser
 When instructed to test the progressive web app dashboard, follow these standardized steps to ensure thorough validation and minimal token usage.
 
 ## 1. Setup & Launch
-- Navigate to `http://localhost:5500`.
+- Navigate to `http://localhost:3000`.
 - Open the Developer Tools console immediately and note any JavaScript errors or warnings.
 - Check the Network tab to ensure `manifest.json` and `service-worker.js` load without errors.
 

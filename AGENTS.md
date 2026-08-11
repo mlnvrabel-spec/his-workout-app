@@ -1,4 +1,9 @@
-# AGENTS.md
+# Provider-Neutral Agent Entry Point
+
+Read [AGENT_GUIDE.md](AGENT_GUIDE.md) before this compatibility content. `AGENT_GUIDE.md` is canonical and overrides this file if the two conflict. Shared rules must be updated there, not copied here.
+
+# Legacy Compatibility Guidance
+<!-- Compatibility text retained for migration history. AGENT_GUIDE.md is the only active shared guidance.
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
@@ -63,3 +68,4 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+-->

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Luxury UI Review"
+  short_description: "Review UI against project design and interaction standards."
+  default_prompt: "Use $luxury-ui-review to review this interface before implementation."

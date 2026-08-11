@@ -46,8 +46,60 @@ export class HeroHeader {
     bindScrollCollapse(app) {
         const header = document.getElementById('header');
         if (!app || !header) return;
+        const collapseAt = 72;
+        const expandAt = 18;
+        const layoutSettleMs = 280;
+        let isCollapsed = header.classList.contains('scrolled');
+        let frameRequested = false;
+        let lastScrollTop = app.scrollTop;
+        let lockedUntil = 0;
+        let touchStartY = 0;
+
+        const setCollapsed = (next) => {
+            if (next === isCollapsed) return;
+            isCollapsed = next;
+            header.classList.toggle('scrolled', isCollapsed);
+            lockedUntil = performance.now() + layoutSettleMs;
+        };
+
+        const updateCollapse = () => {
+            const scrollTop = app.scrollTop;
+            const delta = scrollTop - lastScrollTop;
+            lastScrollTop = scrollTop;
+
+            if (performance.now() >= lockedUntil) {
+                if (!isCollapsed && delta > 1 && scrollTop >= collapseAt) {
+                    setCollapsed(true);
+                } else if (isCollapsed && delta < -1 && scrollTop <= expandAt) {
+                    setCollapsed(false);
+                }
+            }
+            frameRequested = false;
+        };
+
         app.addEventListener('scroll', () => {
-            header.classList.toggle('scrolled', app.scrollTop > 16);
-        });
+            if (frameRequested) return;
+            frameRequested = true;
+            requestAnimationFrame(updateCollapse);
+        }, { passive: true });
+
+        app.addEventListener('wheel', (event) => {
+            if (isCollapsed && event.deltaY < 0 && app.scrollTop <= expandAt && performance.now() >= lockedUntil) {
+                setCollapsed(false);
+            }
+        }, { passive: true });
+
+        app.addEventListener('touchstart', (event) => {
+            touchStartY = event.touches[0]?.clientY ?? 0;
+        }, { passive: true });
+
+        app.addEventListener('touchend', (event) => {
+            const pullDistance = (event.changedTouches[0]?.clientY ?? touchStartY) - touchStartY;
+            if (isCollapsed && pullDistance > 18 && app.scrollTop <= expandAt && performance.now() >= lockedUntil) {
+                setCollapsed(false);
+            }
+        }, { passive: true });
+
+        if (app.scrollTop >= collapseAt) setCollapsed(true);
     }
 }

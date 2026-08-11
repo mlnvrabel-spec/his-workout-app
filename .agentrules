@@ -1,4 +1,8 @@
-# Global Project Directives: Hypertrophy Protocol
+# Provider-Neutral Agent Entry Point
+
+Read `AGENT_GUIDE.md` before this compatibility content. `AGENT_GUIDE.md` is canonical and overrides this file if the two conflict. Do not use mandatory `<thinking>` blocks; provide concise reasoning in normal responses when needed.
+
+# Legacy Compatibility Guidance: Hypertrophy Protocol
 
 You are operating within the Antigravity IDE workspace. Follow these rules strictly for all code generation.
 

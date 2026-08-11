@@ -2,8 +2,9 @@
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
-import { HeroHeader } from './HeroHeader.js?v=3';
-import { ExerciseCards } from './ExerciseCards.js?v=6';
+import { HeroHeader } from './HeroHeader.js?v=5';
+import { ExerciseCards } from './ExerciseCards.js?v=8';
+import { triggerHaptic } from './Haptics.js?v=1';
 
 export class Kai {
     constructor(engine, chat) {
@@ -14,7 +15,8 @@ export class Kai {
             header: document.getElementById('header'),
             cards: document.getElementById('cards'),
             navDock: document.getElementById('nav-dock'),
-            themeBtn: document.getElementById('theme-btn')
+            themeBtn: document.getElementById('theme-btn'),
+            themeScrim: document.getElementById('theme-transition-scrim')
         };
         
         // Motion Physics Curve: "Memory Foam"
@@ -43,6 +45,11 @@ export class Kai {
             } else if (type === 'exercise_swap') {
                 this.updateSwappedCard(state, e.detail);
             } else {
+                if (type === 'day_change') {
+                    this.expandedCardId = null;
+                    const app = document.getElementById('app');
+                    if (app) app.scrollTop = 0;
+                }
                 this.render(state);
             }
         });
@@ -169,27 +176,6 @@ export class Kai {
 
         // 1. Click Handling
         this.els.cards.addEventListener('click', async (e) => {
-            // Stepper -
-            if (e.target.closest('.step-down')) {
-                e.stopPropagation();
-                if (navigator.vibrate) navigator.vibrate(75); // Haptic Language
-                const input = e.target.closest('.stepper').querySelector('input');
-                if(!input.value && input.placeholder && input.placeholder !== '0') input.value = input.placeholder;
-                input.stepDown();
-                this.triggerSave(input);
-                return;
-            }
-            // Stepper +
-            if (e.target.closest('.step-up')) {
-                e.stopPropagation();
-                if (navigator.vibrate) navigator.vibrate(75); // Haptic Language
-                const input = e.target.closest('.stepper').querySelector('input');
-                if(!input.value && input.placeholder && input.placeholder !== '0') input.value = input.placeholder;
-                input.stepUp();
-                this.triggerSave(input);
-                return;
-            }
-            
             // Bulk Completion Button
             const finishBtn = e.target.closest('#finish-workout-btn');
             if (finishBtn) {
@@ -202,7 +188,7 @@ export class Kai {
                 const doneCount = Object.values(this.engine.state.done[dayKey] || {}).filter(Boolean).length;
                 const isDayFinished = exercises.length > 0 && doneCount >= exercises.length;
 
-                if (navigator.vibrate) navigator.vibrate(isDayFinished ? 40 : [80, 50, 120]);
+                triggerHaptic(isDayFinished ? 'bulkCleared' : 'bulkCompleted');
                 this.engine?.toggleAll?.(dayKey, !isDayFinished, exercises);
                 return;
             }
@@ -212,6 +198,7 @@ export class Kai {
                 e.stopPropagation();
                 const wrap = e.target.closest('.card-wrapper');
                 if (wrap && this.engine?.toggleComplete) {
+                    triggerHaptic(wrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseChecked');
                     this.engine.toggleComplete(wrap.id, this.engine.state.day);
                 }
                 return;
@@ -249,15 +236,7 @@ export class Kai {
             }
         });
 
-        // 2. Input changes (Logs)
-        this.els.cards.addEventListener('input', (e) => {
-            if (e.target.tagName === 'INPUT') {
-                clearTimeout(e.target.saveTimeout);
-                e.target.saveTimeout = setTimeout(() => this.triggerSave(e.target), 500);
-            }
-        });
-
-        // 3. Pointer Gestures (Swipe to complete & Swipe to swap)
+        // 2. Pointer Gestures (Swipe to complete & Swipe to swap)
         this.els.cards.addEventListener('pointerdown', (e) => {
             if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.check-wrap')) return;
             
@@ -351,7 +330,7 @@ export class Kai {
                 
                 if (isSwapping && Math.abs(diffX) > 44) {
                     const direction = diffX < 0 ? 1 : -1;
-                    if (navigator.vibrate) navigator.vibrate([30, 20, 60]); // minor swap feedback
+                    triggerHaptic('exerciseSwapped');
                     if (nameEl) {
                         nameEl.classList.add('ex-name--swap');
                         setTimeout(() => nameEl.classList.remove('ex-name--swap'), 350);
@@ -364,7 +343,7 @@ export class Kai {
             } else {
                 activeWrap.classList.remove('dragging');
                 if (currentX > 60) {
-                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // swipe-to-complete threshold
+                    triggerHaptic(activeWrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseSwipeCompleted');
                     if (this.engine?.toggleComplete) {
                         this.engine.toggleComplete(activeWrap.id, this.engine.state.day);
                     }
@@ -391,25 +370,34 @@ export class Kai {
         this.els.cards.addEventListener('pointercancel', onPointerEnd);
     }
 
-    triggerSave(inputEl) {
-        const wrap = inputEl.closest('.card-wrapper');
-        if (!wrap) return;
-        const exName = wrap.dataset.exname;
-        const wt = wrap.querySelector('.log-wt').value;
-        const reps = wrap.querySelector('.log-reps').value;
-        
-        // This triggers engine to eventually fire `set:logged` and `workout:sync_queued`.
-        if (this.engine?.logExercise) {
-            this.engine.logExercise(exName, wt, reps);
-        }
-    }
-
     scrollCardToTop(cardWrap) {
         const app = document.getElementById('app');
         if (!app || !this.els.header) return;
 
-        const cardTop = cardWrap.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop;
-        app.scrollTo({ top: Math.max(0, cardTop - this.els.header.offsetHeight), behavior: 'smooth' });
+        const alignCard = () => {
+            if (!cardWrap.classList.contains('active')) return;
+
+            const cardTop = cardWrap.getBoundingClientRect().top;
+            const visibleTop = this.els.header.getBoundingClientRect().bottom + 12;
+            const correction = cardTop - visibleTop;
+            if (Math.abs(correction) <= 8) return;
+
+            const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            app.scrollBy({ top: correction, behavior: reducedMotion ? 'auto' : 'smooth' });
+        };
+
+        cancelAnimationFrame(this.cardScrollFrame);
+        this.cardScrollFrame = requestAnimationFrame(alignCard);
+
+        const details = cardWrap.querySelector('.card-details');
+        details?.addEventListener('transitionend', event => {
+            if (event.propertyName === 'max-height') {
+                clearTimeout(this.cardScrollSettleTimeout);
+                alignCard();
+            }
+        }, { once: true });
+        clearTimeout(this.cardScrollSettleTimeout);
+        this.cardScrollSettleTimeout = setTimeout(alignCard, 550);
     }
 
     /**
@@ -487,7 +475,7 @@ export class Kai {
                 longPressed = false;
                 pressTimer = setTimeout(() => {
                     longPressed = true;
-                    if(navigator.vibrate) navigator.vibrate([100, 50, 100]); // medium feedback
+                    triggerHaptic('dayResetReady');
                     const dIdx = parseInt(item.dataset.day);
                     if(confirm(`Reset Day ${dIdx + 1}?`)) {
                         this.engine?.resetDayLogs?.(dIdx);
@@ -521,9 +509,51 @@ export class Kai {
     }
 
     toggleTheme() {
+        if (this.themeSwitching) return;
+
         const isL = document.body.getAttribute('data-theme') === 'light';
-        document.body.setAttribute('data-theme', isL ? 'dark' : 'light');
-        localStorage.setItem('hv2_theme', isL ? 'dark' : 'light');
+        const nextTheme = isL ? 'dark' : 'light';
+        const root = document.documentElement;
+        const applyTheme = () => {
+            root.classList.add('theme-swap');
+            document.body.setAttribute('data-theme', nextTheme);
+            document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextTheme === 'dark' ? '#17191c' : '#f1f0eb');
+            localStorage.setItem('hv2_theme', nextTheme);
+        };
+        const finishThemeSwap = () => {
+            root.classList.remove('theme-swap');
+            this.themeSwitching = false;
+        };
+
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduceMotion && typeof document.startViewTransition === 'function') {
+            this.themeSwitching = true;
+            document.startViewTransition(applyTheme).finished.finally(finishThemeSwap);
+            return;
+        }
+
+        const scrim = this.els.themeScrim;
+        if (!scrim || reduceMotion) {
+            applyTheme();
+            finishThemeSwap();
+            return;
+        }
+
+        this.themeSwitching = true;
+        root.classList.add('theme-swap');
+        scrim.dataset.themeTarget = nextTheme;
+        scrim.classList.add('is-covering');
+
+        window.setTimeout(() => {
+            applyTheme();
+            requestAnimationFrame(() => {
+                scrim.classList.remove('is-covering');
+                window.setTimeout(() => {
+                    scrim.removeAttribute('data-theme-target');
+                    finishThemeSwap();
+                }, 280);
+            });
+        }, 170);
     }
 
     initWebGL() {

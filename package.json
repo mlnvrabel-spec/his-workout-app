@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test_render.mjs && node test_core.mjs"
+    "test": "node test_render.mjs && node test_core.mjs && node test_haptics.mjs",
+    "verify:agent-setup": "node scripts/verify_agent_setup.mjs",
+    "verify": "node scripts/verify_agent_setup.mjs && node test_render.mjs && node test_core.mjs && node test_haptics.mjs"
   }
 }

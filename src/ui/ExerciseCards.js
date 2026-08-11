@@ -44,12 +44,6 @@ export class ExerciseCards {
         const originalExerciseId = this.engine?.rawWorkouts?.[day]?.exercises?.[index]?.id;
         const isCustom = originalExerciseId && exercise._exerciseId !== originalExerciseId;
         const intensityClass = exercise.rir === 0 || exercise.rir === '0' ? 'intense' : 'controlled';
-        const logs = this.engine?.StorageManager?.loadLog(workout.id, exercise.name) || {};
-        const isGhost = logs.isGhost;
-        const weightPlaceholder = isGhost ? (logs.weight || '0') : '0';
-        const weightValue = isGhost ? '' : (logs.weight || '');
-        const repsPlaceholder = isGhost ? (logs.reps || '0') : '0';
-        const repsValue = isGhost ? '' : (logs.reps || '');
         const setPrescription = typeof exercise.sets === 'string'
             ? exercise.sets
             : `${exercise.sets}&times;${exercise.reps || ''}`;
@@ -60,7 +54,7 @@ export class ExerciseCards {
             ? `<div class="swap-dots" data-slot="${index}" aria-label="Swipe to change exercise">${swapInfo.options.map((_, optionIndex) => `<span class="swap-dot ${optionIndex === swapInfo.currentIndex ? 'active' : ''}"></span>`).join('')}</div>`
             : '';
         const originalName = isCustom ? (this.engine?.exerciseLibrary?.[originalExerciseId]?.name || originalExerciseId) : '';
-        const customTag = `<div class="ex-custom-tag ${isCustom ? '' : 'placeholder'}">${isCustom ? `&#8634; ${originalName}` : '&nbsp;'}</div>`;
+        const customTag = isCustom ? `<div class="ex-custom-tag">&#8634; ${originalName}</div>` : '';
         const cardWrap = document.createElement('div');
 
         cardWrap.id = id;
@@ -88,18 +82,6 @@ export class ExerciseCards {
                     <div class="check-wrap"><div class="check-box"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg></div></div>
                 </div>
                 <div class="card-details"><div class="details-inner">
-                    <div class="detail-section log-section"><div class="log-inputs">
-                        <div class="log-input-wrap"><label>WEIGHT (kg)</label><div class="stepper">
-                            <button class="stepper-btn step-down">-</button>
-                            <input type="number" step="1.25" class="log-wt ${isGhost ? 'ghost' : ''}" placeholder="${weightPlaceholder}" value="${weightValue}">
-                            <button class="stepper-btn step-up">+</button>
-                        </div></div>
-                        <div class="log-input-wrap"><label>REPS</label><div class="stepper">
-                            <button class="stepper-btn step-down">-</button>
-                            <input type="number" step="1" class="log-reps ${isGhost ? 'ghost' : ''}" placeholder="${repsPlaceholder}" value="${repsValue}">
-                            <button class="stepper-btn step-up">+</button>
-                        </div></div>
-                    </div></div>
                     ${exercise.technique ? `<div class="detail-section"><span class="detail-label tech">Technique</span><ul class="detail-list">${technique}</ul></div>` : ''}
                     ${exercise.mistakes ? `<div class="detail-section"><span class="detail-label warn">Common Mistakes</span><ul class="detail-list">${mistakes}</ul></div>` : ''}
                     ${exercise.visualization ? `<div class="detail-section"><span class="detail-label viz">${exercise.visualization}</span><p class="detail-text" style="color:var(--text1)">${exercise.vizText || ''}</p></div>` : ''}

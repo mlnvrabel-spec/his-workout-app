@@ -1,0 +1,4 @@
+interface:
+  display_name: "Garmin Integration"
+  short_description: "Safely change Garmin auth, sync, or exercise mapping."
+  default_prompt: "Use $garmin-integration to make a safe Garmin integration change."
