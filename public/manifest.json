@@ -1,6 +1,6 @@
 {
   "name": "Hypertrophy Protocol",
-  "short_name": "Training",
+  "short_name": "Protocol",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
@@ -8,12 +8,12 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/public/icon.png",
+      "src": "/public/brand-mark.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/public/icon.png",
+      "src": "/public/brand-mark.png",
       "type": "image/png",
       "sizes": "512x512"
     }

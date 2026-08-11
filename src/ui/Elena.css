@@ -156,13 +156,14 @@
             overflow-y: auto;
             overflow-x: hidden;
             scroll-behavior: smooth;
-            padding-bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom))
+            padding-bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom) + var(--visual-viewport-bottom))
         }
 
         .header {
             position: sticky;
             top: 0;
             z-index: 100;
+            overflow-anchor: none;
             padding: 24px 24px 16px;
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px);
@@ -1844,6 +1845,7 @@
             --radius: 24px;
             --radius-sm: 18px;
             --nav-h: 76px;
+            --visual-viewport-bottom: 0px;
         }
 
         body[data-theme="dark"] {
@@ -1931,13 +1933,13 @@
         }
 
         .header {
-            padding: calc(22px + env(safe-area-inset-top)) 24px 18px;
+            padding: calc(30px + env(safe-area-inset-top)) 24px 10px;
             background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 94%, transparent) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 70%, transparent 100%);
             border-bottom-color: transparent;
         }
 
         .header.scrolled {
-            padding: calc(14px + env(safe-area-inset-top)) 24px 14px;
+            padding: calc(18px + env(safe-area-inset-top)) 24px 14px;
             background: color-mix(in srgb, var(--bg) 94%, transparent);
             border-bottom-color: var(--border);
         }
@@ -1948,10 +1950,65 @@
             letter-spacing: 2.2px;
         }
 
+        .workout-identity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .workout-copy {
+            min-width: 0;
+        }
+
+        .brand-mark {
+            display: block;
+            width: 96px;
+            height: 60px;
+            flex: 0 0 96px;
+            mix-blend-mode: screen;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .header.scrolled .brand-mark {
+            width: 36px;
+            height: 26px;
+            flex-basis: 36px;
+        }
+
+        body[data-theme="light"] .brand-mark {
+            filter: invert(1);
+            mix-blend-mode: multiply;
+        }
+
         .day-title {
             font-size: 44px;
             font-weight: 350;
             letter-spacing: -2.2px;
+            white-space: nowrap;
+        }
+
+        .day-sub {
+            color: var(--accent);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            line-height: 1.2;
+            min-height: 24px;
+            max-height: 28px;
+            margin-top: 6px;
+            text-transform: uppercase;
+            transition: opacity 180ms ease, max-height 180ms ease, margin 180ms ease;
+            white-space: normal;
+        }
+
+        .header.scrolled .day-sub {
+            min-height: 0;
+            max-height: 0;
+            margin-top: 0;
+            opacity: 0;
+            overflow: hidden;
         }
 
         .ctrl-btn,
@@ -1970,7 +2027,7 @@
         }
 
         .hero-bento {
-            margin-top: 16px;
+            margin-top: 22px;
         }
 
         .training-flow {
@@ -2041,7 +2098,7 @@
         }
 
         .cards {
-            padding: 20px 20px 0;
+            padding: 14px 20px 0;
             gap: 12px;
             perspective: none;
         }
@@ -2068,6 +2125,12 @@
 
         .card-wrapper.custom.active .card {
             box-shadow: var(--shadow2);
+        }
+
+        .cards.is-resuming .card {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
         }
 
         .card-wrapper.dragging .card {
@@ -2204,6 +2267,7 @@
         }
 
         .nav-wrap {
+            bottom: var(--visual-viewport-bottom);
             padding: 0 16px calc(16px + env(safe-area-inset-bottom));
         }
 
@@ -2301,8 +2365,33 @@
         }
 
         @media (max-width: 480px) {
+            .workout-identity {
+                gap: 8px;
+            }
+
+            .day-title {
+                font-size: 38px;
+            }
+
+            .brand-mark {
+                width: 78px;
+                height: 54px;
+                flex-basis: 78px;
+            }
+
+            .day-sub {
+                min-width: 0;
+                min-height: 20px;
+                max-height: 20px;
+                overflow: hidden;
+                font-size: 8px;
+                letter-spacing: 1px;
+                text-overflow: clip;
+                white-space: normal;
+            }
+
             .cards {
-                padding: 20px 16px 0;
+                padding: 14px 16px 0;
             }
 
             .header {
@@ -2313,6 +2402,16 @@
             .header.scrolled {
                 padding-left: 20px;
                 padding-right: 20px;
+            }
+
+            .header.scrolled .day-title {
+                font-size: 26px;
+            }
+
+            .header.scrolled .brand-mark {
+                width: 42px;
+                height: 26px;
+                flex-basis: 42px;
             }
         }
 
@@ -2370,7 +2469,7 @@
             position: fixed;
             z-index: 950;
             right: 0;
-            bottom: 0;
+            bottom: var(--visual-viewport-bottom);
             left: 0;
             height: 116px;
             pointer-events: none;
@@ -2512,6 +2611,12 @@
             z-index: 1;
         }
 
+        /* Let the baked black/white source mark blend with the page behind the
+           compact sticky header instead of being trapped in its own backdrop. */
+        .header.scrolled {
+            isolation: auto;
+        }
+
         /* Exercise cards share the Hero's molded, quietly lit surface—not its color. */
         body[data-theme="light"] .card {
             background: linear-gradient(145deg, #faf9f5 0%, #f5f4ef 100%);
@@ -2599,6 +2704,37 @@
 
         html.theme-swap .theme-transition-scrim.is-covering {
             transition-duration: 170ms !important;
+        }
+
+        /* Keep the day dock and assistant action as two independent controls. */
+        .nav-wrap {
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-dock {
+            flex: 1 1 400px;
+            width: auto;
+            max-width: 400px;
+            padding: 6px;
+        }
+
+        .ai-fab {
+            position: relative;
+            inset: auto;
+            flex: 0 0 52px;
+            width: 52px;
+            height: 52px;
+        }
+
+        @media (max-width: 480px) {
+            .nav-wrap {
+                gap: 8px;
+            }
+
+            .nav-dock {
+                max-width: none;
+            }
         }
 
 

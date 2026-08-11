@@ -2,7 +2,7 @@
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
-import { HeroHeader } from './HeroHeader.js?v=5';
+import { HeroHeader } from './HeroHeader.js?v=7';
 import { ExerciseCards } from './ExerciseCards.js?v=8';
 import { triggerHaptic } from './Haptics.js?v=1';
 
@@ -55,6 +55,18 @@ export class Kai {
         });
         window.addEventListener('set:logged', (e) => this.onSetLogged(e.detail));
         window.addEventListener('workout:sync_queued', (e) => this.onSyncQueued(e.detail));
+
+        const recoverFromBackground = () => {
+            if (document.visibilityState === 'hidden' || !this.engine?.state) return;
+            this.els.cards?.classList.add('is-resuming');
+            this.render(this.engine.state);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => this.els.cards?.classList.remove('is-resuming'));
+            });
+        };
+
+        document.addEventListener('visibilitychange', recoverFromBackground);
+        window.addEventListener('pageshow', recoverFromBackground);
         
         this.heroHeader.bindScrollCollapse(document.getElementById('app'));
     }

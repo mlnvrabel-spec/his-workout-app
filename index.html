@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-    <title>Training</title>
+    <title>Hypertrophy Protocol</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#17191c">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,8 +12,8 @@
     
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="/public/manifest.json">
-    <link rel="icon" type="image/png" href="/public/icon.png">
-    <link rel="apple-touch-icon" href="/public/icon.png">
+    <link rel="icon" type="image/png" href="/public/brand-mark.png">
+    <link rel="apple-touch-icon" href="/public/brand-mark.png">
     
     <!-- External Fonts and Scripts -->
     <link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -22,7 +22,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Extracted CSS -->
-    <link rel="stylesheet" href="/src/ui/Elena.css?v=19">
+    <link rel="stylesheet" href="/src/ui/Elena.css?v=34">
 </head>
 
 <body data-theme="dark">
@@ -33,7 +33,13 @@
     <div id="app">
         <header class="header" id="header">
             <div class="header-top">
-                <div class="overline" id="day-sub">Quad Bias + Chest</div>
+                <div class="workout-identity">
+                    <img class="brand-mark" src="/public/brand-mark.png" alt="" width="96" height="60">
+                    <div class="workout-copy">
+                        <h1 class="day-title" id="day-title">Push A</h1>
+                        <div class="day-sub" id="day-sub">Quad Bias + Chest</div>
+                    </div>
+                </div>
                 <div class="header-controls">
                     <button class="ctrl-btn" id="settings-btn" aria-label="Settings">
                         <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" /></svg>
@@ -45,8 +51,6 @@
                     </button>
                 </div>
             </div>
-            <h1 class="day-title" id="day-title">Push A</h1>
-            
             <div class="hero-bento" id="hero-bento">
                 <section class="training-flow" aria-label="Training flow">
                     <div class="flow-header">
@@ -190,6 +194,28 @@
         import { ChatAssistant } from '/src/core/ChatAssistant.js?v=4';
         import { Kai } from '/src/ui/Kai.js?v=30';
         import { SettingsPanel } from '/src/ui/SettingsPanel.js?v=5';
+
+        const syncVisualViewportInset = () => {
+            const viewport = window.visualViewport;
+            const viewportBottom = viewport
+                ? Math.max(0, document.documentElement.clientHeight - viewport.height - viewport.offsetTop)
+                : 0;
+            document.documentElement.style.setProperty('--visual-viewport-bottom', `${Math.round(viewportBottom)}px`);
+        };
+
+        let viewportSyncFrame = 0;
+        const requestVisualViewportSync = () => {
+            if (viewportSyncFrame) return;
+            viewportSyncFrame = requestAnimationFrame(() => {
+                viewportSyncFrame = 0;
+                syncVisualViewportInset();
+            });
+        };
+
+        syncVisualViewportInset();
+        window.addEventListener('resize', requestVisualViewportSync, { passive: true });
+        window.visualViewport?.addEventListener('resize', requestVisualViewportSync, { passive: true });
+        window.visualViewport?.addEventListener('scroll', requestVisualViewportSync, { passive: true });
 
         // Register Service Worker for PWA Offline Support
         if ('serviceWorker' in navigator) {

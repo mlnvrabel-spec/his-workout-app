@@ -11,7 +11,22 @@ export class HeroHeader {
 
     renderDay(day) {
         if (this.els.dayTitle) this.els.dayTitle.innerText = day.title || 'Workout';
-        if (this.els.daySub) this.els.daySub.innerText = day.subtitle || '';
+        if (this.els.daySub) {
+            const subtitle = day.subtitle || '';
+            const parts = subtitle.split(/([+&])/);
+            const fragment = document.createDocumentFragment();
+
+            parts.forEach((part, index) => {
+                if (!part) return;
+                const text = index > 0 && parts[index - 1] === '+' || index > 0 && parts[index - 1] === '&'
+                    ? part.replace(/^\s+/, '')
+                    : part;
+                fragment.append(document.createTextNode(text));
+                if (part === '+' || part === '&') fragment.append(document.createElement('br'));
+            });
+
+            this.els.daySub.replaceChildren(fragment);
+        }
     }
 
     renderTrainingFlow(storage, workouts, currentDay) {
@@ -48,12 +63,15 @@ export class HeroHeader {
         if (!app || !header) return;
         const collapseAt = 72;
         const expandAt = 18;
-        const layoutSettleMs = 280;
+        // Header padding/hero transitions change the sticky element's height. Keep
+        // scroll-driven state locked until that layout settles so one fast fling
+        // cannot be interpreted as alternating up/down intent.
+        const layoutSettleMs = 460;
+        const directionThreshold = 3;
         let isCollapsed = header.classList.contains('scrolled');
         let frameRequested = false;
         let lastScrollTop = app.scrollTop;
         let lockedUntil = 0;
-        let touchStartY = 0;
 
         const setCollapsed = (next) => {
             if (next === isCollapsed) return;
@@ -68,9 +86,9 @@ export class HeroHeader {
             lastScrollTop = scrollTop;
 
             if (performance.now() >= lockedUntil) {
-                if (!isCollapsed && delta > 1 && scrollTop >= collapseAt) {
+                if (!isCollapsed && delta > directionThreshold && scrollTop >= collapseAt) {
                     setCollapsed(true);
-                } else if (isCollapsed && delta < -1 && scrollTop <= expandAt) {
+                } else if (isCollapsed && delta < -directionThreshold && scrollTop <= expandAt) {
                     setCollapsed(false);
                 }
             }
@@ -81,23 +99,6 @@ export class HeroHeader {
             if (frameRequested) return;
             frameRequested = true;
             requestAnimationFrame(updateCollapse);
-        }, { passive: true });
-
-        app.addEventListener('wheel', (event) => {
-            if (isCollapsed && event.deltaY < 0 && app.scrollTop <= expandAt && performance.now() >= lockedUntil) {
-                setCollapsed(false);
-            }
-        }, { passive: true });
-
-        app.addEventListener('touchstart', (event) => {
-            touchStartY = event.touches[0]?.clientY ?? 0;
-        }, { passive: true });
-
-        app.addEventListener('touchend', (event) => {
-            const pullDistance = (event.changedTouches[0]?.clientY ?? touchStartY) - touchStartY;
-            if (isCollapsed && pullDistance > 18 && app.scrollTop <= expandAt && performance.now() >= lockedUntil) {
-                setCollapsed(false);
-            }
         }, { passive: true });
 
         if (app.scrollTop >= collapseAt) setCollapsed(true);
