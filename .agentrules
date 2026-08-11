@@ -1,0 +1,67 @@
+# Global Project Directives: Hypertrophy Protocol
+
+You are operating within the Antigravity IDE workspace. Follow these rules strictly for all code generation.
+
+## 1. Technology Stack
+- **Frontend:** Vanilla JavaScript (ES6+ Modules), HTML5, CSS3 (CSS Variables, Grid/Flexbox). **STRICT NO REACT, VUE, OR TAILWIND.**
+- **Backend:** Python 3.11+, FastAPI, Pydantic, Garmin Connect SDK (`garth`).
+- **Storage:** Local `IndexedDB` for heavy logs/archives, `localStorage` for light preferences. 
+
+## 2. AI Code Generation Directives
+- **Zero Boilerplate:** Only output the exact code blocks being modified. Do not rewrite entire files unless requested.
+- **Thinking Protocol:** Before generating code, you MUST use a `<thinking>` block to briefly explain how your solution honors the "Invisible Luxury" design ethos and the Offline-First architecture.
+- **Event-Driven Isolation:** Frontend components must never tightly couple. Use `window.dispatchEvent(new CustomEvent(...))` for all cross-module communication.
+
+## 3. Conflict Resolution Hierarchy
+If agent directives conflict, prioritize in this exact order:
+1. **Atlas (Security & Data Integrity):** Zero data loss is non-negotiable.
+2. **Aria (Usability):** If it requires more than 2 taps, it's rejected.
+3. **Marcus (Performance):** 60fps minimum. Layout thrashing is forbidden.
+4. **Elena (Design):** Typography and spacing over borders and colors.
+5. **Kai (Motion):** Animations must gracefully fail if they impact Marcus's performance limits.
+
+## 4. UI Network State standard
+The UI must always display a network indicator in the top header:
+- `LIVE`: Green/Gold subtle dot (Garmin API active, WebSockets connected).
+- `CACHED`: Grey subtle dot (Offline or API rate-limited, relying on IndexedDB).
+- `SYNCING`: Pulsing dot (Background worker is pushing queue to Atlas).
+
+## 5. Coding & Behavioral Guidelines (CLAUDE.md)
+To reduce common LLM coding mistakes, adhere to the guidelines defined in [CLAUDE.md](file:///c:/Users/mlnvr/Desktop/Antigravity/Workout%20Split%20Dashboard/CLAUDE.md):
+
+### A. Think Before Coding
+- **Don't assume. Don't hide confusion. Surface tradeoffs.**
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — do not pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what is confusing. Ask.
+
+### B. Simplicity First
+- **Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No speculative "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+- Ask: *"Would a senior engineer say this is overcomplicated?"* If yes, simplify.
+
+### C. Surgical Changes
+- **Touch only what you must. Clean up only your own mess.**
+- Do not "improve" adjacent code, comments, or formatting.
+- Do not refactor things that are not broken.
+- Match existing style, even if you would do it differently.
+- If you notice unrelated dead code, mention it — do not delete it.
+- Remove imports/variables/functions that YOUR changes made unused.
+- Do not remove pre-existing dead code unless asked.
+- Every changed line must trace directly to the user's request.
+
+### D. Goal-Driven Execution
+- **Define success criteria. Loop until verified.**
+- Transform tasks into verifiable goals:
+  - "Add validation" → "Write tests for invalid inputs, then make them pass"
+  - "Fix the bug" → "Write a test that reproduces it, then make it pass"
+  - "Refactor X" → "Ensure tests pass before and after"
+- For multi-step tasks, state a brief plan:
+  1. [Step] → verify: [check]
+  2. [Step] → verify: [check]
+  3. [Step] → verify: [check]

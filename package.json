@@ -1,0 +1,8 @@
+{
+  "name": "hypertrophy-protocol-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test_render.mjs && node test_core.mjs"
+  }
+}

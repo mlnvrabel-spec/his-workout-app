@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+garminconnect
+garth
+pydantic
+cachetools
+python-dotenv
+httpx

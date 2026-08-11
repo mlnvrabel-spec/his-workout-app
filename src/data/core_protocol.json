@@ -1,0 +1,734 @@
+{
+  "protocol_metadata": {
+    "id": "HYPER_HYBRID_V4_ELITE",
+    "version": "1.0.4",
+    "author": "Coach Gemini (PhD Kinesiology)",
+    "design_language": "Invisible Luxury / Modern Glass"
+  },
+  "global_logic": {
+    "tempo": "3-0-1-0",
+    "eccentric_sec": 3,
+    "rest_compound_sec": 180,
+    "rest_isolation_sec": 90,
+    "progression_rule": "2.5% increase on 3xMax Rep success"
+  },
+  "workouts": [
+    {
+      "id": "PUSH_A",
+      "title": "Push A",
+      "subtitle": "Quad Bias & Clavicular Chest",
+      "exercises": [
+        {
+          "id": "PENDULUM_SQUAT",
+          "sets": 3,
+          "reps": "6-10",
+          "rir": "1-2",
+          "swap_group": "QUAD_DOM"
+        },
+        {
+          "id": "LOW_INC_DB_PRESS",
+          "sets": 3,
+          "reps": "6-10",
+          "rir": "1-2",
+          "swap_group": "CHEST_INC"
+        },
+        {
+          "id": "HIGH_INC_SMITH",
+          "sets": 3,
+          "reps": "8-12",
+          "rir": "1-2",
+          "swap_group": "CHEST_INC"
+        },
+        {
+          "id": "MACH_LATERAL",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "LAT_DELT"
+        },
+        {
+          "id": "LEG_EXTENSION",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "QUAD_ISO"
+        },
+        {
+          "id": "CABLE_OH_EXT",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "TRI_ISO"
+        }
+      ]
+    },
+    {
+      "id": "PULL_A",
+      "title": "Pull A",
+      "subtitle": "Hinge Bias & Lat Width",
+      "exercises": [
+        {
+          "id": "RDL_BARBELL",
+          "sets": 3,
+          "reps": "6-10",
+          "rir": "1-2",
+          "swap_group": "HINGE"
+        },
+        {
+          "id": "NEUTRAL_PULLUP",
+          "sets": 3,
+          "reps": "6-10",
+          "rir": "1-2",
+          "swap_group": "LAT_VERT"
+        },
+        {
+          "id": "CS_ROW",
+          "sets": 3,
+          "reps": "8-12",
+          "rir": "1-2",
+          "swap_group": "ROW_HORIZ"
+        },
+        {
+          "id": "SEATED_L_CURL",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "HAM_ISO"
+        },
+        {
+          "id": "REV_PEC_DECK",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "REAR_DELT"
+        },
+        {
+          "id": "INC_DB_CURL",
+          "sets": 3,
+          "reps": "10-15",
+          "rir": "0",
+          "swap_group": "BI_ISO"
+        }
+      ]
+    },
+    {
+      "id": "PUSH_B",
+      "title": "Push B",
+      "subtitle": "Quad Isolation + Upper Chest Focus",
+      "exercises": [
+        {
+          "id": "LEG_EXTENSION",
+          "sets": "3×10-15",
+          "reps": 15,
+          "rir": "0",
+          "swap_group": "QUAD_ISO"
+        },
+        {
+          "id": "SEATED_OHP",
+          "sets": "3×6-10",
+          "reps": 10,
+          "rir": "1-2",
+          "swap_group": "VERT_PRESS"
+        },
+        {
+          "id": "MACH_LATERAL",
+          "sets": "3×10-15",
+          "reps": 15,
+          "rir": "0",
+          "swap_group": "LAT_DELT"
+        },
+        {
+          "id": "HIGH_INC_SMITH",
+          "sets": "3×8-12",
+          "reps": 12,
+          "rir": "1-2",
+          "swap_group": "CHEST_INC"
+        },
+        {
+          "id": "TRI_PUSHDOWN",
+          "sets": "2×10-15",
+          "reps": 15,
+          "rir": "0",
+          "swap_group": "TRI_ISO"
+        }
+      ]
+    },
+    {
+      "id": "PULL_B",
+      "title": "Pull B",
+      "subtitle": "Hamstring Isolation + Upper Back Bias",
+      "exercises": [
+        {
+          "id": "LAT_PULLDOWN",
+          "sets": "3×8-12",
+          "reps": 12,
+          "rir": "1-2",
+          "swap_group": "LAT_VERT"
+        },
+        {
+          "id": "SEATED_L_CURL",
+          "sets": "3×10-15",
+          "reps": 15,
+          "rir": "0",
+          "swap_group": "HAM_ISO"
+        },
+        {
+          "id": "WIDE_CABLE_ROW",
+          "sets": "3×10-12",
+          "reps": 12,
+          "rir": "1-2",
+          "swap_group": "ROW_HORIZ"
+        },
+        {
+          "id": "FACE_PULL",
+          "sets": "2×15-20",
+          "reps": 20,
+          "rir": "0",
+          "swap_group": "REAR_DELT"
+        },
+        {
+          "id": "PREACHER_CURL",
+          "sets": "2×10-15",
+          "reps": 15,
+          "rir": "0",
+          "swap_group": "BI_ISO"
+        }
+      ]
+    }
+  ],
+  "exercise_library": {
+    "PENDULUM_SQUAT": {
+      "name": "Pendulum Squat",
+      "technique": [
+        "Place feet low on platform at shoulder width",
+        "Unrack and descend slowly (3 seconds)",
+        "Drive knees forward over toes as deep as possible"
+      ],
+      "mistakes": [
+        "Cutting depth (ego lifting)",
+        "Locking knees at the top (removes tension)"
+      ],
+      "visualization": "The Piston Cue: Imagine your femurs are pistons compressing a giant spring.",
+      "proTip": "By not locking out, you induce vascular occlusion, forcing Type II fibers to activate earlier.",
+      "garmin": {
+        "cat": "SQUAT",
+        "enum": "SQUAT"
+      }
+    },
+    "LOW_INC_DB_PRESS": {
+      "name": "Low Incline DB Press",
+      "technique": [
+        "Set bench to 15-30°",
+        "Retract scapula slightly into the bench",
+        "Press up and slightly inward, do not touch weights"
+      ],
+      "mistakes": [
+        "Flaring elbows to 90° (shoulders take over)",
+        "Bouncing at the bottom"
+      ],
+      "visualization": "Bicep to Pec: Don't push up, try to touch your inner bicep to your pectorals.",
+      "proTip": "A 15° incline aligns perfectly with the clavicular fibers without front delt dominance.",
+      "garmin": {
+        "cat": "CHEST_PRESS",
+        "enum": "DUMBBELL_INCLINE_BENCH_PRESS"
+      }
+    },
+    "HIGH_INC_SMITH": {
+      "name": "High Incline Smith Press",
+      "technique": [
+        "Set bench to 45°",
+        "Lower bar toward the collarbone",
+        "Pause briefly on the chest"
+      ],
+      "mistakes": [
+        "Lowering to the nipple line (too low for 45°)",
+        "Bouncing off the chest"
+      ],
+      "visualization": "Scraping the Chin: Position your body so the bar feels like it will scrape your chin.",
+      "proTip": "The Smith machine allows you to safely push the upper pecs to failure without stabilizers giving out.",
+      "garmin": {
+        "cat": "CHEST_PRESS",
+        "enum": "SMITH_MACHINE_INCLINE_BENCH_PRESS"
+      }
+    },
+    "MACH_LATERAL": {
+      "name": "Machine Lateral Raise",
+      "technique": [
+        "Place elbows against pads",
+        "Drive elbows up/out leading the movement",
+        "Lower with a 3s eccentric"
+      ],
+      "mistakes": [
+        "Gripping handles too tight",
+        "Shrugging shoulders up"
+      ],
+      "visualization": "Puppet Strings: Strings are pulling your elbows to the ceiling. Hands are just hooks.",
+      "proTip": "Keep traps relaxed. Machines remove the altered moment arm of free weights.",
+      "garmin": {
+        "cat": "LATERAL_RAISE",
+        "enum": "LATERAL_RAISE"
+      }
+    },
+    "LEG_EXTENSION": {
+      "name": "Leg Extension",
+      "technique": [
+        "Align knee joint with machine pivot",
+        "Dorsiflex ankles (pull toes toward shins)",
+        "Hold for 1s at peak"
+      ],
+      "mistakes": [
+        "Kicking explosively",
+        "Butt coming off the seat"
+      ],
+      "visualization": "The Glue Cue: Imagine your butt is super-glued to the seat.",
+      "proTip": "Dorsiflexing the toes reduces calf involvement and increases rectus femoris activation.",
+      "garmin": {
+        "cat": "LEG_EXTENSION",
+        "enum": "LEG_EXTENSION"
+      }
+    },
+    "CABLE_OH_EXT": {
+      "name": "Overhead Cable Extension",
+      "technique": [
+        "Set pulley at hip height",
+        "Keep elbows near ears",
+        "Extend arms overhead, separating rope"
+      ],
+      "mistakes": [
+        "Letting elbows flare wide",
+        "Arching lower back"
+      ],
+      "visualization": "Throwing the Ball: Visualize throwing a heavy medicine ball over your head.",
+      "proTip": "The money is in the stretch—let the rope pull your hands deep behind your neck.",
+      "garmin": {
+        "cat": "TRICEPS_EXTENSION",
+        "enum": "OVERHEAD_TRICEPS_EXTENSION"
+      }
+    },
+    "RDL_BARBELL": {
+      "name": "Romanian Deadlift",
+      "technique": [
+        "Unlock knees slightly",
+        "Hinge exclusively at hips",
+        "Stop when hips stop moving back"
+      ],
+      "mistakes": [
+        "Squatting the weight",
+        "Going too low (flexing lumbar spine)"
+      ],
+      "visualization": "Car Door: Close a car door behind you using only your glutes.",
+      "proTip": "The moment your hips stop traveling backward, the rep is over.",
+      "garmin": {
+        "cat": "DEADLIFT",
+        "enum": "BARBELL_ROMANIAN_DEADLIFT"
+      }
+    },
+    "NEUTRAL_PULLUP": {
+      "name": "Weighted Pull-Up",
+      "technique": [
+        "Use a neutral grip",
+        "Depress shoulders before pulling",
+        "Control the lowering phase"
+      ],
+      "mistakes": [
+        "Kipping/swinging",
+        "Not going to a full hang"
+      ],
+      "visualization": "Elbows to Pockets: Drive elbows down into your back pockets.",
+      "proTip": "Neutral grip biases the lats and brachialis while being safer on the shoulders.",
+      "garmin": {
+        "cat": "PULL_UP",
+        "enum": "PULL_UP"
+      }
+    },
+    "CS_ROW": {
+      "name": "Chest-Supported Row",
+      "technique": [
+        "Glue chest to pad",
+        "Protract shoulders at bottom",
+        "Retract and squeeze at top"
+      ],
+      "mistakes": [
+        "Lifting chest off pad",
+        "Neck-cranking (looking up)"
+      ],
+      "visualization": "Wrap Around Pad: Feel your back wrapping around the pad at the bottom.",
+      "proTip": "Unlike pull-ups, we want the shoulder blades to move dynamically here.",
+      "garmin": {
+        "cat": "ROW",
+        "enum": "SEATED_ROW"
+      }
+    },
+    "SEATED_L_CURL": {
+      "name": "Seated Leg Curl",
+      "technique": [
+        "Lock thigh pad down hard",
+        "Drive heels back and under",
+        "Control the 3s eccentric"
+      ],
+      "mistakes": [
+        "Hips lifting off seat",
+        "Dorsiflexing toes"
+      ],
+      "visualization": "Digging a Trench: Dig into the ground with your heels.",
+      "proTip": "Seated curls place hamstrings in a lengthened position, superior to lying curls.",
+      "garmin": {
+        "cat": "LEG_CURL",
+        "enum": "LEG_CURL"
+      }
+    },
+    "REV_PEC_DECK": {
+      "name": "Reverse Pec Deck",
+      "technique": [
+        "Adjust handles to shoulder height",
+        "Keep arms rigid",
+        "Stop when arms align with body"
+      ],
+      "mistakes": [
+        "Squeezing shoulder blades together",
+        "Excessive momentum"
+      ],
+      "visualization": "Pushing Walls Away: Push the walls away with the backs of your hands.",
+      "proTip": "Keep shoulder blades protracted. If you retract, traps take over.",
+      "garmin": {
+        "cat": "FLY",
+        "enum": "REAR_DELTOID_FLY"
+      }
+    },
+    "INC_DB_CURL": {
+      "name": "Incline DB Curls",
+      "technique": [
+        "Set bench to 45-60°",
+        "Keep elbows pointing at floor",
+        "Supinate at the top"
+      ],
+      "mistakes": [
+        "Swinging elbows forward",
+        "Not fully extending at bottom"
+      ],
+      "visualization": "Elbows in Cement: They can hinge, but cannot move forward.",
+      "proTip": "Targets the long head via the stretch. Don't cut the bottom short.",
+      "garmin": {
+        "cat": "CURL",
+        "enum": "DUMBBELL_INCLINE_CURL"
+      }
+    },
+    "HACK_SQUAT": {
+      "name": "Hack Squat",
+      "technique": [
+        "Place feet low and shoulder-width on the platform",
+        "Unlock safeties and descend with a 3s eccentric",
+        "Drive through the whole foot, stopping just short of lockout"
+      ],
+      "mistakes": [
+        "Placing feet too high (shifts to glutes)",
+        "Bouncing out of the bottom"
+      ],
+      "visualization": "Elevator Shaft: Your torso rides straight down like an elevator — no forward lean.",
+      "proTip": "The fixed plane lets you safely load the quads without spinal compression.",
+      "garmin": {
+        "cat": "SQUAT",
+        "enum": "HACK_SQUAT"
+      }
+    },
+    "LEG_PRESS": {
+      "name": "Leg Press",
+      "technique": [
+        "Place feet low and shoulder-width on the sled",
+        "Lower until knees reach 90°",
+        "Press through midfoot without locking out"
+      ],
+      "mistakes": [
+        "Letting hips curl off the pad at the bottom",
+        "Full lockout (hyperextension risk)"
+      ],
+      "visualization": "Push the World Away: You're not moving the sled — you're pushing the earth away with your legs.",
+      "proTip": "Low foot placement biases quads. Keep your lower back pinned to the pad at all times.",
+      "garmin": {
+        "cat": "LEG_PRESS",
+        "enum": "LEG_PRESS"
+      }
+    },
+    "INC_MACH_PR": {
+      "name": "Incline Machine Press",
+      "technique": [
+        "Adjust seat so handles align with upper chest",
+        "Press up while keeping scapula retracted",
+        "Control the negative with a 3s eccentric"
+      ],
+      "mistakes": [
+        "Letting shoulders roll forward at full extension",
+        "Using too much front delt by flaring elbows"
+      ],
+      "visualization": "Hug the Ceiling: Press up and slightly inward like you're hugging something overhead.",
+      "proTip": "Machines stabilize the path so you can push to true muscular failure safely.",
+      "garmin": {
+        "cat": "CHEST_PRESS",
+        "enum": "MACHINE_INCLINE_CHEST_PRESS"
+      }
+    },
+    "CABLE_LATERAL": {
+      "name": "Cable Lateral Raise",
+      "technique": [
+        "Stand sideways to a low pulley",
+        "Lead with the elbow, arm slightly bent",
+        "Raise until arm is parallel to floor, then lower with control"
+      ],
+      "mistakes": [
+        "Using momentum/body English",
+        "Raising above shoulder height (traps take over)"
+      ],
+      "visualization": "Pouring Water: At the top, tilt your hand like you're pouring water from a jug.",
+      "proTip": "The cable provides constant tension throughout the ROM — no dead spot at the bottom.",
+      "garmin": {
+        "cat": "LATERAL_RAISE",
+        "enum": "CABLE_LATERAL_RAISE"
+      }
+    },
+    "DB_LATERAL": {
+      "name": "Dumbbell Lateral Raise",
+      "technique": [
+        "Hold dumbbells at sides with a slight bend in elbows",
+        "Raise arms out to the sides leading with elbows",
+        "Pause at shoulder height, lower with 3s control"
+      ],
+      "mistakes": [
+        "Swinging the weights up",
+        "Shrugging traps instead of abducting"
+      ],
+      "visualization": "Scarecrow Arms: Imagine strings pulling your elbows straight out to the sides.",
+      "proTip": "Slightly lean forward 10-15° to better align with the lateral delt fibers.",
+      "garmin": {
+        "cat": "LATERAL_RAISE",
+        "enum": "DUMBBELL_LATERAL_RAISE"
+      }
+    },
+    "DB_RDL": {
+      "name": "Dumbbell Romanian Deadlift",
+      "technique": [
+        "Hold dumbbells in front of thighs",
+        "Hinge at hips, sliding weights down the legs",
+        "Stop when you feel a deep hamstring stretch"
+      ],
+      "mistakes": [
+        "Rounding the lower back",
+        "Bending knees too much (turning it into a squat)"
+      ],
+      "visualization": "Drinking Bird: Your body tips forward from the hips like a drinking bird toy — rigid torso.",
+      "proTip": "Dumbbells allow a more natural hand path and subtle external rotation.",
+      "garmin": {
+        "cat": "DEADLIFT",
+        "enum": "DUMBBELL_ROMANIAN_DEADLIFT"
+      }
+    },
+    "SMITH_RDL": {
+      "name": "Smith Machine RDL",
+      "technique": [
+        "Stand with bar at hip crease, feet hip-width",
+        "Hinge back keeping the bar on the legs",
+        "Squeeze glutes hard at the top"
+      ],
+      "mistakes": [
+        "Standing too far from the bar path",
+        "Letting the bar drift away from legs"
+      ],
+      "visualization": "Iron Rail: The bar moves on a rail — your body hinges around it like a gate.",
+      "proTip": "The fixed path lets you focus purely on the hip hinge without balance demands.",
+      "garmin": {
+        "cat": "DEADLIFT",
+        "enum": "SMITH_MACHINE_ROMANIAN_DEADLIFT"
+      }
+    },
+    "LAT_PULLDOWN": {
+      "name": "Lat Pulldown",
+      "technique": [
+        "Grip the bar slightly wider than shoulder width",
+        "Pull to upper chest, leaning back 15°",
+        "Squeeze lats at the bottom, extend fully at top"
+      ],
+      "mistakes": [
+        "Pulling behind the neck",
+        "Using biceps to yank the weight down"
+      ],
+      "visualization": "Bend the Bar: Try to bend the bar around your collarbone as you pull.",
+      "proTip": "Full scapular elevation at the top maximizes the stretch on the lats.",
+      "garmin": {
+        "cat": "PULL_UP",
+        "enum": "LAT_PULLDOWN"
+      }
+    },
+    "SEATED_OHP": {
+      "name": "Seated OHP",
+      "technique": [
+        "Set bench to 75-80° (not fully 90°)",
+        "Lower bar/handles to chin level",
+        "Press vertically, finishing with biceps by ears",
+        "Control the descent"
+      ],
+      "mistakes": [
+        "Arching back into a chest press",
+        "Cutting ROM (stopping at forehead)"
+      ],
+      "visualization": "Head Through Window: As you press up, push your head slightly forward 'through the window' created by your arms.",
+      "proTip": "Using a machine or Smith here is preferred over free weights for hypertrophy, allowing you to grind to failure safely.",
+      "garmin": {
+        "cat": "SHOULDER_PRESS",
+        "enum": "SEATED_BARBELL_SHOULDER_PRESS"
+      }
+    },
+    "TRI_PUSHDOWN": {
+      "name": "Triceps Pushdown",
+      "technique": [
+        "Pin elbows to your ribcage",
+        "Hinge only at the elbow",
+        "Pull the rope apart at the bottom",
+        "Squeeze triceps hard"
+      ],
+      "mistakes": [
+        "Shoulders rolling forward / leaning on the rope",
+        "Moving the elbows forward and back"
+      ],
+      "visualization": "Breaking the Rope: Visualize trying to rip the rope in half as you reach the bottom.",
+      "proTip": "Targets the lateral and medial heads of the triceps. Keep the tempo strict.",
+      "garmin": {
+        "cat": "TRICEPS_EXTENSION",
+        "enum": "CABLE_PUSHDOWN"
+      }
+    },
+    "WIDE_CABLE_ROW": {
+      "name": "Wide Grip Cable Row",
+      "technique": [
+        "Use a wide mag-grip or straight bar",
+        "Keep torso upright",
+        "Pull elbows high and wide (shoulder height)",
+        "Squeeze scapula together"
+      ],
+      "mistakes": [
+        "Pulling elbows into sides",
+        "Rounding the back"
+      ],
+      "visualization": "Scarecrow Pull: Pull your elbows apart like a scarecrow. The goal is width.",
+      "proTip": "By flaring the elbows out to 45-60 degrees, you bias the upper back rather than the lats.",
+      "garmin": {
+        "cat": "ROW",
+        "enum": "SEATED_CABLE_ROW"
+      }
+    },
+    "FACE_PULL": {
+      "name": "Face Pulls",
+      "technique": [
+        "Set rope to upper chest height",
+        "Grasp rope with thumbs facing back",
+        "Pull towards forehead while spreading hands",
+        "Externally rotate"
+      ],
+      "mistakes": [
+        "Pulling to the chin/neck",
+        "Keeping hands close together"
+      ],
+      "visualization": "Double Bicep Pose: Finish the movement in a 'double bicep' pose. Your knuckles should face the wall behind you.",
+      "proTip": "This is not a heavy strength movement. It's for rotator cuff health and rear delts.",
+      "garmin": {
+        "cat": "FLY",
+        "enum": "REAR_DELTOID_FLY"
+      }
+    },
+    "PREACHER_CURL": {
+      "name": "Preacher Curl",
+      "technique": [
+        "Adjust seat so armpit fits snugly over pad",
+        "Extend arm fully",
+        "Curl weight without moving the upper arm",
+        "Squeeze biceps at the top"
+      ],
+      "mistakes": [
+        "Leaning back to gain leverage",
+        "Lifting elbows off the pad",
+        "Stopping short of full extension"
+      ],
+      "visualization": "The Hinge: Your arm is a simple hinge. Nothing else in the body moves.",
+      "proTip": "Exercises the biceps in the 'shortened position'. Control the negative to avoid tendon strain at full extension.",
+      "garmin": {
+        "cat": "CURL",
+        "enum": "PREACHER_CURL"
+      }
+    }
+  },
+  "swap_groups": [
+    {
+      "id": "QUAD_DOM",
+      "options": [
+        "PENDULUM_SQUAT",
+        "HACK_SQUAT",
+        "LEG_PRESS"
+      ]
+    },
+    {
+      "id": "CHEST_INC",
+      "options": [
+        "LOW_INC_DB_PRESS",
+        "HIGH_INC_SMITH",
+        "INC_MACH_PR"
+      ]
+    },
+    {
+      "id": "LAT_DELT",
+      "options": [
+        "MACH_LATERAL",
+        "CABLE_LATERAL",
+        "DB_LATERAL"
+      ]
+    },
+    {
+      "id": "QUAD_ISO",
+      "options": [
+        "LEG_EXTENSION"
+      ]
+    },
+    {
+      "id": "TRI_ISO",
+      "options": [
+        "CABLE_OH_EXT"
+      ]
+    },
+    {
+      "id": "HINGE",
+      "options": [
+        "RDL_BARBELL",
+        "DB_RDL",
+        "SMITH_RDL"
+      ]
+    },
+    {
+      "id": "LAT_VERT",
+      "options": [
+        "NEUTRAL_PULLUP",
+        "LAT_PULLDOWN"
+      ]
+    },
+    {
+      "id": "ROW_HORIZ",
+      "options": [
+        "CS_ROW"
+      ]
+    },
+    {
+      "id": "HAM_ISO",
+      "options": [
+        "SEATED_L_CURL"
+      ]
+    },
+    {
+      "id": "REAR_DELT",
+      "options": [
+        "REV_PEC_DECK"
+      ]
+    },
+    {
+      "id": "BI_ISO",
+      "options": [
+        "INC_DB_CURL"
+      ]
+    }
+  ]
+}
