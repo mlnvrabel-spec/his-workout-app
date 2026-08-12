@@ -111,6 +111,9 @@ export class ChatAssistant {
         if(!this.input) return;
         const text = this.input.value.trim();
         if(!text) return;
+
+        this.addMsg('System', 'AI chat is temporarily unavailable while secure server-side AI access is being configured.', 'system');
+        return;
         
         const key = localStorage.getItem('ai_key');
         if(!key) {
