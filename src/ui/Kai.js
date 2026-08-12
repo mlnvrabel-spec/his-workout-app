@@ -2,7 +2,7 @@
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
-import { HeroHeader } from './HeroHeader.js?v=7';
+import { HeroHeader } from './HeroHeader.js?v=9';
 import { ExerciseCards } from './ExerciseCards.js?v=8';
 import { triggerHaptic } from './Haptics.js?v=1';
 
