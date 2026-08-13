@@ -8,7 +8,22 @@ EXERCISE_MAP = {
     "Pendulum Squat": {
         "category": "SQUAT",
         "name": "SQUAT",  # Non-native, mapped to generic
-        "note": "Pendulum Squat: Slow eccentric, drive knees forward."
+        "note": "Pendulum Squat: controlled eccentric, deep pain-free knee flexion."
+    },
+    "Reverse Hack Squat": {
+        "category": "SQUAT",
+        "name": "HACK_SQUAT",
+        "note": "Reverse Hack Squat: controlled depth with stable bracing."
+    },
+    "Hack Squat": {
+        "category": "SQUAT",
+        "name": "HACK_SQUAT",
+        "note": "Hack Squat: use a controlled, pain-free range."
+    },
+    "Leg Press": {
+        "category": "LEG_PRESS",
+        "name": "LEG_PRESS",
+        "note": "Leg Press: keep the pelvis stable against the pad."
     },
     "Low Incline DB Press": {
         "category": "CHEST_PRESS",
@@ -25,6 +40,16 @@ EXERCISE_MAP = {
         "name": "CABLE_CROSSOVER",
         "note": "The Barrel Hug: Pause in the stretch."
     },
+    "Cable Fly": {
+        "category": "CHEST_PRESS",
+        "name": "CABLE_CROSSOVER",
+        "note": "Cable Fly: use a controlled chest stretch and fixed elbow bend."
+    },
+    "Incline Machine Press": {
+        "category": "CHEST_PRESS",
+        "name": "MACHINE_INCLINE_CHEST_PRESS",
+        "note": "Incline Machine Press: keep the upper back fixed into the pad."
+    },
     "Overhead Extension": {
         "category": "TRICEPS_EXTENSION",
         "name": "OVERHEAD_TRICEPS_EXTENSION",
@@ -39,6 +64,11 @@ EXERCISE_MAP = {
         "category": "SHOULDER_PRESS",
         "name": "SEATED_BARBELL_SHOULDER_PRESS",
         "note": "80 degree bench angle."
+    },
+    "Seated DB OHP": {
+        "category": "SHOULDER_PRESS",
+        "name": "SEATED_DUMBBELL_SHOULDER_PRESS",
+        "note": "Seated DB OHP: brace the torso and use a controlled shoulder-level stretch."
     },
     "Machine Lateral Raise": {
         "category": "LATERAL_RAISE",
@@ -61,6 +91,16 @@ EXERCISE_MAP = {
         "category": "DEADLIFT",
         "name": "BARBELL_ROMANIAN_DEADLIFT",
         "note": "Hinge until hips stop moving back."
+    },
+    "Dumbbell Romanian Deadlift": {
+        "category": "DEADLIFT",
+        "name": "DUMBBELL_ROMANIAN_DEADLIFT",
+        "note": "Dumbbell RDL: hinge to the deepest stable hamstring stretch."
+    },
+    "Smith Machine RDL": {
+        "category": "DEADLIFT",
+        "name": "SMITH_MACHINE_ROMANIAN_DEADLIFT",
+        "note": "Smith RDL: keep the bar close to the legs."
     },
     "Weighted Pull-Up": {
         "category": "PULL_UP",
@@ -90,7 +130,7 @@ EXERCISE_MAP = {
     "Seated Leg Curl": {
         "category": "LEG_CURL",
         "name": "LEG_CURL",
-        "note": "3-second eccentric; hips locked down."
+        "note": "Controlled eccentric; hips locked down."
     },
     "Wide Grip Cable Row": {
         "category": "ROW",
@@ -102,10 +142,20 @@ EXERCISE_MAP = {
         "name": "FACE_PULL",
         "note": "Finish in double bicep pose."
     },
+    "Face Pull": {
+        "category": "SHOULDER_STABILITY",
+        "name": "FACE_PULL",
+        "note": "Face Pull: finish with the hands apart and a controlled external rotation."
+    },
     "Preacher Curl": {
         "category": "CURL",
         "name": "PREACHER_CURL",
         "note": "Full extension; arm is a simple hinge."
+    },
+    "Standing Calf Raise": {
+        "category": "CALF_RAISE",
+        "name": "STANDING_CALF_RAISE",
+        "note": "Standing Calf Raise: control the deep stretch and pause briefly at the top."
     }
 }
 

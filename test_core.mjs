@@ -117,6 +117,9 @@ swapEngine._resolveExercise = slot => ({ _exerciseId: slot.id });
 swapEngine.swapExercise(0, 0, 'leg_press');
 assert.equal(stateUpdates.at(-1).type, 'exercise_swap');
 assert.equal(swapEngine.protocolData[0].exercises[0]._exerciseId, 'leg_press');
+assert.equal(swapEngine._formatRest(90), '90s');
+assert.equal(swapEngine._formatRest(120), '2m');
+assert.equal(swapEngine._formatRest(180), '3m');
 
 const garmin = new GarminSync();
 garmin.storage = { getWeeklyStats: () => ({ consistencyRatio: 0.5 }) };

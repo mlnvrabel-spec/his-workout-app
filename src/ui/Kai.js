@@ -250,8 +250,12 @@ export class Kai {
                             const originalViz = vizNode.dataset.orig || vizNode.innerText;
                             if(!vizNode.dataset.orig) vizNode.dataset.orig = originalViz;
                             const exName = wrap.querySelector('.ex-name').innerText;
+                            const exercise = this.engine?.protocolData?.[this.engine.state.day]?.exercises?.[Number(wrap.dataset.idx)];
                             vizNode.innerHTML = `<span style="opacity:0.5">Olympia AI analyzing ${exName}...</span>`;
-                            this.chat.generateCoachingCue('ex_'+wrap.id, exName)
+                            this.chat.generateCoachingCue('ex_'+wrap.id, exName, {
+                                targetRir: exercise?.rir,
+                                repRange: exercise?.reps
+                            })
                                 .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">ðŸ§  ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
                                 .catch(() => vizNode.innerText = originalViz);
                         }

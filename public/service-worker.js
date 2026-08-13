@@ -1,20 +1,20 @@
-const CACHE_NAME = 'hypertrophy-v49';
+const CACHE_NAME = 'hypertrophy-v50';
 const ASSETS = [
     '/',
     '/index.html',
     '/public/manifest.json',
     '/public/brand-mark.png',
     '/src/ui/Elena.css?v=36',
-    '/src/ui/Kai.js?v=36',
+    '/src/ui/Kai.js?v=37',
     '/src/ui/HeroHeader.js?v=11',
     '/src/ui/Haptics.js?v=1',
     '/src/ui/AuthUI.js',
     '/src/ui/SettingsPanel.js',
-    '/src/core/WorkoutEngine.js?v=9',
+    '/src/core/WorkoutEngine.js?v=10',
     '/src/core/GarminSync.js',
     '/src/core/StorageManager.js',
-    '/src/core/ChatAssistant.js',
-    '/src/data/core_protocol.json',
+    '/src/core/ChatAssistant.js?v=5',
+    '/src/data/core_protocol.json?v=1.1.0',
     'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
     'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:opsz,wght@14..32,100..900&display=swap'
 ];

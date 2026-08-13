@@ -236,9 +236,10 @@ export class ChatAssistant {
      * Hits the Python backend `/api/ai/coach` matching RAG constraints.
      * @param {string} exerciseId - e.g., 'ex_001'
      * @param {string} exerciseName - Optional display name
+     * @param {{ targetRir?: string, repRange?: string }} prescription - Exercise prescription from the protocol
      * @returns {Promise<string>} The coaching cue text.
      */
-    async generateCoachingCue(exerciseId, exerciseName = "this exercise") {
+    async generateCoachingCue(exerciseId, exerciseName = "this exercise", prescription = {}) {
         try {
             const archiveLog = await this.storage.getLastArchiveLog(exerciseId);
             let lastSessionStr = 'First time performing this logged locally.';
@@ -251,7 +252,9 @@ export class ChatAssistant {
             const payload = {
                 readiness_score: this.currentReadiness,
                 exercise_name: exerciseName,
-                last_session_log: lastSessionStr
+                last_session_log: lastSessionStr,
+                target_rir: prescription.targetRir || '1-2',
+                rep_range: prescription.repRange || ''
             };
 
             const response = await fetch('http://localhost:8001/api/ai/coach', {
@@ -265,11 +268,22 @@ export class ChatAssistant {
             }
             
             const data = await response.json();
-            return data.cue || `Focus purely on technique today with a 3-second eccentric on ${exerciseName}.`;
+            return data.cue || this._fallbackCoachingCue(exerciseName, prescription);
             
         } catch (error) {
             console.error('[ChatAssistant] Error generating coaching cue:', error);
-            return `Focus purely on technique today with a 3-second eccentric on ${exerciseName}.`;
+            return this._fallbackCoachingCue(exerciseName, prescription);
         }
+    }
+
+    _fallbackCoachingCue(exerciseName, prescription) {
+        const repRange = prescription.repRange || 'the prescribed range';
+        const targetRir = prescription.targetRir || '1-2';
+        const target = this.currentReadiness > 75
+            ? `Readiness is high: add one rep within ${repRange} at ${targetRir} RIR before increasing load.`
+            : this.currentReadiness < 40
+                ? `Readiness is low: match or reduce the prior load and stay within ${repRange} at ${targetRir} RIR.`
+                : `Use a repeatable load within ${repRange} and finish around ${targetRir} RIR.`;
+        return `No prior session is available, so establish a clean baseline today. ${target} Use a controlled eccentric and full pain-free range on ${exerciseName}.`;
     }
 }

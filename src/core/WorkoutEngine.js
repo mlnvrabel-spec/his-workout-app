@@ -55,7 +55,7 @@ export class WorkoutEngine {
     async init() {
         await this.storage.init();
         try {
-            const response = await fetch('/src/data/core_protocol.json');
+            const response = await fetch('/src/data/core_protocol.json?v=1.1.0');
             const data = await response.json();
 
             // Store raw reference data for swap operations
@@ -104,7 +104,7 @@ export class WorkoutEngine {
 
     /**
      * Resolves a single exercise slot into the full UI-ready object.
-     * @param {Object} ex - exercise slot from workout definition { id, sets, reps, rir, swap_group }
+     * @param {Object} ex - exercise slot from workout definition { id, sets, reps, rir, rest_sec, swap_group }
      * @returns {Object} UI-ready exercise object
      */
     _resolveExercise(ex) {
@@ -119,7 +119,7 @@ export class WorkoutEngine {
                 reps: ex.reps,
                 rir: ex.rir,
                 rirClass: ex.rir == "0" ? "0" : "1",
-                rest: "90s",
+                rest: this._formatRest(ex.rest_sec),
                 technique: [],
                 mistakes: [],
                 visualization: '',
@@ -135,13 +135,23 @@ export class WorkoutEngine {
             reps: ex.reps,
             rir: ex.rir,
             rirClass: ex.rir == "0" ? "0" : "1",
-            rest: (lib.garmin.cat === "SQUAT" || lib.garmin.cat === "DEADLIFT") ? "3m" : "90s",
+            rest: this._formatRest(ex.rest_sec),
             technique: lib.technique,
             mistakes: lib.mistakes,
             visualization: lib.visualization.split(':')[0],
             vizText: lib.visualization.split(':')[1] ? lib.visualization.split(':')[1].trim() : '',
             proTip: lib.proTip
         };
+    }
+
+    /**
+     * Formats protocol-owned rest targets for the exercise-card UI.
+     * @param {number} seconds
+     * @returns {string}
+     */
+    _formatRest(seconds) {
+        const restSeconds = Number.isFinite(seconds) ? seconds : 90;
+        return restSeconds % 60 === 0 ? `${restSeconds / 60}m` : `${restSeconds}s`;
     }
 
     /**
@@ -254,8 +264,10 @@ export class WorkoutEngine {
             const rawSlot = this.rawWorkouts[dayIdx]?.exercises[exSlot];
             if (!rawSlot) return;
 
-            // Verify the swap is valid (exercise exists in library)
-            if (!this.exerciseLibrary[newExId]) return;
+            // Ignore stale swaps from an earlier protocol order or an incompatible group.
+            const expectedGroup = rawSlot.swap_group;
+            const allowedOptions = this.swapGroupMap[expectedGroup] || [];
+            if (!this.exerciseLibrary[newExId] || !allowedOptions.includes(newExId)) return;
 
             const newSlot = { ...rawSlot, id: newExId };
             dayData.exercises[exSlot] = this._resolveExercise(newSlot);

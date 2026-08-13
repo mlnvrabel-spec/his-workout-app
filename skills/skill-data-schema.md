@@ -1,55 +1,73 @@
 # Skill: Data Architecture & Strict Schema
 
 ## Goal
-Establish a universal, immutable contract for data structures across all agents (Marcus, Atlas, Mr. Olympia). 
 
-## 1. The `core_protocol.json` Schema (Read-Only)
-This file dictates the UI structure. It is fetched from `/data/core_protocol.json`.
+Keep the protocol, UI, offline logs, Garmin mapping, and coaching inputs on one
+small, explicit contract.
+
+## 1. The `core_protocol.json` Schema
+
+`src/data/core_protocol.json` is the programming source of truth. It defines
+the rolling workout order, exercise prescriptions, technique cues, Garmin
+metadata, and only biomechanically comparable swap options.
+
 ```json
 {
-  "protocol_version": "HV4_Elite",
-  "days": {
-    "D1_Push_A": {
+  "workouts": [
+    {
+      "id": "PUSH_A",
+      "title": "Push A",
       "exercises": [
         {
-          "id": "ex_001",
-          "name": "Pendulum Squat",
-          "garmin_enum": "SQUAT",
+          "id": "LOW_INC_DB_PRESS",
           "sets": 3,
-          "target_rpe": 8.5,
+          "reps": "6-10",
+          "rir": "1-2",
           "rest_sec": 180,
-          "swap_group": ["Hack Squat", "Leg Press"]
+          "swap_group": "CHEST_LOW_INC"
         }
       ]
     }
-  }
+  ]
 }
+```
 
+Constraints:
 
-## 2. The `hv3_logs` Schema (Current Session State)
-This is how data is stored locally via `StorageManager.js` and transmitted to the FastAPI backend.
-**Important:** Use JSDoc comments in JS files to enforce this shape. Do NOT use TypeScript.
+- `sets` is a number; `reps` is a range string; `rir` is the target range;
+  `rest_sec` is a number.
+- Each slot must reference an `exercise_library` entry.
+- A `swap_group` contains only genuine, mechanically comparable substitutes.
+  No appropriate substitute is preferable to a misleading one.
+- The workout list is a continuous cycle, not a weekday schedule.
+
+## 2. The `hv3_logs` Schema
+
+This is stored locally by `StorageManager.js` and sent to the FastAPI queue.
 
 ```javascript
 /**
  * @typedef {Object} WorkoutSet
- * @property {number} set_number - The sequential set number.
- * @property {number} weight_kg - Weight ALWAYS stored in kg in DB/JSON. UI converts to lbs.
- * @property {number} reps - Reps completed.
- * @property {number} rpe - Rate of Perceived Exertion (1-10).
- * @property {string} timestamp - ISO 8601 string of when set was logged.
+ * @property {number} set_number
+ * @property {number} weight_kg
+ * @property {number} reps
+ * @property {number} rpe
+ * @property {string} timestamp - ISO 8601
  */
 
 /**
  * @typedef {Object} WorkoutLog
- * @property {string} session_id - ISO Date e.g., "2024-10-24"
- * @property {string} day_id - e.g., "D1_Push_A"
- * @property {string} exercise_id - e.g., "ex_001"
- * @property {WorkoutSet[]} sets - Array of completed sets.
- * @property {"pending" | "synced"} sync_status - Managed by the offline sync queue.
+ * @property {string} session_id - Local calendar date
+ * @property {string} day_id
+ * @property {string} exercise_id
+ * @property {WorkoutSet[]} sets
+ * @property {"pending" | "synced"} sync_status
  */
- 
- Constraints
-Idempotency: The session_id must be tied to the calendar date. If a user restarts the app, Atlas (backend) and Marcus (frontend) must query by date to prevent duplicate entries.
-Conversion: Atlas expects payloads in strictly metric (kg). If Elena/Aria configured the SettingsPanel.js to lbs, Marcus must convert it to kg before dispatching the sync event.
+```
 
+Constraints:
+
+- Persist locally before requesting remote sync.
+- Keep logged load in kilograms; convert only in presentation.
+- `session_id`, `day_id`, and `exercise_id` jointly identify an idempotent
+  queued log.
