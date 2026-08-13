@@ -2,8 +2,8 @@
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
-import { HeroHeader } from './HeroHeader.js?v=9';
-import { ExerciseCards } from './ExerciseCards.js?v=8';
+import { HeroHeader } from './HeroHeader.js?v=11';
+import { ExerciseCards } from './ExerciseCards.js?v=9';
 import { triggerHaptic } from './Haptics.js?v=1';
 
 export class Kai {
@@ -16,7 +16,9 @@ export class Kai {
             cards: document.getElementById('cards'),
             navDock: document.getElementById('nav-dock'),
             themeBtn: document.getElementById('theme-btn'),
-            themeScrim: document.getElementById('theme-transition-scrim')
+            themeScrim: document.getElementById('theme-transition-scrim'),
+            trainingFlow: document.getElementById('training-flow'),
+            completionAnnouncement: document.getElementById('flow-completion-announcement')
         };
         
         // Motion Physics Curve: "Memory Foam"
@@ -55,6 +57,7 @@ export class Kai {
         });
         window.addEventListener('set:logged', (e) => this.onSetLogged(e.detail));
         window.addEventListener('workout:sync_queued', (e) => this.onSyncQueued(e.detail));
+        window.addEventListener('workout:finished', (e) => this.sealCompletedWorkout(e.detail?.session));
 
         const recoverFromBackground = () => {
             if (document.visibilityState === 'hidden' || !this.engine?.state) return;
@@ -69,6 +72,28 @@ export class Kai {
         window.addEventListener('pageshow', recoverFromBackground);
         
         this.heroHeader.bindScrollCollapse(document.getElementById('app'));
+    }
+
+    /**
+     * Acknowledge the explicit completion before the next split settles into view.
+     * This is presentation-only; WorkoutEngine remains the completion authority.
+     */
+    sealCompletedWorkout(session) {
+        const trainingFlow = this.els.trainingFlow;
+        if (!trainingFlow) return;
+
+        const app = document.getElementById('app');
+        if (app) app.scrollTop = 0;
+        this.heroHeader.expandForCompletion();
+
+        if (this.els.completionAnnouncement) {
+            this.els.completionAnnouncement.textContent = `${session?.title || 'Workout'} complete.`;
+        }
+
+        trainingFlow.classList.remove('is-sealing');
+        requestAnimationFrame(() => trainingFlow.classList.add('is-sealing'));
+        clearTimeout(this.completionMotionTimer);
+        this.completionMotionTimer = setTimeout(() => trainingFlow.classList.remove('is-sealing'), 760);
     }
 
     /**
@@ -183,7 +208,7 @@ export class Kai {
 
         // 1. Click Handling
         this.els.cards.addEventListener('click', async (e) => {
-            // Explicit completion is available once at least half of the exercises are checked.
+            // Explicit completion is always available as a manual override.
             const finishBtn = e.target.closest('#finish-workout-btn');
             if (finishBtn) {
                 const finished = await this.engine?.finishSession?.();

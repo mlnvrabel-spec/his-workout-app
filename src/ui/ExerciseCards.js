@@ -112,10 +112,8 @@ export class ExerciseCards {
         actions.className = 'workout-actions';
         if (completion?.isFinished) {
             actions.innerHTML = '<button class="finish-btn finish-btn--undo" disabled>Workout complete</button>';
-        } else if (completion?.eligible) {
-            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout · ${completion.completed} of ${completion.total}</button>`;
         } else {
-            actions.innerHTML = `<button class="finish-btn finish-btn--locked" disabled>Finish workout · ${completion?.completed || 0}/${completion?.required || 0} needed</button>`;
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout · ${completion?.completed || 0} of ${completion?.total || 0}</button>`;
         }
         const existingActions = document.getElementById('workout-actions');
         if (existingActions) existingActions.replaceWith(actions);

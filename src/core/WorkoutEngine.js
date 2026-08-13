@@ -496,11 +496,11 @@ export class WorkoutEngine {
     }
 
     /**
-     * Explicitly completes the current day when its checklist reaches the 50% threshold.
+     * Explicitly completes the current day. Individual exercise checks are optional.
      */
     async finishSession() {
         const completion = this.getCompletionSummary();
-        if (!completion.eligible || completion.isFinished) return false;
+        if (completion.isFinished) return false;
 
         const protocolLen = this.protocolData?.length || 1;
         const mappedDay = this.state.day % protocolLen;

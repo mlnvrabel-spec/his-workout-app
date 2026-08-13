@@ -27,7 +27,7 @@ The application utilizes a strictly typed, event-driven ES Module architecture o
 The dashboard Hero is a program-adherence surface, not a biometric dashboard. It makes the workout sequence and the user's calendar-week commitment immediately clear.
 *   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
 *   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
-*   **Completion rule**: A workout can be explicitly finished once at least half of its exercises are marked complete. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
+*   **Completion rule**: A workout can be explicitly finished at any time. Individual exercise checks remain optional, and the saved summary records their exact completion count. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
 *   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown.
 
 ### 3.2. Garmin Connect Bridge (Microservice & Sync Engine)

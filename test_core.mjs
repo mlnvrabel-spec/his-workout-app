@@ -37,6 +37,8 @@ assert.equal(storage.getWeekStart(new Date('2026-08-16T12:00:00')), '2026-08-10'
 
 const archived = [];
 const memory = [];
+const finishedSessions = [];
+window.addEventListener('workout:finished', event => finishedSessions.push(event.detail));
 const engine = new WorkoutEngine();
 engine.storage = {
     completeWorkoutDay: async (summary, nextWorkout) => archived.push([summary, nextWorkout]),
@@ -61,6 +63,8 @@ await engine.finishSession();
 assert.equal(archived.length, 1);
 assert.ok(memory.some(([key]) => key === 'hv3_memory'));
 assert.equal(engine.state.day, 0);
+assert.equal(finishedSessions.length, 1);
+assert.equal(finishedSessions[0].session.title, 'Push A');
 
 const queuedSessions = [];
 window.addEventListener('workout:sync_queued', event => queuedSessions.push(event.detail));
@@ -88,6 +92,20 @@ assert.equal(completionEngine.getCompletionSummary().required, 3);
 assert.equal(completionEngine.getCompletionSummary().eligible, false);
 completionEngine.state.done[0]['ex-0-2'] = true;
 assert.equal(completionEngine.getCompletionSummary().eligible, true);
+
+const manualFinishSummaries = [];
+const manualFinishEngine = new WorkoutEngine();
+manualFinishEngine.protocolData = [{ id: 'push_a', title: 'Push A', exercises: [{}, {}, {}, {}, {}] }];
+manualFinishEngine.state = { day: 0, done: {}, completedDays: {} };
+manualFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
+manualFinishEngine.storage = {
+    completeWorkoutDay: async summary => manualFinishSummaries.push(summary),
+    setLightState: () => {},
+    recordCompletedSession: () => {},
+    getDateKey: () => '2026-08-11'
+};
+assert.equal(await manualFinishEngine.finishSession(), true);
+assert.equal(manualFinishSummaries[0].completedExercises, 0);
 
 const stateUpdates = [];
 window.addEventListener('engine:state_updated', event => stateUpdates.push(event.detail));

@@ -1,5 +1,6 @@
 export class HeroHeader {
     constructor() {
+        this.expandForCompletion = () => {};
         this.els = {
             dayTitle: document.getElementById('day-title'),
             daySub: document.getElementById('day-sub'),
@@ -37,10 +38,10 @@ export class HeroHeader {
 
         if (this.els.lastTitle) this.els.lastTitle.innerText = memory?.title || 'Start';
         if (this.els.currentTitle) this.els.currentTitle.innerText = current.title || 'Workout';
-        this.renderWeekRhythm(storage?.getWeeklyStats?.().days || []);
+        this.renderWeekRhythm(storage?.getWeeklyStats?.().days || [], storage?.getDateKey?.());
     }
 
-    renderWeekRhythm(days) {
+    renderWeekRhythm(days, today) {
         if (!this.els.weekRhythm) return;
         this.els.weekRhythm.replaceChildren(...days.map(day => {
             const item = document.createElement('div');
@@ -48,7 +49,7 @@ export class HeroHeader {
             const marker = document.createElement('span');
             const date = new Date(`${day.date}T00:00:00`);
 
-            item.className = 'week-day';
+            item.className = `week-day${day.date === today ? ' is-today' : ''}`;
             item.setAttribute('aria-label', `${new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date)}: ${day.completed ? 'trained' : 'not trained'}`);
             label.className = 'week-day-label';
             label.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'narrow' }).format(date);
@@ -80,6 +81,12 @@ export class HeroHeader {
             isCollapsed = next;
             header.classList.toggle('scrolled', isCollapsed);
             lockedUntil = performance.now() + layoutSettleMs;
+        };
+
+        this.expandForCompletion = () => {
+            directionTravel = 0;
+            lastScrollTop = app.scrollTop;
+            setCollapsed(false);
         };
 
         const updateCollapse = () => {

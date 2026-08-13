@@ -646,6 +646,52 @@
             box-shadow: 0 0 8px var(--accent-glow);
         }
 
+        .flow-completion-announcement {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .training-flow.is-sealing .flow-step-current {
+            animation: session-settle 620ms var(--ease) both;
+        }
+
+        .training-flow.is-sealing .week-day.is-today .week-day-marker.is-complete {
+            animation: session-marker-seal 560ms var(--ease) 100ms both;
+        }
+
+        @keyframes session-settle {
+            0% {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes session-marker-seal {
+            0% {
+                opacity: 0.38;
+                transform: scaleX(0.28);
+            }
+            58% {
+                opacity: 1;
+                transform: scaleX(1.08);
+            }
+            100% {
+                opacity: 1;
+                transform: scaleX(1);
+            }
+        }
+
         /* Legacy Hero card styles remain below for a non-breaking app shell migration. */
         .readiness-card {
             padding: 20px;
