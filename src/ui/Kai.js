@@ -164,12 +164,7 @@ export class Kai {
         const mappedDay = state.day % protocolLen;
         const dOpts = this.engine?.protocolData?.[mappedDay] || state.currentDayOpts;
         if (dOpts && dOpts.exercises) {
-            const isDayFinished = doneArr.length === dOpts.exercises.length && dOpts.exercises.length > 0;
-            const finishBtn = document.getElementById('finish-workout-btn');
-            if (finishBtn) {
-                finishBtn.textContent = isDayFinished ? 'Uncheck All' : 'Complete All';
-                finishBtn.classList.toggle('finish-btn--undo', isDayFinished);
-            }
+            this.exerciseCards.renderFinishButton(this.engine?.getCompletionSummary?.(state.day));
         }
     }
 
@@ -188,20 +183,11 @@ export class Kai {
 
         // 1. Click Handling
         this.els.cards.addEventListener('click', async (e) => {
-            // Bulk Completion Button
+            // Explicit completion is available once at least half of the exercises are checked.
             const finishBtn = e.target.closest('#finish-workout-btn');
             if (finishBtn) {
-                const protocolLen = this.engine?.protocolData?.length || 1;
-                const mappedDay = this.engine.state.day % protocolLen;
-                const dOpts = this.engine?.protocolData?.[mappedDay] || this.engine.state.currentDayOpts;
-                const exercises = dOpts?.exercises || [];
-                const dayKey = this.engine.state.day;
-                
-                const doneCount = Object.values(this.engine.state.done[dayKey] || {}).filter(Boolean).length;
-                const isDayFinished = exercises.length > 0 && doneCount >= exercises.length;
-
-                triggerHaptic(isDayFinished ? 'bulkCleared' : 'bulkCompleted');
-                this.engine?.toggleAll?.(dayKey, !isDayFinished, exercises);
+                const finished = await this.engine?.finishSession?.();
+                if (finished) triggerHaptic('bulkCompleted');
                 return;
             }
 
@@ -209,7 +195,7 @@ export class Kai {
             if (e.target.closest('.check-wrap')) {
                 e.stopPropagation();
                 const wrap = e.target.closest('.card-wrapper');
-                if (wrap && this.engine?.toggleComplete) {
+                if (wrap && this.engine?.toggleComplete && !this.engine.isDayCompleted?.(this.engine.state.day)) {
                     triggerHaptic(wrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseChecked');
                     this.engine.toggleComplete(wrap.id, this.engine.state.day);
                 }
@@ -356,7 +342,7 @@ export class Kai {
                 activeWrap.classList.remove('dragging');
                 if (currentX > 60) {
                     triggerHaptic(activeWrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseSwipeCompleted');
-                    if (this.engine?.toggleComplete) {
+                    if (this.engine?.toggleComplete && !this.engine.isDayCompleted?.(this.engine.state.day)) {
                         this.engine.toggleComplete(activeWrap.id, this.engine.state.day);
                     }
                 }
@@ -489,7 +475,7 @@ export class Kai {
                     longPressed = true;
                     triggerHaptic('dayResetReady');
                     const dIdx = parseInt(item.dataset.day);
-                    if(confirm(`Reset Day ${dIdx + 1}?`)) {
+                    if(!this.engine?.isDayCompleted?.(dIdx) && confirm(`Reset Day ${dIdx + 1}?`)) {
                         this.engine?.resetDayLogs?.(dIdx);
                     }
                 }, 800);
@@ -515,8 +501,9 @@ export class Kai {
     updateNavState(activeDay) {
         if (!this.els.navDock) return;
         this.els.navDock.querySelectorAll('.nav-item').forEach((n) => {
-            if (parseInt(n.dataset.day) === activeDay) n.classList.add('active');
-            else n.classList.remove('active');
+            const day = parseInt(n.dataset.day);
+            n.classList.toggle('active', day === activeDay);
+            n.classList.toggle('completed', this.engine?.isDayCompleted?.(day));
         });
     }
 

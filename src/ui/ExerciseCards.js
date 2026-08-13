@@ -17,7 +17,7 @@ export class ExerciseCards {
             this.bindCardInteractions(cardWrap, onToggleCard, onCloseCard);
         });
 
-        this.renderFinishButton(workout, doneIds);
+        this.renderFinishButton(this.engine?.getCompletionSummary?.(day));
     }
 
     replaceCard(day, workout, exerciseSlot, doneIds, expandedCardId, onToggleCard, onCloseCard) {
@@ -105,14 +105,20 @@ export class ExerciseCards {
         cardWrap.addEventListener('click', event => onCloseCard(cardWrap, event));
     }
 
-    renderFinishButton(workout, doneIds) {
+    renderFinishButton(completion) {
         if (!this.cards) return;
-        const isFinished = workout.exercises.length > 0 && doneIds.length === workout.exercises.length;
         const actions = document.createElement('div');
+        actions.id = 'workout-actions';
         actions.className = 'workout-actions';
-        actions.innerHTML = isFinished
-            ? '<button class="finish-btn finish-btn--undo" id="finish-workout-btn">Uncheck All</button>'
-            : '<button class="finish-btn" id="finish-workout-btn">Complete All</button>';
-        this.cards.appendChild(actions);
+        if (completion?.isFinished) {
+            actions.innerHTML = '<button class="finish-btn finish-btn--undo" disabled>Workout complete</button>';
+        } else if (completion?.eligible) {
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout · ${completion.completed} of ${completion.total}</button>`;
+        } else {
+            actions.innerHTML = `<button class="finish-btn finish-btn--locked" disabled>Finish workout · ${completion?.completed || 0}/${completion?.required || 0} needed</button>`;
+        }
+        const existingActions = document.getElementById('workout-actions');
+        if (existingActions) existingActions.replaceWith(actions);
+        else this.cards.appendChild(actions);
     }
 }

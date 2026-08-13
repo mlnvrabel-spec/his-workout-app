@@ -2266,6 +2266,19 @@
             border: 0;
         }
 
+        .finish-btn--locked {
+            background: var(--surface2);
+            color: var(--text3);
+            box-shadow: none;
+        }
+
+        .nav-item.completed .nav-label::after {
+            content: '✓';
+            margin-left: 3px;
+            color: var(--teal);
+            font-size: 9px;
+        }
+
         .nav-wrap {
             bottom: var(--visual-viewport-bottom);
             padding: 0 16px calc(16px + env(safe-area-inset-bottom));

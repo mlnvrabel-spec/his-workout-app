@@ -39,11 +39,10 @@ const archived = [];
 const memory = [];
 const engine = new WorkoutEngine();
 engine.storage = {
-    archiveLog: async log => archived.push(log),
+    completeWorkoutDay: async (summary, nextWorkout) => archived.push([summary, nextWorkout]),
     setLightState: (key, value) => memory.push([key, value]),
     recordCompletedSession: () => {},
-    init: async () => {},
-    db: null
+    getDateKey: () => '2026-08-11'
 };
 engine.protocolData = [{ id: 'push_a', title: 'Push A', exercises: [{}, {}] }];
 engine.state = {
@@ -61,7 +60,7 @@ engine.pruneOldData = async () => {};
 await engine.finishSession();
 assert.equal(archived.length, 1);
 assert.ok(memory.some(([key]) => key === 'hv3_memory'));
-assert.equal(engine.currentSession.session_id, null);
+assert.equal(engine.state.day, 0);
 
 const queuedSessions = [];
 window.addEventListener('workout:sync_queued', event => queuedSessions.push(event.detail));
@@ -72,14 +71,23 @@ syncEngine.currentSession = {
     day_id: 'push_a',
     logs: { ex_001: { exercise_id: 'ex_001', sets: [] } }
 };
-syncEngine.toggleComplete('ex-0-0', 0);
+syncEngine.persistActiveWorkout = async () => {};
+await syncEngine.toggleComplete('ex-0-0', 0);
 assert.equal(queuedSessions.length, 0);
-syncEngine.toggleComplete('ex-0-1', 0);
-assert.equal(queuedSessions.length, 1);
-syncEngine.toggleAll(0, false, syncEngine.protocolData[0].exercises);
+await syncEngine.toggleComplete('ex-0-1', 0);
+assert.equal(queuedSessions.length, 0);
+await syncEngine.toggleAll(0, false, syncEngine.protocolData[0].exercises);
 assert.equal(Object.values(syncEngine.state.done[0]).filter(Boolean).length, 0);
-syncEngine.toggleAll(0, true, syncEngine.protocolData[0].exercises);
+await syncEngine.toggleAll(0, true, syncEngine.protocolData[0].exercises);
 assert.equal(Object.values(syncEngine.state.done[0]).filter(Boolean).length, 2);
+
+const completionEngine = new WorkoutEngine();
+completionEngine.protocolData = [{ exercises: [{}, {}, {}, {}, {}] }];
+completionEngine.state = { day: 0, done: { 0: { 'ex-0-0': true, 'ex-0-1': true } }, completedDays: {} };
+assert.equal(completionEngine.getCompletionSummary().required, 3);
+assert.equal(completionEngine.getCompletionSummary().eligible, false);
+completionEngine.state.done[0]['ex-0-2'] = true;
+assert.equal(completionEngine.getCompletionSummary().eligible, true);
 
 const stateUpdates = [];
 window.addEventListener('engine:state_updated', event => stateUpdates.push(event.detail));

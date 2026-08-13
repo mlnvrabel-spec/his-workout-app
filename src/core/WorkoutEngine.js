@@ -25,8 +25,10 @@ export class WorkoutEngine {
         };
         this.state = {
             day: 0,
-            done: {}
+            done: {},
+            completedDays: {}
         };
+        this.cycleId = null;
         this.syncQueued = false;
 
         window.addEventListener('workout:sync_completed', async (event) => {
@@ -74,9 +76,7 @@ export class WorkoutEngine {
             // Restore any persisted exercise swaps
             this._restoreSwaps();
             
-            // Auto-start session for the initial day
-            const pLen = this.protocolData?.length || 1;
-            this.startWorkout(this.protocolData[this.state.day % pLen]?.id || `Day_${this.state.day}`);
+            await this._restoreWorkoutCycle();
             
             console.log('[WorkoutEngine] Protocol loaded');
             window.dispatchEvent(new CustomEvent('engine:ready', { detail: { state: this.state, session: this.currentSession } }));
@@ -280,6 +280,61 @@ export class WorkoutEngine {
         console.log(`[WorkoutEngine] Started workout session: ${session_id} for day: ${day_id}`);
     }
 
+    _newCycleId() {
+        return `cycle-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    _getActiveWorkout() {
+        return {
+            cycleId: this.cycleId,
+            day: this.state.day,
+            done: this.state.done,
+            completedDays: this.state.completedDays,
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    async _restoreWorkoutCycle() {
+        const savedWorkout = await this.storage.loadActiveWorkout();
+        if (savedWorkout) {
+            this.cycleId = savedWorkout.cycleId;
+            this.state = {
+                day: savedWorkout.day || 0,
+                done: savedWorkout.done || {},
+                completedDays: savedWorkout.completedDays || {}
+            };
+        } else {
+            this.cycleId = this._newCycleId();
+            await this.storage.saveActiveWorkout(this._getActiveWorkout());
+        }
+
+        const pLen = this.protocolData?.length || 1;
+        this.startWorkout(this.protocolData[this.state.day % pLen]?.id || `Day_${this.state.day}`);
+    }
+
+    async persistActiveWorkout() {
+        await this.storage.saveActiveWorkout(this._getActiveWorkout());
+    }
+
+    getCompletionSummary(dayName = this.state.day) {
+        const exercises = this.protocolData?.[dayName]?.exercises || [];
+        const completed = Object.values(this.state.done[dayName] || {}).filter(Boolean).length;
+        const total = exercises.length;
+        const required = total ? Math.ceil(total * 0.5) : 0;
+        const isFinished = Boolean(this.state.completedDays?.[dayName]);
+        return {
+            completed,
+            total,
+            required,
+            eligible: total > 0 && completed >= required,
+            isFinished
+        };
+    }
+
+    isDayCompleted(dayName = this.state.day) {
+        return Boolean(this.state.completedDays?.[dayName]);
+    }
+
     /**
      * Interface for the UI layer to log an exercise set by name.
      * Maps the exercise name to its structured ID, saves to quicklog (localStorage),
@@ -369,12 +424,13 @@ export class WorkoutEngine {
     /**
      * Updates the current workout day index and broadcasts state change.
      */
-    setDay(dayIndex) {
+    async setDay(dayIndex) {
         this.state.day = dayIndex;
         
         // Auto-start a new session when day changes
         const pLen = this.protocolData?.length || 1;
         this.startWorkout(this.protocolData[dayIndex % pLen]?.id || `Day_${dayIndex}`);
+        await this.persistActiveWorkout();
 
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'day_change', state: this.state, session: this.currentSession } 
@@ -384,12 +440,13 @@ export class WorkoutEngine {
     /**
      * Toggles the completion status of an exercise and broadcasts state change.
      */
-    toggleComplete(id, dayName) {
+    async toggleComplete(id, dayName) {
+        if (this.isDayCompleted(dayName)) return;
         if (!this.state.done[dayName]) {
             this.state.done[dayName] = {};
         }
         this.state.done[dayName][id] = !this.state.done[dayName][id];
-        this.queueCompletedSessionForSync(dayName);
+        await this.persistActiveWorkout();
 
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
@@ -399,14 +456,15 @@ export class WorkoutEngine {
     /**
      * Toggles all exercises for a day to a specific state.
      */
-    toggleAll(dayName, isDone, exercises) {
+    async toggleAll(dayName, isDone, exercises) {
+        if (this.isDayCompleted(dayName)) return;
         if (!this.state.done[dayName]) {
             this.state.done[dayName] = {};
         }
         exercises.forEach((ex, index) => {
             this.state.done[dayName][`ex-${this.state.day}-${index}`] = isDone;
         });
-        this.queueCompletedSessionForSync(dayName);
+        await this.persistActiveWorkout();
 
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
@@ -416,9 +474,11 @@ export class WorkoutEngine {
     /**
      * Resets the completion status for a specific day and broadcasts state change.
      */
-    resetDayLogs(dayName) {
+    async resetDayLogs(dayName) {
+        if (this.isDayCompleted(dayName)) return;
         this.state.done[dayName] = {};
         this.syncQueued = false;
+        await this.persistActiveWorkout();
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'readiness_shift', state: this.state, session: this.currentSession } 
         }));
@@ -436,56 +496,57 @@ export class WorkoutEngine {
     }
 
     /**
-     * Concludes the current session, archives logs, prunes old data, and fires the workout:finished event.
+     * Explicitly completes the current day when its checklist reaches the 50% threshold.
      */
     async finishSession() {
-        if (!this.currentSession.session_id) {
-            console.warn("[WorkoutEngine] No active session to finish.");
-            return;
-        }
+        const completion = this.getCompletionSummary();
+        if (!completion.eligible || completion.isFinished) return false;
 
-        // Archive the current session's logs
-        for (const exerciseId in this.currentSession.logs) {
-            const log = this.currentSession.logs[exerciseId];
-            await this.storage.archiveLog(log);
-        }
-
-        const completedSession = { ...this.currentSession };
-        
-        // Only fully completed workouts count toward the training flow and weekly target.
         const protocolLen = this.protocolData?.length || 1;
         const mappedDay = this.state.day % protocolLen;
         const workout = this.protocolData?.[mappedDay];
-        const totalExercises = workout?.exercises?.length || 0;
-        const completedExercises = Object.values(this.state.done?.[this.state.day] || {}).filter(Boolean).length;
-        const isComplete = totalExercises > 0 && completedExercises >= totalExercises;
+        const completedAt = new Date().toISOString();
+        const sessionId = this.storage.getDateKey();
+        this.state.completedDays ||= {};
+        this.state.completedDays[this.state.day] = true;
 
-        if (isComplete) {
-            this.storage.setLightState('hv3_memory', {
-                time: Date.now(),
-                title: workout?.title || 'Workout',
-                subtitle: workout?.subtitle || '',
-                dayIndex: mappedDay
-            });
-            this.storage.recordCompletedSession(completedSession.session_id);
-        }
-
-        // Reset the UI tracking state for the current day
-        this.resetDayLogs(this.state.day);
-
-        // Reset current session state
-        this.currentSession = {
-            session_id: null,
-            day_id: null,
-            logs: {}
+        const allDaysFinished = Array.from({ length: protocolLen }, (_, index) => this.state.completedDays[index]).every(Boolean);
+        const nextDay = allDaysFinished ? 0 : (this.state.day + 1) % protocolLen;
+        const summary = {
+            id: `${this.cycleId}-${this.state.day}`,
+            cycleId: this.cycleId,
+            day: this.state.day,
+            sessionId,
+            title: workout?.title || 'Workout',
+            subtitle: workout?.subtitle || '',
+            completedExercises: completion.completed,
+            totalExercises: completion.total,
+            completedAt
         };
 
-        // Aggressively delete logs older than 60 days
-        await this.pruneOldData();
+        if (allDaysFinished) {
+            this.cycleId = this._newCycleId();
+            this.state = { day: nextDay, done: {}, completedDays: {} };
+        } else {
+            this.state.day = nextDay;
+        }
+        this.startWorkout(this.protocolData[nextDay]?.id || `Day_${nextDay}`);
+        await this.storage.completeWorkoutDay(summary, this._getActiveWorkout());
+        this.storage.setLightState('hv3_memory', {
+            time: Date.now(),
+            title: summary.title,
+            subtitle: summary.subtitle,
+            dayIndex: summary.day
+        });
+        this.storage.recordCompletedSession(sessionId);
 
-        window.dispatchEvent(new CustomEvent('workout:finished', { 
-            detail: { session: completedSession } 
+        window.dispatchEvent(new CustomEvent('workout:finished', {
+            detail: { session: summary, state: this.state }
         }));
+        window.dispatchEvent(new CustomEvent('engine:state_updated', {
+            detail: { type: 'workout_finished', state: this.state, session: this.currentSession }
+        }));
+        return true;
     }
 
     /**

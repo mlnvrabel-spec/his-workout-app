@@ -17,7 +17,7 @@
  */
 
 const DB_NAME = 'HypertrophyDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /**
  * StorageManager
@@ -64,6 +64,16 @@ export class StorageManager {
                 // hv3_archive: Historical logs
                 if (!db.objectStoreNames.contains('hv3_archive')) {
                     db.createObjectStore('hv3_archive', { keyPath: ['session_id', 'exercise_id'] });
+                }
+
+                // One durable record for the resumable program cycle, plus immutable
+                // summaries for days the user explicitly finishes.
+                if (!db.objectStoreNames.contains('hv3_active_workout')) {
+                    db.createObjectStore('hv3_active_workout', { keyPath: 'id' });
+                }
+
+                if (!db.objectStoreNames.contains('hv3_completed_workouts')) {
+                    db.createObjectStore('hv3_completed_workouts', { keyPath: 'id' });
                 }
             };
         });
@@ -171,6 +181,44 @@ export class StorageManager {
 
     saveLightLog(dayId, exName, weight, reps) {
         this.setLightState(`hv3_quicklog_${dayId}_${exName}`, { weight, reps, isGhost: false });
+    }
+
+    async loadActiveWorkout() {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const request = this.db.transaction(['hv3_active_workout'], 'readonly')
+                .objectStore('hv3_active_workout').get('current');
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = event => reject(event.target.error);
+        });
+    }
+
+    async saveActiveWorkout(workout) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const request = this.db.transaction(['hv3_active_workout'], 'readwrite')
+                .objectStore('hv3_active_workout').put({ ...workout, id: 'current' });
+            request.onsuccess = () => resolve();
+            request.onerror = event => reject(event.target.error);
+        });
+    }
+
+    /**
+     * Writes the completed-day history and next resumable state in one IndexedDB transaction.
+     */
+    async completeWorkoutDay(summary, nextWorkout) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(
+                ['hv3_active_workout', 'hv3_completed_workouts'],
+                'readwrite'
+            );
+            transaction.objectStore('hv3_completed_workouts').put(summary);
+            transaction.objectStore('hv3_active_workout').put({ ...nextWorkout, id: 'current' });
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = event => reject(event.target.error);
+            transaction.onabort = event => reject(event.target.error);
+        });
     }
 
     /**

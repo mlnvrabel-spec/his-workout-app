@@ -27,7 +27,7 @@ The application utilizes a strictly typed, event-driven ES Module architecture o
 The dashboard Hero is a program-adherence surface, not a biometric dashboard. It makes the workout sequence and the user's calendar-week commitment immediately clear.
 *   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
 *   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
-*   **Completion rule**: A workout contributes to `Last` and the weekly target only when every exercise has been marked complete and the user finishes the session.
+*   **Completion rule**: A workout can be explicitly finished once at least half of its exercises are marked complete. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
 *   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown.
 
 ### 3.2. Garmin Connect Bridge (Microservice & Sync Engine)
@@ -49,9 +49,9 @@ The dashboard Hero is a program-adherence surface, not a biometric dashboard. It
 
 ## 4. State & Data Persistence
 Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prevent AI hallucination.
-*   **`hv3_logs`** (IndexedDB): Current session data (`session_id`, weights, reps, sync_status).
-*   **`hv3_archive`** (IndexedDB): Historical logs used for "Ghost Data" (seeing what you did last time) and LLM context.
-*   **`hv2_done_{day}`** (localStorage): Completion status of exercises in the current cycle.
+*   **`hv3_active_workout`** (IndexedDB): The canonical, resumable current-cycle checklist state (selected day, checked exercises, and completed days).
+*   **`hv3_completed_workouts`** (IndexedDB): Immutable summaries of explicitly finished workout days.
+*   **`hv3_logs` / `hv3_archive`** (IndexedDB): Reserved legacy set-log storage; it is not part of checklist completion.
 *   **`hv3_memory`** (localStorage): Last fully completed split (`title`, `subtitle`, and local completion timestamp) for the Training Flow Hero.
 *   **`hv3_completed_sessions`** (localStorage): Unique local calendar dates of fully completed sessions; used to derive the current Monday–Sunday commitment.
 
