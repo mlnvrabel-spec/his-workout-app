@@ -82,6 +82,7 @@ export class Kai {
         const trainingFlow = this.els.trainingFlow;
         if (!trainingFlow) return;
 
+        this.justCompletedDay = Number.isInteger(session?.day) ? session.day : null;
         const app = document.getElementById('app');
         if (app) app.scrollTop = 0;
         this.heroHeader.expandForCompletion();
@@ -527,9 +528,17 @@ export class Kai {
         if (!this.els.navDock) return;
         this.els.navDock.querySelectorAll('.nav-item').forEach((n) => {
             const day = parseInt(n.dataset.day);
+            const completed = this.engine?.isDayCompleted?.(day);
             n.classList.toggle('active', day === activeDay);
-            n.classList.toggle('completed', this.engine?.isDayCompleted?.(day));
+            n.classList.toggle('completed', completed);
+            n.classList.toggle('completed--just-finished', completed && day === this.justCompletedDay);
         });
+
+        if (this.justCompletedDay !== null && this.justCompletedDay !== undefined) {
+            const completedDay = this.justCompletedDay;
+            this.justCompletedDay = null;
+            setTimeout(() => this.els.navDock?.querySelector(`[data-day="${completedDay}"]`)?.classList.remove('completed--just-finished'), 460);
+        }
     }
 
     toggleTheme() {
