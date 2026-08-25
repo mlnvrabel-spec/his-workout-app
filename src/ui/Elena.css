@@ -1381,12 +1381,7 @@
 
         .workout-actions {
             display: flex;
-            gap: 10px;
             margin-top: 16px;
-        }
-
-        .workout-actions .finish-btn {
-            flex: 1;
         }
 
         .finish-btn {

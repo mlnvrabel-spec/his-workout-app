@@ -111,13 +111,10 @@
         actions.id = 'workout-actions';
         actions.className = 'workout-actions';
         const canUndo = this.engine?.canUndoLastCompletion?.();
-        if (completion?.isFinished) {
+        if (completion?.isFinished || canUndo) {
             actions.innerHTML = '<button class="finish-btn finish-btn--undo" id="undo-workout-btn">Undo completion</button>';
         } else {
-            actions.innerHTML = `
-                <button class="finish-btn" id="finish-workout-btn">Finish workout &middot; ${completion?.completed || 0} of ${completion?.total || 0}</button>
-                ${canUndo ? '<button class="finish-btn finish-btn--undo" id="undo-workout-btn">Undo last completion</button>' : ''}
-            `;
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout &middot; ${completion?.completed || 0} of ${completion?.total || 0}</button>`;
         }
         const existingActions = document.getElementById('workout-actions');
         if (existingActions) existingActions.replaceWith(actions);
