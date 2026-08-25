@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -22,7 +22,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <!-- Extracted CSS -->
-    <link rel="stylesheet" href="/src/ui/Elena.css?v=36">
+    <link rel="stylesheet" href="/src/ui/Elena.css?v=38">
 </head>
 
 <body data-theme="dark">
@@ -64,13 +64,13 @@
                             <div class="flow-step-title" id="flow-last-title">Start</div>
                             <div class="flow-step-meta" id="flow-last-day"></div>
                         </div>
-                        <div class="flow-arrow" aria-hidden="true">→</div>
+                        <div class="flow-arrow" aria-hidden="true">â†’</div>
                         <div class="flow-step flow-step-current">
                             <div class="flow-step-label">Today</div>
                             <div class="flow-step-title" id="flow-current-title"></div>
                             <div class="flow-step-meta" id="flow-current-subtitle"></div>
                         </div>
-                        <div class="flow-arrow" aria-hidden="true">→</div>
+                        <div class="flow-arrow" aria-hidden="true">â†’</div>
                         <div class="flow-step">
                             <div class="flow-step-label">Next</div>
                             <div class="flow-step-title" id="flow-next-title"></div>
@@ -86,7 +86,7 @@
                             <div class="readiness-score" id="readiness-score">82</div>
                             <div class="readiness-status" id="readiness-status" style="color: var(--teal)">OPTIMAL</div>
                         </div>
-                        <div class="garmin-pill" id="garmin-pill">● LOCAL</div>
+                        <div class="garmin-pill" id="garmin-pill">â— LOCAL</div>
                     </div>
                     <div class="readiness-sparkline">
                         <svg viewBox="0 0 300 40" preserveAspectRatio="none">
@@ -190,10 +190,10 @@
 
     <!-- Application Bootstrap -->
     <script type="module">
-        import { WorkoutEngine } from '/src/core/WorkoutEngine.js?v=10';
+        import { WorkoutEngine } from '/src/core/WorkoutEngine.js?v=11';
         import { GarminSync } from '/src/core/GarminSync.js?v=5';
         import { ChatAssistant } from '/src/core/ChatAssistant.js?v=5';
-        import { Kai } from '/src/ui/Kai.js?v=37';
+        import { Kai } from '/src/ui/Kai.js?v=38';
         import { SettingsPanel } from '/src/ui/SettingsPanel.js?v=5';
 
         const syncVisualViewportInset = () => {

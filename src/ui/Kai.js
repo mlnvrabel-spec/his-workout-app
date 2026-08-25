@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
 import { HeroHeader } from './HeroHeader.js?v=11';
-import { ExerciseCards } from './ExerciseCards.js?v=9';
+import { ExerciseCards } from './ExerciseCards.js?v=10';
 import { triggerHaptic } from './Haptics.js?v=1';
 
 export class Kai {
@@ -47,7 +47,7 @@ export class Kai {
             } else if (type === 'exercise_swap') {
                 this.updateSwappedCard(state, e.detail);
             } else {
-                if (type === 'day_change') {
+                if (type === 'day_change' || type === 'day_reopened') {
                     this.expandedCardId = null;
                     const app = document.getElementById('app');
                     if (app) app.scrollTop = 0;
@@ -62,9 +62,11 @@ export class Kai {
         const recoverFromBackground = () => {
             if (document.visibilityState === 'hidden' || !this.engine?.state) return;
             this.els.cards?.classList.add('is-resuming');
-            this.render(this.engine.state);
             requestAnimationFrame(() => {
-                requestAnimationFrame(() => this.els.cards?.classList.remove('is-resuming'));
+                this.render(this.engine.state);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => this.els.cards?.classList.remove('is-resuming'));
+                });
             });
         };
 
@@ -217,6 +219,13 @@ export class Kai {
                 return;
             }
 
+            const undoBtn = e.target.closest('#undo-workout-btn');
+            if (undoBtn) {
+                const reopened = await this.engine?.reopenLastDay?.();
+                if (reopened) triggerHaptic('exerciseUnchecked');
+                return;
+            }
+
             // Checkbox completion
             if (e.target.closest('.check-wrap')) {
                 e.stopPropagation();
@@ -256,7 +265,7 @@ export class Kai {
                                 targetRir: exercise?.rir,
                                 repRange: exercise?.reps
                             })
-                                .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">ðŸ§  ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
+                                .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">Ã°Å¸Â§Â  ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
                                 .catch(() => vizNode.innerText = originalViz);
                         }
                     }

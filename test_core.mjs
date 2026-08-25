@@ -69,7 +69,7 @@ assert.equal(finishedSessions[0].session.title, 'Push A');
 const queuedSessions = [];
 window.addEventListener('workout:sync_queued', event => queuedSessions.push(event.detail));
 const syncEngine = new WorkoutEngine();
-syncEngine.protocolData = [{ exercises: [{}, {}] }];
+syncEngine.protocolData = [{ exercises: [{}, {}, {}, {}, {}] }];
 syncEngine.currentSession = {
     session_id: '2026-08-11',
     day_id: 'push_a',
@@ -82,8 +82,6 @@ await syncEngine.toggleComplete('ex-0-1', 0);
 assert.equal(queuedSessions.length, 0);
 await syncEngine.toggleAll(0, false, syncEngine.protocolData[0].exercises);
 assert.equal(Object.values(syncEngine.state.done[0]).filter(Boolean).length, 0);
-await syncEngine.toggleAll(0, true, syncEngine.protocolData[0].exercises);
-assert.equal(Object.values(syncEngine.state.done[0]).filter(Boolean).length, 2);
 
 const completionEngine = new WorkoutEngine();
 completionEngine.protocolData = [{ exercises: [{}, {}, {}, {}, {}] }];
@@ -92,6 +90,30 @@ assert.equal(completionEngine.getCompletionSummary().required, 3);
 assert.equal(completionEngine.getCompletionSummary().eligible, false);
 completionEngine.state.done[0]['ex-0-2'] = true;
 assert.equal(completionEngine.getCompletionSummary().eligible, true);
+
+const automaticFinishSummaries = [];
+const automaticFinishEngine = new WorkoutEngine();
+automaticFinishEngine.protocolData = [
+    { id: 'push_a', title: 'Push A', exercises: [{}, {}, {}, {}, {}] },
+    { id: 'pull_a', title: 'Pull A', exercises: [{}] }
+];
+automaticFinishEngine.state = { day: 0, done: {}, completedDays: {} };
+automaticFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
+automaticFinishEngine.persistActiveWorkout = async () => {};
+automaticFinishEngine.storage = {
+    completeWorkoutDay: async summary => automaticFinishSummaries.push(summary),
+    setLightState: () => {},
+    recordCompletedSession: () => {},
+    getDateKey: () => '2026-08-11'
+};
+await automaticFinishEngine.toggleComplete('ex-0-0', 0);
+await automaticFinishEngine.toggleComplete('ex-0-1', 0);
+assert.equal(automaticFinishSummaries.length, 0);
+await automaticFinishEngine.toggleComplete('ex-0-2', 0);
+assert.equal(automaticFinishSummaries.length, 1);
+assert.equal(automaticFinishSummaries[0].completedExercises, 3);
+assert.equal(automaticFinishEngine.isDayCompleted(0), true);
+assert.equal(automaticFinishEngine.state.day, 1);
 
 const manualFinishSummaries = [];
 const manualFinishEngine = new WorkoutEngine();

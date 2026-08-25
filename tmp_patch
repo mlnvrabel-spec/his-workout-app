@@ -1,0 +1,81 @@
+﻿*** Begin Patch
+*** Update File: src/core/StorageManager.js
+@@
+     async completeWorkoutDay(summary, nextWorkout) {
+@@
+     }
++
++    async reopenWorkoutDay(summaryId, restoredWorkout, sessionId) {
++        await this.init();
++        return new Promise((resolve, reject) => {
++            const transaction = this.db.transaction(
++                ['hv3_active_workout', 'hv3_completed_workouts'],
++                'readwrite'
++            );
++            transaction.objectStore('hv3_active_workout').put({ ...restoredWorkout, id: 'current' });
++            transaction.objectStore('hv3_completed_workouts').delete(summaryId);
++            transaction.oncomplete = () => {
++                const sessions = new Set(this.getLightState('hv3_completed_sessions') || []);
++                sessions.delete(sessionId);
++                this.setLightState('hv3_completed_sessions', [...sessions].sort());
++                resolve();
++            };
++            transaction.onerror = event => reject(event.target.error);
++            transaction.onabort = event => reject(event.target.error);
++        });
++    }
+*** Update File: src/core/WorkoutEngine.js
+@@
+     async finishSession() {
+@@
+         return true;
+     }
++
++    async reopenLastDay() {
++        await this.storage.init();
++        const summaries = await new Promise((resolve, reject) => {
++            const request = this.storage.db.transaction(['hv3_completed_workouts'], 'readonly')
++                .objectStore('hv3_completed_workouts').getAll();
++            request.onsuccess = () => resolve(request.result || []);
++            request.onerror = event => reject(event.target.error);
++        });
++        const lastSummary = summaries.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
++        if (!lastSummary) return false;
++        const protocolLen = this.protocolData?.length || 1;
++        const restoredDay = lastSummary.day % protocolLen;
++        const restoredState = { day: restoredDay, done: lastSummary.done || {}, completedDays: {} };
++        const restoredWorkout = { cycleId: lastSummary.cycleId, ...restoredState, updatedAt: new Date().toISOString() };
++        this.cycleId = lastSummary.cycleId;
++        this.state = restoredState;
++        this.startWorkout(this.protocolData[restoredDay]?.id || `Day_${restoredDay}`);
++        await this.storage.reopenWorkoutDay(lastSummary.id, restoredWorkout, lastSummary.sessionId);
++        window.dispatchEvent(new CustomEvent('engine:state_updated', {
++            detail: { type: 'day_reopened', state: this.state, session: this.currentSession }
++        }));
++        return true;
++    }
+*** Update File: src/ui/ExerciseCards.js
+@@
+         if (completion?.isFinished) {
+-            actions.innerHTML = '<button class="finish-btn finish-btn--undo" disabled>Workout complete</button>';
++            actions.innerHTML = '<button class="finish-btn finish-btn--undo" id="undo-workout-btn">Undo completion</button>';
+@@
+         const existingActions = document.getElementById('workout-actions');
+*** Update File: src/ui/Kai.js
+@@
+             const finishBtn = e.target.closest('#finish-workout-btn');
+@@
+                 return;
+             }
++
++            const undoBtn = e.target.closest('#undo-workout-btn');
++            if (undoBtn) {
++                const reopened = await this.engine?.reopenLastDay?.();
++                if (reopened) triggerHaptic('exerciseUnchecked');
++                return;
++            }
+@@
+             } else {
+-                if (type === 'day_change') {
++                if (type === 'day_change' || type === 'day_reopened') {
+*** End Patch

@@ -1,4 +1,4 @@
-export class ExerciseCards {
+﻿export class ExerciseCards {
     constructor(cards, engine, motionCurve) {
         this.cards = cards;
         this.engine = engine;
@@ -111,9 +111,9 @@ export class ExerciseCards {
         actions.id = 'workout-actions';
         actions.className = 'workout-actions';
         if (completion?.isFinished) {
-            actions.innerHTML = '<button class="finish-btn finish-btn--undo" disabled>Workout complete</button>';
+            actions.innerHTML = '<button class="finish-btn finish-btn--undo" id="undo-workout-btn">Undo completion</button>';
         } else {
-            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout · ${completion?.completed || 0} of ${completion?.total || 0}</button>`;
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn">Finish workout Â· ${completion?.completed || 0} of ${completion?.total || 0}</button>`;
         }
         const existingActions = document.getElementById('workout-actions');
         if (existingActions) existingActions.replaceWith(actions);

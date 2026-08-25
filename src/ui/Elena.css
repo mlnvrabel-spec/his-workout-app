@@ -1,4 +1,4 @@
-        :root {
+﻿        :root {
             --font: 'Inter', -apple-system, sans-serif;
             --display: 'DM Serif Display', serif;
             --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -169,7 +169,7 @@
             -webkit-backdrop-filter: blur(40px);
             background: color-mix(in srgb, var(--bg) 60%, transparent);
             border-bottom: 1px solid transparent;
-            /* Spring easing — slight overshoot on expand keeps it feeling alive */
+            /* Spring easing â€” slight overshoot on expand keeps it feeling alive */
             transition:
                 background   0.38s cubic-bezier(0.34, 1.36, 0.64, 1),
                 border-color 0.38s cubic-bezier(0.34, 1.36, 0.64, 1),
@@ -260,7 +260,7 @@
             margin-top: 0
         }
 
-        /* ── Header Controls Group ── */
+        /* â”€â”€ Header Controls Group â”€â”€ */
         .header-controls {
             display: flex;
             align-items: center;
@@ -316,7 +316,7 @@
             fill: var(--text2)
         }
 
-        /* ── Garmin Status Pill ── */
+        /* â”€â”€ Garmin Status Pill â”€â”€ */
         .garmin-pill {
             font-size: 10px;
             font-weight: 700;
@@ -358,7 +358,7 @@
             100% { opacity: 0.6; transform: scale(0.98); }
         }
 
-        /* ── Settings Panel ── */
+        /* â”€â”€ Settings Panel â”€â”€ */
         #settings-backdrop {
             position: fixed;
             inset: 0;
@@ -501,7 +501,7 @@
             background: var(--red-dim);
         }
 
-        /* ── Training Flow Hero ── */
+        /* â”€â”€ Training Flow Hero â”€â”€ */
         .training-flow {
             grid-column: 1 / -1;
             min-height: 122px;
@@ -820,7 +820,7 @@
             fill: url(#sparkGradOverdrive);
         }
 
-        /* â”€â”€ Memory Strip (Bento Right Side) â”€â”€ */
+        /* Ã¢â€â‚¬Ã¢â€â‚¬ Memory Strip (Bento Right Side) Ã¢â€â‚¬Ã¢â€â‚¬ */
         .memory-strip {
             padding: 20px;
             background: var(--card-gradient);
@@ -931,7 +931,7 @@
             font-weight: 700
         }
 
-        /* â”€â”€ Uniform List Layout â”€â”€ */
+        /* Ã¢â€â‚¬Ã¢â€â‚¬ Uniform List Layout Ã¢â€â‚¬Ã¢â€â‚¬ */
         .cards {
             padding: 8px 24px 24px;
             display: flex;
@@ -1038,7 +1038,7 @@
             box-shadow: var(--shadow2), 0 0 20px var(--glow1)
         }
 
-        /* Live Card Border â€” slow orbiting arc */
+        /* Live Card Border Ã¢â‚¬â€ slow orbiting arc */
         @property --angle {
             syntax: '<angle>';
             initial-value: 0deg;
@@ -1115,7 +1115,7 @@
             animation: exNameSwap 0.34s ease forwards;
         }
 
-        /* Swap position dots — shown inline in ex-meta for swappable exercises */
+        /* Swap position dots â€” shown inline in ex-meta for swappable exercises */
         .swap-dots {
             display: flex;
             align-items: center;
@@ -1146,7 +1146,7 @@
             text-decoration-color: var(--text3)
         }
 
-        /* ── Custom Exercise Indicator ── */
+        /* â”€â”€ Custom Exercise Indicator â”€â”€ */
         .ex-custom-tag {
             display: inline-flex;
             align-items: center;
@@ -1884,7 +1884,7 @@
             fill: currentColor
         }
 
-        /* ── Tonal Performance ──────────────────────────────────────────────
+        /* â”€â”€ Tonal Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
            A calmer, more legible dark system: materials establish hierarchy,
            while accent colours remain reserved for status and progress. */
         :root {
@@ -2319,7 +2319,7 @@
         }
 
         .nav-item.completed .nav-label::after {
-            content: '✓';
+            content: 'âœ“';
             margin-left: 3px;
             color: var(--teal);
             font-size: 9px;
@@ -2523,7 +2523,7 @@
             }
         }
 
-        /* ── Soft daylight and dock veil ─────────────────────────────────── */
+        /* â”€â”€ Soft daylight and dock veil â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         body[data-theme="light"] .training-flow {
             background: linear-gradient(140deg, #dce9ea 0%, #e8ece8 52%, #e9e5de 100%);
             box-shadow: var(--shadow2);
@@ -2597,7 +2597,7 @@
             background: rgba(250, 249, 245, 0.76);
         }
 
-        /* ── Liquid dock ───────────────────────────────────────────────────
+        /* â”€â”€ Liquid dock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
            A single, restrained glass surface: its top rim catches light while
            the selected split rises slightly above the material. */
         .nav-dock {
@@ -2709,12 +2709,19 @@
         }
 
         /* Let the baked black/white source mark blend with the page behind the
-           compact sticky header instead of being trapped in its own backdrop. */
+           compact sticky header instead of being trapped in its own backdrop.
+           Blend against the page, not the header's own blurred surface. */
         .header.scrolled {
             isolation: auto;
         }
 
-        /* Exercise cards share the Hero's molded, quietly lit surface—not its color. */
+        .header.scrolled .brand-mark,
+        body[data-theme='light'] .header.scrolled .brand-mark {
+            mix-blend-mode: normal;
+            background: transparent;
+        }
+
+        /* Exercise cards share the Hero's molded, quietly lit surfaceâ€”not its color. */
         body[data-theme="light"] .card {
             background: linear-gradient(145deg, #faf9f5 0%, #f5f4ef 100%);
             box-shadow:

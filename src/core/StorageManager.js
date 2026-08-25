@@ -221,6 +221,26 @@ export class StorageManager {
         });
     }
 
+    async reopenWorkoutDay(summaryId, restoredWorkout, sessionId) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(
+                [hv3_active_workout, hv3_completed_workouts],
+                readwrite
+            );
+            transaction.objectStore(hv3_active_workout).put({ ...restoredWorkout, id: current });
+            transaction.objectStore(hv3_completed_workouts).delete(summaryId);
+            transaction.oncomplete = () => {
+                const sessions = new Set(this.getLightState(hv3_completed_sessions) || []);
+                sessions.delete(sessionId);
+                this.setLightState(hv3_completed_sessions, [...sessions].sort());
+                resolve();
+            };
+            transaction.onerror = event => reject(event.target.error);
+            transaction.onabort = event => reject(event.target.error);
+        });
+    }
+
     /**
      * TIER 2: IndexedDB (Heavy State)
      * Saves a WorkoutLog to IndexedDB.

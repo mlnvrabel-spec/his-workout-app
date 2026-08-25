@@ -1,10 +1,10 @@
-/**
+﻿/**
  * WorkoutEngine.js
  * 
  * The Single Source of Truth for Hypertrophy Protocol.
  * Acts as the State Machine containing no UI rendering logic.
  */
-import { StorageManager } from './StorageManager.js?v=2';
+import { StorageManager } from './StorageManager.js?v=3';
 
 export class WorkoutEngine {
     constructor() {
@@ -12,9 +12,9 @@ export class WorkoutEngine {
         this.protocolData = null;
         /** @type {Object} Raw exercise_library from core_protocol.json */
         this.exerciseLibrary = null;
-        /** @type {Object} swap_group_id → [exerciseId, ...] */
+        /** @type {Object} swap_group_id â†’ [exerciseId, ...] */
         this.swapGroupMap = {};
-        /** @type {Object} exerciseId → swap_group_id */
+        /** @type {Object} exerciseId â†’ swap_group_id */
         this.exerciseToGroup = {};
         /** @type {Object} Raw workout definitions from core_protocol.json */
         this.rawWorkouts = null;
@@ -236,7 +236,7 @@ export class WorkoutEngine {
             }
         }));
 
-        console.log(`[WorkoutEngine] Swapped slot ${exerciseSlot} on day ${dayIndex}: ${oldExercise._exerciseId} → ${newExerciseId}`);
+        console.log(`[WorkoutEngine] Swapped slot ${exerciseSlot} on day ${dayIndex}: ${oldExercise._exerciseId} â†’ ${newExerciseId}`);
     }
 
     /**
@@ -460,6 +460,11 @@ export class WorkoutEngine {
         this.state.done[dayName][id] = !this.state.done[dayName][id];
         await this.persistActiveWorkout();
 
+        const completion = this.getCompletionSummary(dayName);
+        if (Number(dayName) === this.state.day && completion.eligible) {
+            return this.finishSession();
+        }
+
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
         }));
@@ -477,6 +482,11 @@ export class WorkoutEngine {
             this.state.done[dayName][`ex-${this.state.day}-${index}`] = isDone;
         });
         await this.persistActiveWorkout();
+
+        const completion = this.getCompletionSummary(dayName);
+        if (Number(dayName) === this.state.day && completion.eligible) {
+            return this.finishSession();
+        }
 
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
@@ -557,6 +567,30 @@ export class WorkoutEngine {
         }));
         window.dispatchEvent(new CustomEvent('engine:state_updated', {
             detail: { type: 'workout_finished', state: this.state, session: this.currentSession }
+        }));
+        return true;
+    }
+
+    async reopenLastDay() {
+        await this.storage.init();
+        const summaries = await new Promise((resolve, reject) => {
+            const request = this.storage.db.transaction([hv3_completed_workouts], readonly)
+                .objectStore(hv3_completed_workouts).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = event => reject(event.target.error);
+        });
+        const lastSummary = summaries.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
+        if (!lastSummary) return false;
+        const protocolLen = this.protocolData?.length || 1;
+        const restoredDay = lastSummary.day % protocolLen;
+        const restoredState = { day: restoredDay, done: lastSummary.done || {}, completedDays: {} };
+        const restoredWorkout = { cycleId: lastSummary.cycleId, ...restoredState, updatedAt: new Date().toISOString() };
+        this.cycleId = lastSummary.cycleId;
+        this.state = restoredState;
+        this.startWorkout(this.protocolData[restoredDay]?.id || `Day_${restoredDay}`);
+        await this.storage.reopenWorkoutDay(lastSummary.id, restoredWorkout, lastSummary.sessionId);
+        window.dispatchEvent(new CustomEvent('engine:state_updated', {
+            detail: { type: day_reopened, state: this.state, session: this.currentSession }
         }));
         return true;
     }

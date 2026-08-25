@@ -1,0 +1,6 @@
+*** Begin Patch
+*** Update File: tmp_patch_test.txt
+@@
+-test
++test2
+*** End Patch
