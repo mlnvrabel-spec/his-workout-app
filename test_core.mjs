@@ -91,29 +91,58 @@ assert.equal(completionEngine.getCompletionSummary().eligible, false);
 completionEngine.state.done[0]['ex-0-2'] = true;
 assert.equal(completionEngine.getCompletionSummary().eligible, true);
 
-const automaticFinishSummaries = [];
-const automaticFinishEngine = new WorkoutEngine();
-automaticFinishEngine.protocolData = [
+const explicitFinishSummaries = [];
+const explicitFinishEngine = new WorkoutEngine();
+explicitFinishEngine.protocolData = [
     { id: 'push_a', title: 'Push A', exercises: [{}, {}, {}, {}, {}] },
     { id: 'pull_a', title: 'Pull A', exercises: [{}] }
 ];
-automaticFinishEngine.state = { day: 0, done: {}, completedDays: {} };
-automaticFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
-automaticFinishEngine.persistActiveWorkout = async () => {};
-automaticFinishEngine.storage = {
-    completeWorkoutDay: async summary => automaticFinishSummaries.push(summary),
+explicitFinishEngine.state = { day: 0, done: {}, completedDays: {} };
+explicitFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
+explicitFinishEngine.persistActiveWorkout = async () => {};
+explicitFinishEngine.storage = {
+    completeWorkoutDay: async summary => explicitFinishSummaries.push(summary),
     setLightState: () => {},
     recordCompletedSession: () => {},
     getDateKey: () => '2026-08-11'
 };
-await automaticFinishEngine.toggleComplete('ex-0-0', 0);
-await automaticFinishEngine.toggleComplete('ex-0-1', 0);
-assert.equal(automaticFinishSummaries.length, 0);
-await automaticFinishEngine.toggleComplete('ex-0-2', 0);
-assert.equal(automaticFinishSummaries.length, 1);
-assert.equal(automaticFinishSummaries[0].completedExercises, 3);
-assert.equal(automaticFinishEngine.isDayCompleted(0), true);
-assert.equal(automaticFinishEngine.state.day, 1);
+await explicitFinishEngine.toggleComplete('ex-0-0', 0);
+await explicitFinishEngine.toggleComplete('ex-0-1', 0);
+await explicitFinishEngine.toggleComplete('ex-0-2', 0);
+assert.equal(explicitFinishSummaries.length, 0);
+assert.equal(explicitFinishEngine.isDayCompleted(0), false);
+assert.equal(explicitFinishEngine.state.day, 0);
+assert.equal(await explicitFinishEngine.finishSession(), true);
+assert.equal(explicitFinishSummaries.length, 1);
+assert.equal(explicitFinishSummaries[0].completedExercises, 3);
+assert.equal(explicitFinishEngine.isDayCompleted(0), true);
+assert.equal(explicitFinishEngine.state.day, 1);
+assert.equal(explicitFinishEngine.canUndoLastCompletion(), true);
+
+const undoSummary = explicitFinishSummaries[0];
+const reopenedWorkouts = [];
+explicitFinishEngine.storage = {
+    init: async () => {},
+    getDateKey: () => '2026-08-11',
+    db: {
+        transaction: () => ({
+            objectStore: () => ({
+                get: () => {
+                    const request = { result: undoSummary };
+                    queueMicrotask(() => request.onsuccess());
+                    return request;
+                }
+            })
+        })
+    },
+    reopenWorkoutDay: async (...args) => reopenedWorkouts.push(args)
+};
+assert.equal(await explicitFinishEngine.reopenLastDay(), true);
+assert.equal(explicitFinishEngine.state.day, 0);
+assert.equal(explicitFinishEngine.isDayCompleted(0), false);
+assert.equal(explicitFinishEngine.getCompletionSummary().completed, 3);
+assert.equal(explicitFinishEngine.canUndoLastCompletion(), false);
+assert.equal(reopenedWorkouts[0][0], undoSummary.id);
 
 const manualFinishSummaries = [];
 const manualFinishEngine = new WorkoutEngine();

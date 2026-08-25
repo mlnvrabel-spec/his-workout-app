@@ -29,6 +29,7 @@ export class WorkoutEngine {
             completedDays: {}
         };
         this.cycleId = null;
+        this.lastCompletedSummaryId = null;
         this.syncQueued = false;
 
         window.addEventListener('workout:sync_completed', async (event) => {
@@ -299,6 +300,7 @@ export class WorkoutEngine {
     _getActiveWorkout() {
         return {
             cycleId: this.cycleId,
+            lastCompletedSummaryId: this.lastCompletedSummaryId,
             day: this.state.day,
             done: this.state.done,
             completedDays: this.state.completedDays,
@@ -310,6 +312,11 @@ export class WorkoutEngine {
         const savedWorkout = await this.storage.loadActiveWorkout();
         if (savedWorkout) {
             this.cycleId = savedWorkout.cycleId;
+            this.lastCompletedSummaryId = savedWorkout.lastCompletedSummaryId || null;
+            if (!this.lastCompletedSummaryId) {
+                const latestSummary = await this.storage.findLatestCompletedWorkout(this.cycleId);
+                this.lastCompletedSummaryId = latestSummary?.id || null;
+            }
             this.state = {
                 day: savedWorkout.day || 0,
                 done: savedWorkout.done || {},
@@ -345,6 +352,10 @@ export class WorkoutEngine {
 
     isDayCompleted(dayName = this.state.day) {
         return Boolean(this.state.completedDays?.[dayName]);
+    }
+
+    canUndoLastCompletion() {
+        return Boolean(this.lastCompletedSummaryId);
     }
 
     /**
@@ -460,11 +471,6 @@ export class WorkoutEngine {
         this.state.done[dayName][id] = !this.state.done[dayName][id];
         await this.persistActiveWorkout();
 
-        const completion = this.getCompletionSummary(dayName);
-        if (Number(dayName) === this.state.day && completion.eligible) {
-            return this.finishSession();
-        }
-
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
         }));
@@ -482,11 +488,6 @@ export class WorkoutEngine {
             this.state.done[dayName][`ex-${this.state.day}-${index}`] = isDone;
         });
         await this.persistActiveWorkout();
-
-        const completion = this.getCompletionSummary(dayName);
-        if (Number(dayName) === this.state.day && completion.eligible) {
-            return this.finishSession();
-        }
 
         window.dispatchEvent(new CustomEvent('engine:state_updated', { 
             detail: { type: 'exercise_complete', state: this.state, session: this.currentSession } 
@@ -530,6 +531,7 @@ export class WorkoutEngine {
         const completedAt = new Date().toISOString();
         const sessionId = this.storage.getDateKey();
         this.state.completedDays ||= {};
+        const completedDaysBefore = { ...this.state.completedDays };
         this.state.completedDays[this.state.day] = true;
 
         const allDaysFinished = Array.from({ length: protocolLen }, (_, index) => this.state.completedDays[index]).every(Boolean);
@@ -539,6 +541,8 @@ export class WorkoutEngine {
             cycleId: this.cycleId,
             day: this.state.day,
             sessionId,
+            done: this.state.done,
+            completedDaysBefore,
             title: workout?.title || 'Workout',
             subtitle: workout?.subtitle || '',
             completedExercises: completion.completed,
@@ -552,6 +556,7 @@ export class WorkoutEngine {
         } else {
             this.state.day = nextDay;
         }
+        this.lastCompletedSummaryId = summary.id;
         this.startWorkout(this.protocolData[nextDay]?.id || `Day_${nextDay}`);
         await this.storage.completeWorkoutDay(summary, this._getActiveWorkout());
         this.storage.setLightState('hv3_memory', {
@@ -573,24 +578,30 @@ export class WorkoutEngine {
 
     async reopenLastDay() {
         await this.storage.init();
+        if (!this.lastCompletedSummaryId) return false;
         const summaries = await new Promise((resolve, reject) => {
-            const request = this.storage.db.transaction([hv3_completed_workouts], readonly)
-                .objectStore(hv3_completed_workouts).getAll();
+            const request = this.storage.db.transaction(['hv3_completed_workouts'], 'readonly')
+                .objectStore('hv3_completed_workouts').get(this.lastCompletedSummaryId);
             request.onsuccess = () => resolve(request.result || []);
             request.onerror = event => reject(event.target.error);
         });
-        const lastSummary = summaries.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
+        const lastSummary = summaries;
         if (!lastSummary) return false;
         const protocolLen = this.protocolData?.length || 1;
         const restoredDay = lastSummary.day % protocolLen;
-        const restoredState = { day: restoredDay, done: lastSummary.done || {}, completedDays: {} };
+        const restoredState = {
+            day: restoredDay,
+            done: lastSummary.done || {},
+            completedDays: lastSummary.completedDaysBefore || {}
+        };
         const restoredWorkout = { cycleId: lastSummary.cycleId, ...restoredState, updatedAt: new Date().toISOString() };
         this.cycleId = lastSummary.cycleId;
         this.state = restoredState;
+        this.lastCompletedSummaryId = null;
         this.startWorkout(this.protocolData[restoredDay]?.id || `Day_${restoredDay}`);
         await this.storage.reopenWorkoutDay(lastSummary.id, restoredWorkout, lastSummary.sessionId);
         window.dispatchEvent(new CustomEvent('engine:state_updated', {
-            detail: { type: day_reopened, state: this.state, session: this.currentSession }
+            detail: { type: 'day_reopened', state: this.state, session: this.currentSession }
         }));
         return true;
     }

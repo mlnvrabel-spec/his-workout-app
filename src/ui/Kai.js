@@ -265,7 +265,7 @@ export class Kai {
                                 targetRir: exercise?.rir,
                                 repRange: exercise?.reps
                             })
-                                .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">Ã°Å¸Â§Â  ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
+                                .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">&#129504; ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
                                 .catch(() => vizNode.innerText = originalViz);
                         }
                     }

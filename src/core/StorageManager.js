@@ -221,18 +221,44 @@ export class StorageManager {
         });
     }
 
+    async findLatestCompletedWorkout(cycleId) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const request = this.db.transaction(['hv3_completed_workouts'], 'readonly')
+                .objectStore('hv3_completed_workouts').getAll();
+            request.onsuccess = () => {
+                const summaries = request.result
+                    .filter(summary => summary.cycleId === cycleId)
+                    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+                resolve(summaries[0] || null);
+            };
+            request.onerror = event => reject(event.target.error);
+        });
+    }
+
     async reopenWorkoutDay(summaryId, restoredWorkout, sessionId) {
         await this.init();
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(
-                [hv3_active_workout, hv3_completed_workouts],
-                readwrite
+                ['hv3_active_workout', 'hv3_completed_workouts'],
+                'readwrite'
             );
-            transaction.objectStore(hv3_active_workout).put({ ...restoredWorkout, id: current });
-            transaction.objectStore(hv3_completed_workouts).delete(summaryId);
+            const completedWorkouts = transaction.objectStore('hv3_completed_workouts');
+            let hasAnotherSessionOnDate = false;
+            const summariesRequest = completedWorkouts.getAll();
+
+            summariesRequest.onsuccess = () => {
+                hasAnotherSessionOnDate = summariesRequest.result.some(summary => (
+                    summary.id !== summaryId && summary.sessionId === sessionId
+                ));
+                transaction.objectStore('hv3_active_workout').put({ ...restoredWorkout, id: 'current' });
+                completedWorkouts.delete(summaryId);
+            };
+            summariesRequest.onerror = event => reject(event.target.error);
+
             transaction.oncomplete = () => {
-                const sessions = new Set(this.getLightState(hv3_completed_sessions) || []);
-                sessions.delete(sessionId);
+                const sessions = new Set(this.getLightState('hv3_completed_sessions') || []);
+                if (!hasAnotherSessionOnDate) sessions.delete(sessionId);
                 this.setLightState(hv3_completed_sessions, [...sessions].sort());
                 resolve();
             };

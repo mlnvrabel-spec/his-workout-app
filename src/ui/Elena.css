@@ -1381,7 +1381,12 @@
 
         .workout-actions {
             display: flex;
+            gap: 10px;
             margin-top: 16px;
+        }
+
+        .workout-actions .finish-btn {
+            flex: 1;
         }
 
         .finish-btn {
@@ -2012,9 +2017,16 @@
             width: 96px;
             height: 60px;
             flex: 0 0 96px;
-            mix-blend-mode: screen;
-            object-fit: cover;
-            object-position: center;
+            background: var(--text1);
+            -webkit-mask-image: url('/public/brand-mark.png');
+            -webkit-mask-position: center;
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-size: cover;
+            mask-image: url('/public/brand-mark.png');
+            mask-mode: luminance;
+            mask-position: center;
+            mask-repeat: no-repeat;
+            mask-size: cover;
         }
 
         .header.scrolled .brand-mark {
@@ -2024,8 +2036,7 @@
         }
 
         body[data-theme="light"] .brand-mark {
-            filter: invert(1);
-            mix-blend-mode: multiply;
+            background: var(--text1);
         }
 
         .day-title {
@@ -2319,7 +2330,7 @@
         }
 
         .nav-item.completed .nav-label::after {
-            content: 'âœ“';
+            content: '\2713';
             margin-left: 3px;
             color: var(--teal);
             font-size: 9px;
@@ -2713,12 +2724,6 @@
            Blend against the page, not the header's own blurred surface. */
         .header.scrolled {
             isolation: auto;
-        }
-
-        .header.scrolled .brand-mark,
-        body[data-theme='light'] .header.scrolled .brand-mark {
-            mix-blend-mode: normal;
-            background: transparent;
         }
 
         /* Exercise cards share the Hero's molded, quietly lit surfaceâ€”not its color. */
