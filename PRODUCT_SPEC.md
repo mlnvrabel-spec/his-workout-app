@@ -28,7 +28,7 @@ The dashboard Hero is a program-adherence surface, not a biometric dashboard. It
 *   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
 *   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
 *   **Completion rule**: A workout finishes only when the user taps **Finish workout**. Individual exercise checks remain optional, and the saved summary records their exact completion count. The most recent completion can be undone from the following workout. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
-*   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown. The Finish area states the exact checked count and that checks are optional.
+*   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown. The Finish area uses a full-width action without helper text; exact checked counts remain in training history.
 
 ### 3.2. Garmin Connect Bridge (Microservice & Sync Engine)
 *   **Technology**: Python FastAPI running on `localhost:8001`.

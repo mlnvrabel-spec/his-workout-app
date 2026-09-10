@@ -13,8 +13,8 @@ export class Modal {
             const controls = [...element.querySelectorAll('button, input, select, textarea, a[href], [tabindex="0"]')]
                 .filter(node => !node.disabled && node.getClientRects().length && !node.closest('[hidden]'));
             const first = controls[0], last = controls.at(-1);
-            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus({ preventScroll: true }); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus({ preventScroll: true }); }
         });
     }
     open() {
@@ -22,12 +22,12 @@ export class Modal {
         this.element.hidden = false;
         this.element.inert = false;
         document.querySelectorAll('#app, .nav-wrap').forEach(node => node.inert = true);
-        this.element.querySelector('button, input, [tabindex="0"]')?.focus();
+        this.element.querySelector('button, input, [tabindex="0"]')?.focus({ preventScroll: true });
     }
     close() {
         this.element.hidden = true;
         this.element.inert = true;
         document.querySelectorAll('#app, .nav-wrap').forEach(node => node.inert = false);
-        if (this.previousFocus?.isConnected) this.previousFocus.focus();
+        if (this.previousFocus?.isConnected) this.previousFocus.focus({ preventScroll: true });
     }
 }

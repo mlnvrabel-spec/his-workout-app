@@ -46,3 +46,7 @@ The existing local Garmin token state did not produce readiness data during prev
 ## Remaining high-end product work
 
 Actual effort entry and set corrections; import/restore and backup recovery UX; verified Garmin publication with retry reconciliation; physical-device accessibility and standalone PWA certification. These should be completed before claiming production-level end-to-end Garmin support.
+
+## Mobile layout follow-up
+
+Settings now opens within the viewport, focuses without scrolling, and sits above the navigation dock. Removed the body perspective that changed fixed-position containment and constrained root overflow. Finish/Continue and secondary Undo each occupy a full-width row; removed footer helper text. At 390px, browser measurement confirmed document scrollWidth equals clientWidth and Finish width equals its action container width.

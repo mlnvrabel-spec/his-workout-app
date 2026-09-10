@@ -89,14 +89,20 @@
             user-select: none
         }
 
+        html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
+            width: 100%;
             background: var(--bg);
             color: var(--text1);
             font-family: var(--font);
             height: 100vh;
             height: 100dvh;
             overflow: hidden;
-            perspective: 1000px;
             transition: none
         }
 
@@ -364,7 +370,7 @@
             inset: 0;
             background: var(--overlay);
             backdrop-filter: blur(8px);
-            z-index: 900;
+            z-index: 9000;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s var(--ease);
@@ -384,7 +390,7 @@
             background: color-mix(in srgb, var(--bg) 92%, transparent);
             backdrop-filter: blur(40px) saturate(180%);
             border-left: 1px solid var(--border);
-            z-index: 901;
+            z-index: 9001;
             padding: 0;
             transform: translateX(100%);
             transition: transform 0.4s var(--ease);
@@ -450,6 +456,8 @@
 
         .settings-row {
             display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
             align-items: center;
             justify-content: space-between;
             padding: 18px 20px;
@@ -459,6 +467,8 @@
         }
 
         .settings-row-info {
+            min-width: 0;
+            overflow-wrap: anywhere;
             display: flex;
             flex-direction: column;
             gap: 3px;
@@ -1380,13 +1390,15 @@
         }
 
         .workout-actions {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
             gap: 10px;
             margin-top: 16px;
         }
 
         .workout-actions .finish-btn {
-            flex: 1;
+            width: 100%;
+            min-width: 0;
         }
 
         .finish-btn {

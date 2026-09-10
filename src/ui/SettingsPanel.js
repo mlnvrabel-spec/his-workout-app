@@ -89,10 +89,10 @@ export class SettingsPanel {
     }
 
     open() {
-        this.modal.open();
         this.isOpen = true;
         this.els.backdrop.classList.add('open');
         this.els.panel.classList.add('open');
+        this.modal.open();
     }
 
     close() {
