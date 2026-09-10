@@ -1,4 +1,5 @@
 export const HAPTIC_PATTERNS = Object.freeze({
+    setSaved: [35, 30, 35],
     exerciseChecked: 35,
     exerciseUnchecked: 15,
     bulkCompleted: [80, 50, 120],

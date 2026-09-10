@@ -1,16 +1,16 @@
-﻿/**
+/**
  * Kai.js (Motion & Interaction Module)
  * Responsible for UI rendering, motion physics, haptics, and event delegation.
  */
-import { HeroHeader } from './HeroHeader.js?v=11';
-import { ExerciseCards } from './ExerciseCards.js?v=10';
-import { triggerHaptic } from './Haptics.js?v=1';
+import { HeroHeader } from './HeroHeader.js';
+import { ExerciseCards } from './ExerciseCards.js';
+import { triggerHaptic } from './Haptics.js';
 
 export class Kai {
     constructor(engine, chat) {
         this.engine = engine;
         this.chat = chat;
-        
+
         this.els = {
             header: document.getElementById('header'),
             cards: document.getElementById('cards'),
@@ -20,17 +20,18 @@ export class Kai {
             trainingFlow: document.getElementById('training-flow'),
             completionAnnouncement: document.getElementById('flow-completion-announcement')
         };
-        
+
         // Motion Physics Curve: "Memory Foam"
         this.memoryFoam = 'cubic-bezier(0.22, 1, 0.36, 1)';
         this.expandedCardId = null;
         this.heroHeader = new HeroHeader();
         this.exerciseCards = new ExerciseCards(this.els.cards, this.engine, this.memoryFoam);
 
+        this.drafts = new Map();
         this.setupListeners();
         this.setupEventDelegation();
         this.setupNavGestures();
-        
+
         if (this.els.themeBtn) {
             this.els.themeBtn.addEventListener('click', () => this.toggleTheme());
         }
@@ -42,11 +43,20 @@ export class Kai {
         window.addEventListener('engine:state_updated', (e) => {
             const state = e.detail?.state || this.engine.state;
             const type = e.detail?.type;
+            if (type === 'saving' || type === 'saved') {
+                this.exerciseCards.renderFinishButton(this.engine.getCompletionSummary());
+                this.els.cards?.setAttribute('aria-busy', String(this.engine.pending));
+                return;
+            }
             if (type === 'exercise_complete') {
                 this.updateCompletionState(state);
             } else if (type === 'exercise_swap') {
-                this.updateSwappedCard(state, e.detail);
+                this.render(state);
             } else {
+                if (type === 'day_reopened') {
+                    this.showFeedback(`${this.engine.protocolData[state.day].title} reopened · Your sets and later progress are preserved`);
+                    if (this.els.completionAnnouncement) this.els.completionAnnouncement.textContent = '';
+                }
                 if (type === 'day_change' || type === 'day_reopened') {
                     this.expandedCardId = null;
                     const app = document.getElementById('app');
@@ -56,14 +66,18 @@ export class Kai {
             }
         });
         window.addEventListener('set:logged', (e) => this.onSetLogged(e.detail));
-        window.addEventListener('workout:sync_queued', (e) => this.onSyncQueued(e.detail));
+        window.addEventListener('engine:error', event => this.showFeedback(event.detail.message, true));
+        window.addEventListener('network:state_change', event => {
+            const status = document.getElementById('network-status');
+            if (status) { status.textContent = event.detail.state; status.dataset.state = event.detail.state; }
+        });
         window.addEventListener('workout:finished', (e) => this.sealCompletedWorkout(e.detail?.session));
 
         const recoverFromBackground = () => {
             if (document.visibilityState === 'hidden' || !this.engine?.state) return;
             this.els.cards?.classList.add('is-resuming');
             requestAnimationFrame(() => {
-                this.render(this.engine.state);
+                this.engine.refresh();
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => this.els.cards?.classList.remove('is-resuming'));
                 });
@@ -72,7 +86,7 @@ export class Kai {
 
         document.addEventListener('visibilitychange', recoverFromBackground);
         window.addEventListener('pageshow', recoverFromBackground);
-        
+
         this.heroHeader.bindScrollCollapse(document.getElementById('app'));
     }
 
@@ -84,6 +98,7 @@ export class Kai {
         const trainingFlow = this.els.trainingFlow;
         if (!trainingFlow) return;
 
+        this.showFeedback(`${session?.title || 'Workout'} saved · Next: ${this.engine.protocolData[this.engine.state.activeDay].title}`);
         this.justCompletedDay = Number.isInteger(session?.day) ? session.day : null;
         const app = document.getElementById('app');
         if (app) app.scrollTop = 0;
@@ -107,11 +122,14 @@ export class Kai {
     render(state) {
         if (!state) return;
 
+        for (const form of this.els.cards?.querySelectorAll('.set-form') || []) {
+            this.drafts.set(`${this.renderedCycle}:${this.renderedDay}:${form.dataset.exercise}`, { weight: form.elements.weight.value, reps: form.elements.reps.value });
+        }
         const workout = this.engine?.protocolData?.[state.day] || state.currentDayOpts;
         if (!workout) return;
 
         this.heroHeader.renderDay(workout);
-        this.heroHeader.renderTrainingFlow(this.engine?.StorageManager, this.engine?.protocolData, state.day);
+        this.heroHeader.renderTrainingFlow(this.engine?.StorageManager, this.engine?.protocolData, state.activeDay ?? state.day);
 
         const doneIds = state.done?.[state.day]
             ? Object.keys(state.done[state.day]).filter(id => state.done[state.day][id])
@@ -124,6 +142,12 @@ export class Kai {
             card => this.toggleCard(card),
             (card, event) => this.closeExpandedCard(card, event)
         );
+        this.renderedCycle = this.engine.cycleId;
+        this.renderedDay = this.engine.state.day;
+        for (const form of this.els.cards?.querySelectorAll('.set-form') || []) {
+            const draft = this.drafts.get(`${this.engine.cycleId}:${this.engine.state.day}:${form.dataset.exercise}`);
+            if (draft) { form.elements.weight.value = draft.weight; form.elements.reps.value = draft.reps; }
+        }
         this.updateNavState(state.day);
     }
 
@@ -131,9 +155,20 @@ export class Kai {
         const wasActive = this.expandedCardId === card.id;
         this.expandedCardId = wasActive ? null : card.id;
         document.querySelectorAll('.card-wrapper').forEach(item => item.classList.remove('active'));
+        this.syncExpandedCards();
         if (!wasActive) {
             card.classList.add('active');
+            this.syncExpandedCards();
             this.scrollCardToTop(card);
+            if (!this.engine.isDayCompleted() && this.chat && !card.querySelector('.coach-cue')) {
+                const exercise = this.engine.protocolData[this.engine.state.day].exercises[Number(card.dataset.idx)];
+                const cue = document.createElement('p');
+                cue.className = 'progression-cue coach-cue';
+                cue.textContent = 'Loading coaching cue…';
+                card.querySelector('.details-inner').append(cue);
+                this.chat.generateCoachingCue(exercise._exerciseId, exercise.name, { targetRir: exercise.rir, repRange: exercise.reps })
+                    .then(text => { cue.textContent = text; });
+            }
         }
     }
 
@@ -141,6 +176,25 @@ export class Kai {
         if (!card.classList.contains('active') || event.target.closest('.card-head, input, button, .check-wrap')) return;
         this.expandedCardId = null;
         card.classList.remove('active');
+        this.syncExpandedCards();
+    }
+
+    syncExpandedCards() {
+        document.querySelectorAll('.card-wrapper').forEach(card => {
+            const expanded = card.id === this.expandedCardId;
+            card.classList.toggle('active', expanded);
+            card.querySelector('.ex-info')?.setAttribute('aria-expanded', String(expanded));
+            const details = card.querySelector('.card-details');
+            if (details) details.hidden = !expanded;
+        });
+    }
+
+    showFeedback(message, error = false) {
+        const feedback = document.getElementById('session-feedback');
+        if (!feedback) return;
+        feedback.hidden = false;
+        feedback.textContent = error ? `${message} Your last saved workout is preserved. Try the action again.` : message;
+        feedback.classList.toggle('is-error', error);
     }
 
     updateSwappedCard(state, detail) {
@@ -172,14 +226,15 @@ export class Kai {
      */
     updateCompletionState(state) {
         if (!state) return;
-        
-        const doneArr = state.done?.[state.day] 
+
+        const doneArr = state.done?.[state.day]
             ? Object.keys(state.done[state.day]).filter(id => state.done[state.day][id])
             : (this.engine?.getDoneArray ? this.engine.getDoneArray(state.day) : []);
-            
+
         // 1. Update Exercise Cards
         const cards = document.querySelectorAll('.card-wrapper');
         cards.forEach(card => {
+            card.querySelector('.check-wrap')?.setAttribute('aria-pressed', String(doneArr.includes(card.id)));
             if (doneArr.includes(card.id)) {
                 card.classList.add('done');
             } else {
@@ -212,6 +267,7 @@ export class Kai {
         // 1. Click Handling
         this.els.cards.addEventListener('click', async (e) => {
             // Explicit completion is always available as a manual override.
+            if (e.target.closest('#continue-workout-btn')) { await this.engine.continueWorkout(); return; }
             const finishBtn = e.target.closest('#finish-workout-btn');
             if (finishBtn) {
                 const finished = await this.engine?.finishSession?.();
@@ -237,49 +293,30 @@ export class Kai {
                 return;
             }
 
-            // Card Expansion
-            if (e.target.closest('.card-head')) {
-                const now = Date.now();
-                if (now - (this.lastCardToggleAt || 0) < 250) return;
-                this.lastCardToggleAt = now;
-                const wrap = e.target.closest('.card-wrapper');
-                if (!wrap) return;
-                
-                const wasActive = wrap.classList.contains('active');
-                document.querySelectorAll('.card-wrapper').forEach(w => w.classList.remove('active'));
-                
-                if (!wasActive) {
-                    wrap.classList.add('active');
-                    setTimeout(() => wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        });
 
-                    // AI Coaching integration (if ChatAssistant exists)
-                    if (this.chat) {
-                        const vizNode = wrap.querySelector('.detail-text');
-                        if (vizNode) {
-                            const originalViz = vizNode.dataset.orig || vizNode.innerText;
-                            if(!vizNode.dataset.orig) vizNode.dataset.orig = originalViz;
-                            const exName = wrap.querySelector('.ex-name').innerText;
-                            const exercise = this.engine?.protocolData?.[this.engine.state.day]?.exercises?.[Number(wrap.dataset.idx)];
-                            vizNode.innerHTML = `<span style="opacity:0.5">Olympia AI analyzing ${exName}...</span>`;
-                            this.chat.generateCoachingCue('ex_'+wrap.id, exName, {
-                                targetRir: exercise?.rir,
-                                repRange: exercise?.reps
-                            })
-                                .then(cue => vizNode.innerHTML = `<strong style="color:var(--teal)">&#129504; ${cue}</strong><br><br><span style="opacity:0.6">${originalViz}</span>`)
-                                .catch(() => vizNode.innerText = originalViz);
-                        }
-                    }
-                }
-            }
+        this.els.cards.addEventListener('submit', async event => {
+            const form = event.target.closest('.set-form');
+            if (!form) return;
+            event.preventDefault();
+            if (form.dataset.saving) return;
+            form.dataset.saving = 'true';
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+            const exercise = this.engine.protocolData[this.engine.state.day].exercises.find(ex => ex._exerciseId === form.dataset.exercise);
+            const saved = await this.engine.logExercise(exercise.name, form.elements.weight.value, form.elements.reps.value);
+            if (saved) { triggerHaptic('setSaved'); this.showFeedback('Set saved on this device'); }
+            button.disabled = false;
+            delete form.dataset.saving;
         });
 
         // 2. Pointer Gestures (Swipe to complete & Swipe to swap)
         this.els.cards.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('input') || e.target.closest('button') || e.target.closest('.check-wrap')) return;
-            
+            if (e.target.closest('input') || e.target.closest('.save-set-btn') || e.target.closest('.check-wrap')) return;
+
             // Check if we're hitting a swappable head
             activeHead = e.target.closest('.card-head[data-swappable="true"]');
-            
+
             const card = e.target.closest('.card');
             if (!card) return;
 
@@ -296,7 +333,7 @@ export class Kai {
             if (!activeHead) {
                 try { activeCard.setPointerCapture(e.pointerId); } catch(err) {}
             }
-            
+
             if (!activeHead) {
                 activeWrap.classList.add('dragging');
                 activeCard.style.transition = 'none';
@@ -364,8 +401,8 @@ export class Kai {
                     nameEl.style.transition = `transform 0.25s ${this.memoryFoam}`;
                     setTimeout(() => nameEl.style.transition = '', 300);
                 }
-                
-                if (isSwapping && Math.abs(diffX) > 44) {
+
+                if (!this.engine.isDayCompleted() && isSwapping && Math.abs(diffX) > 44) {
                     const direction = diffX < 0 ? 1 : -1;
                     triggerHaptic('exerciseSwapped');
                     if (nameEl) {
@@ -399,12 +436,20 @@ export class Kai {
                     if (c) c.style.transition = `transform 0.3s ${this.memoryFoam}, height 0.4s ${this.memoryFoam}`;
                 }, 300);
             }
-            
+
             activeCard = null; activeWrap = null; activeBg = null; activeHead = null;
         };
 
         this.els.cards.addEventListener('pointerup', onPointerEnd);
-        this.els.cards.addEventListener('pointercancel', onPointerEnd);
+        this.els.cards.addEventListener('pointercancel', () => {
+            activeWrap?.classList.remove('dragging');
+            if (activeCard) { activeCard.style.transform = ''; activeCard.style.transition = ''; }
+            const name = activeHead?.querySelector('.ex-name');
+            if (name) name.style.transform = '';
+            if (activeBg) { activeBg.style.opacity = 0; activeBg.classList.remove('active'); }
+            isDragging = false;
+            activeCard = activeWrap = activeBg = activeHead = null;
+        });
     }
 
     scrollCardToTop(cardWrap) {
@@ -442,13 +487,13 @@ export class Kai {
      */
     onSetLogged(detail) {
         if (!detail || !detail.exerciseId) return;
-        
+
         const cards = document.querySelectorAll('.card-wrapper');
         let targetCard = null;
         for (let c of cards) {
             // Find by matching id (e.g. ex-0-1), dataset exercise name, or the resolved exerciseName
-            if (c.id === detail.exerciseId || 
-                c.dataset.exname === detail.exerciseId || 
+            if (c.id === detail.exerciseId ||
+                c.dataset.exname === detail.exerciseId ||
                 (detail.exerciseName && c.dataset.exname === detail.exerciseName)) {
                 targetCard = c;
                 break;
@@ -502,12 +547,12 @@ export class Kai {
 
     setupNavGestures() {
         if (!this.els.navDock) return;
-        
+
         const navItems = this.els.navDock.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             let pressTimer;
             let longPressed = false;
-            
+
             const startPress = () => {
                 longPressed = false;
                 pressTimer = setTimeout(() => {
@@ -519,7 +564,7 @@ export class Kai {
                     }
                 }, 800);
             };
-            
+
             const cancelPress = () => clearTimeout(pressTimer);
 
             item.addEventListener('pointerdown', startPress);
@@ -543,6 +588,8 @@ export class Kai {
             const day = parseInt(n.dataset.day);
             const completed = this.engine?.isDayCompleted?.(day);
             n.classList.toggle('active', day === activeDay);
+            n.setAttribute('aria-current', day === activeDay ? 'page' : 'false');
+            n.setAttribute('aria-label', `Day ${day + 1}, ${this.engine.protocolData[day].title}${completed ? ', completed' : ''}`);
             n.classList.toggle('completed', completed);
             n.classList.toggle('completed--just-finished', completed && day === this.justCompletedDay);
         });

@@ -99,9 +99,31 @@ def test_coach_fallbacks():
                 os.environ[key] = value
 
 
+def test_chat_contract():
+    from unittest.mock import patch
+    payload = {
+        "readiness_score": 50, "exercise_name": "Cable Fly",
+        "last_session_log": "20kg x 12", "target_rir": "0-1", "rep_range": "10-15",
+        "message": "What comes next?", "workout_title": "Push A",
+        "next_workout": "Pull B", "exercise_names": ["Cable Fly"],
+    }
+    with patch.dict(os.environ, {}, clear=True), TestClient(app) as client:
+        response = client.post("/api/ai/chat", json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["source"] == "local"
+        assert "Pull B" in response.json()["cue"]
+        assert client.post("/api/ai/chat", json={**payload, "message": ""}).status_code == 422
+        assert client.post("/api/ai/chat", json={**payload, "readiness_score": 101}).status_code == 422
+    req = ai.CoachRequest(**{k: payload[k] for k in ("readiness_score", "exercise_name", "last_session_log", "target_rir", "rep_range")})
+    assert ai.usable_cue_or_fallback("One. Two. Three. Four.", req) == "One. Two. Three."
+    for malformed in (None, {}, [], "  "):
+        assert ai.usable_cue_or_fallback(malformed, req) == ai.build_fallback_cue(req)
+
+
 if __name__ == "__main__":
     test_workout_queue()
     test_readiness_component()
     test_protocol_exercise_mappings()
     test_coach_fallbacks()
+    test_chat_contract()
     print("Backend API behavior: OK")

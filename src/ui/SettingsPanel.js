@@ -1,6 +1,7 @@
+import { Modal } from './Modal.js';
 /**
  * SettingsPanel.js
- * 
+ *
  * A slide-in settings drawer accessible via the gear icon in the header.
  * Manages Garmin connection state visually and lets the user connect/disconnect at any time.
  */
@@ -13,6 +14,7 @@ export class SettingsPanel {
         this.isLive = false;
 
         this.render();
+        this.modal = new Modal(this.els.panel, () => this.close(), 'Preferences');
         this.attachListeners();
     }
 
@@ -44,8 +46,8 @@ export class SettingsPanel {
                 <div class="settings-row">
                     <div class="settings-row-info">
                         <div class="settings-row-label">Hypertrophy Protocol</div>
-                        <div class="settings-row-sub">v2.0 · Dark Luxe PWA</div>
-                        <div class="settings-row-sub">Build 2026.08.11.25</div>
+                        <div class="settings-row-sub">v2.1 · Dark Luxe PWA</div>
+                        <div class="settings-row-sub">Build 2026.09.10</div>
                     </div>
                 </div>
             </div>
@@ -87,12 +89,14 @@ export class SettingsPanel {
     }
 
     open() {
+        this.modal.open();
         this.isOpen = true;
         this.els.backdrop.classList.add('open');
         this.els.panel.classList.add('open');
     }
 
     close() {
+        this.modal.close();
         this.isOpen = false;
         this.els.backdrop.classList.remove('open');
         this.els.panel.classList.remove('open');

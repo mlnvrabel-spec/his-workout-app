@@ -1,222 +1,146 @@
 import assert from 'node:assert/strict';
+import { environment, engine } from './test_helpers.mjs';
+import { StorageManager } from './src/core/StorageManager.js';
 
-const listeners = new Map();
-const localState = new Map();
+// Actual IndexedDB transactions via fake-indexeddb, rather than storage success stubs.
+environment();
+let a = await engine();
+await a.toggleComplete('ex-0-0', 0);
+assert.equal(a.isDayCompleted(), false);
+const cycle = a.cycleId;
+assert.equal(await a.finishSession(), true);
+assert.equal(a.state.day, 1);
+assert.equal(a.state.activeDay, 1);
+assert.equal(a.summaries[0].completedExercises, 1);
+await a.toggleComplete('ex-1-0', 1);
+assert.equal(await a.reopenLastDay(), true);
+assert.equal(a.state.done[1]['ex-1-0'], true, 'Undo preserves subsequent checks');
+assert.equal(a.state.done[0]['ex-0-0'], true);
+assert.equal(a.canUndoLastCompletion(), false);
+assert.equal(a.storage.getWeeklyStats().completed, 0);
+let reloaded = await engine();
+assert.equal(reloaded.canUndoLastCompletion(), false, 'Undo must not resurrect on reload');
+assert.equal(reloaded.state.done[1]['ex-1-0'], true);
 
-globalThis.CustomEvent = class CustomEvent {
-    constructor(type, options = {}) {
-        this.type = type;
-        this.detail = options.detail;
-    }
-};
-globalThis.window = {
-    addEventListener(type, listener) {
-        listeners.set(type, [...(listeners.get(type) || []), listener]);
-    },
-    dispatchEvent(event) {
-        for (const listener of listeners.get(event.type) || []) listener(event);
-    }
-};
-globalThis.localStorage = {
-    getItem(key) { return localState.get(key) || null; },
-    setItem(key, value) { localState.set(key, value); }
-};
+// Viewing history does not redefine the active workout.
+await a.finishSession();
+await a.setDay(0);
+assert.equal(a.state.activeDay, 1);
+assert.equal(a.state.day, 0);
+assert.equal(await a.finishSession(), false, 'Completed day cannot finish twice');
+await a.continueWorkout();
+assert.equal(a.state.day, 1);
 
-const { StorageManager } = await import('./src/core/StorageManager.js');
-const { WorkoutEngine } = await import('./src/core/WorkoutEngine.js');
-const { GarminSync } = await import('./src/core/GarminSync.js');
+// Cross-window check mutations merge against the latest stored record.
+environment();
+a = await engine();
+let b = await engine();
+await Promise.all([a.toggleComplete('ex-0-0', 0), b.toggleComplete('ex-0-1', 0)]);
+reloaded = await engine();
+assert.equal(reloaded.getCompletionSummary().completed, 2);
+await Promise.all([a.finishSession(), b.finishSession()]);
+reloaded = await engine();
+assert.equal(reloaded.summaries.length, 1, 'Two windows can complete a workout only once');
+assert.equal(reloaded.state.day, 1);
+assert.equal(reloaded.summaries[0].completedExercises, 2);
 
+// Two immediate calls never interpret the second as finishing the next day.
+environment();
+a = await engine();
+await Promise.all([a.finishSession(), a.finishSession()]);
+assert.equal(a.summaries.length, 1);
+assert.equal(a.state.day, 1);
+
+// Transaction abort preserves both durable records and engine state.
+environment();
+a = await engine();
+await a.toggleComplete('ex-0-0', 0);
+const before = structuredClone(a.state);
+const mutate = a.storage.mutateWorkout.bind(a.storage);
+a.storage.mutateWorkout = reducer => mutate((...args) => { reducer(...args); throw new Error('Injected transaction failure'); });
+assert.equal(await a.finishSession(), false);
+assert.equal(a.pending, false);
+assert.deepEqual(a.state, before);
+assert.equal((await a.storage.getCompletedWorkouts()).length, 0);
+assert.deepEqual((await a.storage.loadActiveWorkout()).done, before.done);
+a.storage.mutateWorkout = mutate;
+assert.equal(await a.finishSession(), true, 'Retry succeeds after failed save');
+
+// Out-of-order Finish skips completed days.
+environment();
+a = await engine();
+await a.setDay(1); await a.finishSession();
+await a.setDay(0); await a.finishSession();
+assert.equal(a.state.day, 2);
+assert.equal(a.isDayCompleted(), false);
+assert.equal(a.storage.getWeeklyStats().completed, 1, 'Same-date completions count as one trained date');
+await a.reopenLastDay();
+assert.equal(a.storage.getWeeklyStats().completed, 1, 'Undo retains a date with another completed session');
+
+// Cycle-boundary undo and redo keep the new cycle draft, including after reload.
+environment();
+a = await engine();
+for (let day=0; day<4; day++) await a.finishSession();
+const nextCycle = a.cycleId;
+assert.deepEqual(a.state.completedDays, {});
+await a.toggleComplete('ex-0-2', 0);
+a = await engine();
+await a.reopenLastDay();
+assert.equal(a.state.day, 3);
+assert.equal(Object.keys(a.state.completedDays).length, 3);
+a = await engine();
+await a.finishSession();
+assert.equal(a.cycleId, nextCycle);
+assert.equal(a.state.done[0]['ex-0-2'], true);
+assert.equal(a.summaries.length, 4);
+
+// Completed prescriptions are immutable; stale-window swaps cannot change history.
+environment();
+a = await engine(); b = await engine();
+const original = a.protocolData[0].exercises[0]._exerciseId;
+const option = a.getSwapOptions(original)[0].id;
+await a.finishSession();
+assert.equal(await b.swapExercise(0, 0, option), false);
+assert.equal(a.summaries[0].exercises[0]._exerciseId, original);
+
+// Set logging appends durably across navigation, reloads, and concurrent windows.
+environment();
+a = await engine();
+const exercise = a.protocolData[0].exercises[0];
+await a.logSet(exercise._exerciseId, 20, 10, 8);
+await a.setDay(1); await a.setDay(0);
+await a.logSet(exercise._exerciseId, 20, 9, 8);
+b = await engine();
+await Promise.all([a.logSet(exercise._exerciseId, 20, 8, 8), b.logSet(exercise._exerciseId, 20, 7, 8)]);
+a = await engine();
+assert.equal(a.getExerciseLogs(exercise._exerciseId).length, 4);
+assert.deepEqual(a.getExerciseLogs(exercise._exerciseId).map(s => s.set_number), [1,2,3,4]);
+assert.equal(await a.logSet(exercise._exerciseId, -1, 10, 8), false);
+assert.equal(await a.logSet(exercise._exerciseId, 20, 1.5, 8), false);
+await a.finishSession(); await a.setDay(0);
+assert.equal(await a.logSet(exercise._exerciseId, 20, 10, 8), false);
+const exported = await a.exportHistory();
+assert.equal(exported.logs[0].sets.length, 4);
+assert.equal(exported.workouts.length, 1);
+
+// Acknowledgement of an older payload must not mark newly appended sets synced.
+await a.reopenLastDay();
+const oldLog = structuredClone((await a.storage.getWorkoutLogs())[0]);
+await a.logSet(exercise._exerciseId, 20, 6, 8);
+await a.storage.markWorkoutLogSynced(oldLog);
+assert.equal((await a.storage.getWorkoutLogs())[0].sync_status, 'pending');
+const latestLog = (await a.storage.getWorkoutLogs())[0];
+await a.storage.markWorkoutLogSynced(latestLog);
+assert.equal((await a.storage.getWorkoutLogs())[0].sync_status, 'synced');
+
+// Hero projections recover from stale browser preferences on reload.
+localStorage.setItem('hv3_memory', JSON.stringify({title:'Wrong'}));
+a = await engine();
+assert.equal(a.storage.loadMemory(), null);
+
+// Monday–Sunday history uses local dates, including Sunday at a week boundary.
 const storage = new StorageManager();
-['2026-08-10', '2026-08-11', '2026-08-13', '2026-08-16'].forEach(date => storage.recordCompletedSession(date));
-const weeklyStats = storage.getWeeklyStats(new Date('2026-08-13T12:00:00'));
-assert.equal(weeklyStats.completed, 4);
-assert.equal(weeklyStats.target, 4);
-assert.equal(weeklyStats.consistencyRatio, 1);
-assert.deepEqual(weeklyStats.days.map(day => day.completed), [true, true, false, true, false, false, true]);
+['2026-08-10','2026-08-11','2026-08-13','2026-08-16'].forEach(date => storage.recordCompletedSession(date));
+assert.deepEqual(storage.getWeeklyStats(new Date('2026-08-13T12:00:00')).days.map(d=>d.completed), [true,true,false,true,false,false,true]);
 assert.equal(storage.getWeekStart(new Date('2026-08-16T12:00:00')), '2026-08-10');
-
-const archived = [];
-const memory = [];
-const finishedSessions = [];
-window.addEventListener('workout:finished', event => finishedSessions.push(event.detail));
-const engine = new WorkoutEngine();
-engine.storage = {
-    completeWorkoutDay: async (summary, nextWorkout) => archived.push([summary, nextWorkout]),
-    setLightState: (key, value) => memory.push([key, value]),
-    recordCompletedSession: () => {},
-    getDateKey: () => '2026-08-11'
-};
-engine.protocolData = [{ id: 'push_a', title: 'Push A', exercises: [{}, {}] }];
-engine.state = {
-    day: 0,
-    done: { 0: { 'ex-0-0': true, 'ex-0-1': true } }
-};
-engine.currentSession = {
-    session_id: '2026-08-11',
-    day_id: 'push_a',
-    logs: {
-        ex_001: { session_id: '2026-08-11', exercise_id: 'ex_001', sets: [] }
-    }
-};
-engine.pruneOldData = async () => {};
-await engine.finishSession();
-assert.equal(archived.length, 1);
-assert.ok(memory.some(([key]) => key === 'hv3_memory'));
-assert.equal(engine.state.day, 0);
-assert.equal(finishedSessions.length, 1);
-assert.equal(finishedSessions[0].session.title, 'Push A');
-
-const queuedSessions = [];
-window.addEventListener('workout:sync_queued', event => queuedSessions.push(event.detail));
-const syncEngine = new WorkoutEngine();
-syncEngine.protocolData = [{ exercises: [{}, {}, {}, {}, {}] }];
-syncEngine.currentSession = {
-    session_id: '2026-08-11',
-    day_id: 'push_a',
-    logs: { ex_001: { exercise_id: 'ex_001', sets: [] } }
-};
-syncEngine.persistActiveWorkout = async () => {};
-await syncEngine.toggleComplete('ex-0-0', 0);
-assert.equal(queuedSessions.length, 0);
-await syncEngine.toggleComplete('ex-0-1', 0);
-assert.equal(queuedSessions.length, 0);
-await syncEngine.toggleAll(0, false, syncEngine.protocolData[0].exercises);
-assert.equal(Object.values(syncEngine.state.done[0]).filter(Boolean).length, 0);
-
-const completionEngine = new WorkoutEngine();
-completionEngine.protocolData = [{ exercises: [{}, {}, {}, {}, {}] }];
-completionEngine.state = { day: 0, done: { 0: { 'ex-0-0': true, 'ex-0-1': true } }, completedDays: {} };
-assert.equal(completionEngine.getCompletionSummary().required, 3);
-assert.equal(completionEngine.getCompletionSummary().eligible, false);
-completionEngine.state.done[0]['ex-0-2'] = true;
-assert.equal(completionEngine.getCompletionSummary().eligible, true);
-
-const explicitFinishSummaries = [];
-const explicitFinishEngine = new WorkoutEngine();
-explicitFinishEngine.protocolData = [
-    { id: 'push_a', title: 'Push A', exercises: [{}, {}, {}, {}, {}] },
-    { id: 'pull_a', title: 'Pull A', exercises: [{}] }
-];
-explicitFinishEngine.state = { day: 0, done: {}, completedDays: {} };
-explicitFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
-explicitFinishEngine.persistActiveWorkout = async () => {};
-explicitFinishEngine.storage = {
-    completeWorkoutDay: async summary => explicitFinishSummaries.push(summary),
-    setLightState: () => {},
-    recordCompletedSession: () => {},
-    getDateKey: () => '2026-08-11'
-};
-await explicitFinishEngine.toggleComplete('ex-0-0', 0);
-await explicitFinishEngine.toggleComplete('ex-0-1', 0);
-await explicitFinishEngine.toggleComplete('ex-0-2', 0);
-assert.equal(explicitFinishSummaries.length, 0);
-assert.equal(explicitFinishEngine.isDayCompleted(0), false);
-assert.equal(explicitFinishEngine.state.day, 0);
-assert.equal(await explicitFinishEngine.finishSession(), true);
-assert.equal(explicitFinishSummaries.length, 1);
-assert.equal(explicitFinishSummaries[0].completedExercises, 3);
-assert.equal(explicitFinishEngine.isDayCompleted(0), true);
-assert.equal(explicitFinishEngine.state.day, 1);
-assert.equal(explicitFinishEngine.canUndoLastCompletion(), true);
-
-const undoSummary = explicitFinishSummaries[0];
-const reopenedWorkouts = [];
-explicitFinishEngine.storage = {
-    init: async () => {},
-    getDateKey: () => '2026-08-11',
-    db: {
-        transaction: () => ({
-            objectStore: () => ({
-                get: () => {
-                    const request = { result: undoSummary };
-                    queueMicrotask(() => request.onsuccess());
-                    return request;
-                }
-            })
-        })
-    },
-    reopenWorkoutDay: async (...args) => reopenedWorkouts.push(args)
-};
-assert.equal(await explicitFinishEngine.reopenLastDay(), true);
-assert.equal(explicitFinishEngine.state.day, 0);
-assert.equal(explicitFinishEngine.isDayCompleted(0), false);
-assert.equal(explicitFinishEngine.getCompletionSummary().completed, 3);
-assert.equal(explicitFinishEngine.canUndoLastCompletion(), false);
-assert.equal(reopenedWorkouts[0][0], undoSummary.id);
-
-const manualFinishSummaries = [];
-const manualFinishEngine = new WorkoutEngine();
-manualFinishEngine.protocolData = [{ id: 'push_a', title: 'Push A', exercises: [{}, {}, {}, {}, {}] }];
-manualFinishEngine.state = { day: 0, done: {}, completedDays: {} };
-manualFinishEngine.currentSession = { session_id: null, day_id: null, logs: {} };
-manualFinishEngine.storage = {
-    completeWorkoutDay: async summary => manualFinishSummaries.push(summary),
-    setLightState: () => {},
-    recordCompletedSession: () => {},
-    getDateKey: () => '2026-08-11'
-};
-assert.equal(await manualFinishEngine.finishSession(), true);
-assert.equal(manualFinishSummaries[0].completedExercises, 0);
-
-const stateUpdates = [];
-window.addEventListener('engine:state_updated', event => stateUpdates.push(event.detail));
-const swapEngine = new WorkoutEngine();
-swapEngine.protocolData = [{ exercises: [{ _exerciseId: 'hack_squat' }] }];
-swapEngine.rawWorkouts = [{ exercises: [{ id: 'hack_squat' }] }];
-swapEngine.exerciseLibrary = { leg_press: { name: 'Leg Press' } };
-swapEngine._resolveExercise = slot => ({ _exerciseId: slot.id });
-swapEngine.swapExercise(0, 0, 'leg_press');
-assert.equal(stateUpdates.at(-1).type, 'exercise_swap');
-assert.equal(swapEngine.protocolData[0].exercises[0]._exerciseId, 'leg_press');
-assert.equal(swapEngine._formatRest(90), '90s');
-assert.equal(swapEngine._formatRest(120), '2m');
-assert.equal(swapEngine._formatRest(180), '3m');
-
-const garmin = new GarminSync();
-garmin.storage = { getWeeklyStats: () => ({ consistencyRatio: 0.5 }) };
-globalThis.fetch = async () => ({
-    ok: true,
-    json: async () => ({ biometric_score: 80 })
-});
-const readiness = await garmin.fetchReadiness();
-assert.equal(readiness.readiness_score, 68);
-
-const flowElements = new Map();
-['day-title', 'day-sub', 'flow-last-title', 'flow-current-title', 'week-rhythm']
-    .forEach(id => flowElements.set(id, {
-        innerText: '',
-        children: [],
-        replaceChildren(...children) { this.children = children; },
-        append(...children) { this.children.push(...children); },
-        setAttribute() {}
-    }));
-globalThis.document = {
-    getElementById(id) { return flowElements.get(id) || null; },
-    createElement() {
-        return {
-            className: '',
-            textContent: '',
-            children: [],
-            append(...children) { this.children.push(...children); },
-            setAttribute() {}
-        };
-    }
-};
-const { HeroHeader } = await import('./src/ui/HeroHeader.js');
-const hero = new HeroHeader();
-hero.renderTrainingFlow({
-    loadMemory: () => ({ title: 'Pull A' }),
-    getWeeklyStats: () => ({
-        days: ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16']
-            .map((date, index) => ({ date, completed: index === 0 || index === 2 }))
-    })
-}, [
-    { title: 'Push A', subtitle: 'Quads + chest' },
-    { title: 'Pull A', subtitle: 'Back + biceps' },
-    { title: 'Push B', subtitle: 'Chest + triceps' }
-], 1);
-assert.equal(flowElements.get('flow-last-title').innerText, 'Pull A');
-assert.equal(flowElements.get('flow-current-title').innerText, 'Pull A');
-assert.equal(flowElements.get('week-rhythm').children.length, 7);
-
-console.log('Core behavior: OK');
+console.log('Core transactions, undo, cycles, concurrent windows, logging: OK');

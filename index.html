@@ -1,35 +1,38 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
     <title>Hypertrophy Protocol</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#17191c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="/public/manifest.json">
     <link rel="icon" type="image/png" href="/public/brand-mark.png">
     <link rel="apple-touch-icon" href="/public/brand-mark.png">
-    
+
     <!-- External Fonts and Scripts -->
     <link rel="preconnect" href="https://fonts.googleapis.com/">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:opsz,wght@14..32,100..900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+
+
     <!-- Extracted CSS -->
-    <link rel="stylesheet" href="/src/ui/Elena.css?v=39">
+    <link rel="stylesheet" href="/src/ui/Elena.css">
 </head>
 
 <body data-theme="dark">
+    <script>
+        try { document.body.dataset.theme = localStorage.getItem('hv2_theme') === 'light' ? 'light' : 'dark'; } catch {}
+    </script>
     <!-- WebGL Background Container -->
     <div id="canvas-wrap"></div>
     <div class="theme-transition-scrim" id="theme-transition-scrim" aria-hidden="true"></div>
-    
+
     <div id="app">
         <header class="header" id="header">
             <div class="header-top">
@@ -41,10 +44,12 @@
                     </div>
                 </div>
                 <div class="header-controls">
+                    <span id="network-status" class="network-status" role="status" data-state="CACHED">CACHED</span>
+                    <button class="ctrl-btn" id="history-btn" aria-label="Workout history">↺</button>
                     <button class="ctrl-btn" id="settings-btn" aria-label="Settings">
                         <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" /></svg>
                     </button>
-                    <button class="theme-btn" id="theme-btn">
+                    <button class="theme-btn" id="theme-btn" aria-label="Toggle light and dark theme">
                         <svg id="theme-ico" viewBox="0 0 24 24">
                             <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z" />
                         </svg>
@@ -105,7 +110,7 @@
                         </svg>
                     </div>
                 </div>
-                
+
                 <div class="memory-strip" id="memory-strip" style="display:none">
                     <div class="mem-top">
                         <div class="mem-icon">
@@ -125,9 +130,11 @@
                     </div>
                 </div>
             </div>
-            
+
         </header>
-        
+
+        <p id="session-feedback" class="session-feedback" role="status" hidden></p>
+        <button id="app-update-btn" hidden>Update app after saving your sets</button>
         <main class="cards" id="cards"></main>
     </div>
 
@@ -135,50 +142,39 @@
 
     <div class="nav-wrap">
         <nav class="nav-dock" id="nav-dock">
-            <div class="nav-item active" data-day="0"><span class="nav-label">D1</span><span class="nav-sub">Push</span></div>
-            <div class="nav-item" data-day="1"><span class="nav-label">D2</span><span class="nav-sub">Pull</span></div>
-            <div class="nav-item" data-day="2"><span class="nav-label">D3</span><span class="nav-sub">Push</span></div>
-            <div class="nav-item" data-day="3"><span class="nav-label">D4</span><span class="nav-sub">Pull</span></div>
+            <button type="button" class="nav-item active" data-day="0"><span class="nav-label">D1</span><span class="nav-sub">Push</span></button>
+            <button type="button" class="nav-item" data-day="1"><span class="nav-label">D2</span><span class="nav-sub">Pull</span></button>
+            <button type="button" class="nav-item" data-day="2"><span class="nav-label">D3</span><span class="nav-sub">Push</span></button>
+            <button type="button" class="nav-item" data-day="3"><span class="nav-label">D4</span><span class="nav-sub">Pull</span></button>
         </nav>
-        
-        <div class="ai-fab" id="ai-fab">
+
+        <button type="button" class="ai-fab" id="ai-fab" aria-label="Open coaching assistant">
             <svg viewBox="0 0 24 24">
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 11H7V9h2v2zm4 0h-2V9h2v2zm4 0h-2V9h2v2z" />
             </svg>
-        </div>
+        </button>
     </div>
-    
+
     <div class="chat-ov" id="chat-ov">
         <div class="chat-window" id="chat-window">
             <canvas id="chat-orb-canvas"></canvas>
             <div class="chat-head">
                 <div class="chat-title">Mr. Olympia</div>
                 <div class="chat-acts">
-                    <button class="icon-btn settings-btn" id="chat-settings-btn">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
-                        </svg>
-                    </button>
-                    <button class="icon-btn" id="chat-close-btn">
+                    <button class="icon-btn" id="chat-close-btn" aria-label="Close assistant">
                         <svg viewBox="0 0 24 24">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                         </svg>
                     </button>
                 </div>
             </div>
-            
-            <form class="api-cfg" id="api-cfg" hidden>
-                <input type="text" name="username" value="MrOlympia_AI" style="display:none" autocomplete="username">
-                <input type="password" name="password" class="api-input" id="api-key-input" placeholder="Enter standard OpenAI or Gemini API Key..." autocomplete="current-password">
-                <button type="submit" class="save-btn" id="save-key-btn">Save Key</button>
-            </form>
-            
+
             <div class="chat-body" id="chat-body"></div>
-            
+
             <div class="chat-foot">
                 <div class="chat-input-wrap">
-                    <input type="text" class="chat-input" id="chat-input" placeholder="Ask about your log, form, or schedule...">
-                    <button class="send-btn" id="chat-send-btn">
+                    <input type="text" class="chat-input" id="chat-input" aria-label="Message to coach" placeholder="Ask about your log, form, or schedule...">
+                    <button class="send-btn" id="chat-send-btn" aria-label="Send message">
                         <svg viewBox="0 0 24 24">
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
@@ -190,11 +186,12 @@
 
     <!-- Application Bootstrap -->
     <script type="module">
-        import { WorkoutEngine } from '/src/core/WorkoutEngine.js?v=11';
-        import { GarminSync } from '/src/core/GarminSync.js?v=5';
-        import { ChatAssistant } from '/src/core/ChatAssistant.js?v=5';
-        import { Kai } from '/src/ui/Kai.js?v=38';
-        import { SettingsPanel } from '/src/ui/SettingsPanel.js?v=5';
+        import { WorkoutEngine } from '/src/core/WorkoutEngine.js';
+        import { GarminSync } from '/src/core/GarminSync.js';
+        import { ChatAssistant } from '/src/core/ChatAssistant.js';
+        import { Kai } from '/src/ui/Kai.js';
+        import { SettingsPanel } from '/src/ui/SettingsPanel.js';
+        import { HistoryPanel } from '/src/ui/HistoryPanel.js';
 
         const syncVisualViewportInset = () => {
             const viewport = window.visualViewport;
@@ -221,8 +218,18 @@
         // Register Service Worker for PWA Offline Support
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/public/service-worker.js').then(registration => {
-                    console.log('SW registered: ', registration);
+                navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    const offerUpdate = () => {
+                        const button = document.getElementById('app-update-btn');
+                        if (!registration.waiting || !navigator.serviceWorker.controller) return;
+                        button.hidden = false;
+                        button.onclick = () => {
+                            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+                            registration.waiting.postMessage('ACTIVATE_UPDATE');
+                        };
+                    };
+                    offerUpdate();
+                    registration.addEventListener('updatefound', () => registration.installing?.addEventListener('statechange', offerUpdate));
                 }).catch(registrationError => {
                     console.log('SW registration failed: ', registrationError);
                 });
@@ -233,9 +240,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             const engine = new WorkoutEngine();
             const garmin = new GarminSync();
-            const chat = new ChatAssistant();
+            const chat = new ChatAssistant(engine);
+            new HistoryPanel(engine);
             const kai = new Kai(engine, chat);
-            
+
             // Initialize the UI elements
             import('./src/ui/AuthUI.js').then(module => {
                 const authUI = new module.AuthUI(garmin);
@@ -243,7 +251,7 @@
                     new settingsModule.SettingsPanel(garmin, authUI);
                 });
             });
-            
+
             // Boot sequence
             engine.init().then(() => {
                 // If garmin sync has saved credentials, it connects

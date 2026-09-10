@@ -1,4 +1,4 @@
-﻿        :root {
+        :root {
             --font: 'Inter', -apple-system, sans-serif;
             --display: 'DM Serif Display', serif;
             --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -760,7 +760,7 @@
             opacity: 0.9;
             transition: color 0.3s var(--ease);
         }
-        
+
         .readiness-card.overdrive .readiness-label {
             color: #b450ff;
         }
@@ -1381,7 +1381,12 @@
 
         .workout-actions {
             display: flex;
+            gap: 10px;
             margin-top: 16px;
+        }
+
+        .workout-actions .finish-btn {
+            flex: 1;
         }
 
         .finish-btn {
@@ -1528,7 +1533,7 @@
             mask-composite: exclude;
             animation: borderOrbit 10s linear infinite;
         }
-        
+
         [data-theme="light"] .nav-item.live::after {
             background: conic-gradient(
                 from var(--angle),
@@ -2842,3 +2847,51 @@
         }
 
 
+
+/* Reliable workout controls and review surfaces. */
+[hidden] { display: none !important; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .6; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+.nav-item, .ai-fab { border: 0; color: inherit; font: inherit; }
+.nav-item { background: transparent; }
+.card-head .ex-info { background: transparent; border: 0; text-align: left; color: var(--text1); min-width: 0; padding: 0; }
+.check-wrap { border: 0; background: transparent; color: inherit; }
+.card-wrapper.done .ex-name { color: var(--text1); opacity: .8; text-decoration: none; }
+.card-wrapper.done .ex-meta { opacity: .75; }
+.is-completed-workout .card-wrapper.done .card { opacity: 1; }
+.nav-item.completed .nav-label::after { display: inline; }
+.network-status { font-size: 9px; letter-spacing: 1px; color: var(--text2); }
+.network-status[data-state="LIVE"] { color: var(--teal); }
+.network-status[data-state="SYNCING"] { color: var(--accent); }
+.session-feedback { margin: 0 20px 14px; padding: 12px 4px; color: var(--teal); font-size: 13px; line-height: 1.5; }
+.session-feedback.is-error { color: var(--red); }
+.completion-count { font-size: 12px; line-height: 1.5; text-align: center; color: var(--text2); }
+.completed-caption { color: var(--teal); text-align: center; line-height: 1.5; }
+.card-wrapper.active .card-details { max-height: none; }
+.set-logging { padding-bottom: 24px; }
+.logged-sets { list-style: none; margin: 12px 0; }
+.logged-sets li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; font-size: 13px; color: var(--text2); }
+.logged-sets strong { color: var(--text1); font-weight: 500; }
+.set-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin: 14px 0; }
+.set-form label { color: var(--text2); font-size: 11px; }
+.set-form input { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 7px; padding: 10px; border: 1px solid var(--check-border); border-radius: 10px; background: var(--surface2); color: var(--text1); user-select: text; }
+.save-set-btn, .export-history { min-height: 44px; border: 0; border-radius: 12px; padding: 10px 14px; background: var(--text1); color: var(--bg); }
+.previous-set, .progression-cue { font-size: 12px; line-height: 1.6; color: var(--text2); }
+.history-panel { position: fixed; inset: 0; z-index: 10001; background: var(--bg); padding: max(28px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom)); overflow-y: auto; }
+.history-head { display: flex; justify-content: space-between; align-items: center; }
+.history-head h2 { font-size: 28px; font-weight: 500; }
+.history-head button { width: 44px; height: 44px; border: 0; border-radius: 50%; font-size: 28px; background: var(--surface2); color: var(--text1); }
+.history-intro { margin: 12px 0 24px; color: var(--text2); line-height: 1.5; }
+.history-list { margin-top: 24px; }
+.history-list details { padding: 20px 0; border-bottom: 1px solid var(--check-border); }
+.history-list summary { cursor: pointer; line-height: 1.6; }
+.history-list p { margin-top: 12px; color: var(--text2); font-size: 13px; line-height: 1.6; }
+#app-update-btn { margin: 0 20px 14px; padding: 12px; border: 0; border-radius: 12px; color: var(--text1); background: var(--surface2); }
+.header-controls { flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 430px) {
+    .header-controls { gap: 6px; max-width: 140px; }
+    .network-status { flex-basis: 100%; text-align: right; }
+    .header-controls .ctrl-btn, .header-controls .theme-btn { width: 38px; height: 38px; }
+}

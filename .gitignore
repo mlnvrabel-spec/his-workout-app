@@ -21,3 +21,7 @@ Hypertrophy Protocol.html.old # Legacy messy file
 temp_script.js
 rebuilder.js
 1775223091862.png # Thumbnails/Screenshots
+
+.venv/
+.npm-cache/
+backend/sync_queue.db*

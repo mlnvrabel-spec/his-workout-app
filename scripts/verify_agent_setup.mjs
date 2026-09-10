@@ -10,6 +10,7 @@ const requiredFiles = [
     '.agents/workflows/test_pwa_dashboard.md'
 ];
 const skills = [
+    'product-spec-qa',
     'pwa-dashboard-verification',
     'garmin-integration',
     'hypertrophy-coaching',

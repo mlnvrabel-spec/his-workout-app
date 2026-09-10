@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import os
+import re
 import httpx # httpx is asynchronous and standard in modern FastAPI stacks
 
 router = APIRouter()
 
 class CoachRequest(BaseModel):
-    readiness_score: int
-    exercise_name: str
-    last_session_log: str
+    readiness_score: int = Field(ge=0, le=100)
+    exercise_name: str = Field(min_length=1, max_length=200)
+    last_session_log: str = Field(max_length=2000)
     target_rir: str = "1-2"
     rep_range: str = ""
 
@@ -59,12 +60,14 @@ def build_fallback_cue(req: CoachRequest) -> str:
 
 def usable_cue_or_fallback(cue: object, req: CoachRequest) -> str:
     """Avoid passing empty or malformed provider text through to the exercise card."""
-    return cue.strip() if isinstance(cue, str) and cue.strip() else build_fallback_cue(req)
+    if not isinstance(cue, str) or not cue.strip():
+        return build_fallback_cue(req)
+    return " ".join(re.split(r"(?<=[.!?])\s+", cue.strip())[:3])
 
 @router.post("/coach")
 async def generate_coach_cue(req: CoachRequest):
     """
-    Receives current biomechanical and historical context and fetches 
+    Receives current biomechanical and historical context and fetches
     a highly constrained coaching cue from an LLM.
     """
     context_str = (
@@ -72,19 +75,26 @@ async def generate_coach_cue(req: CoachRequest):
         f"Last_Session: '{req.last_session_log}', Target_RIR: '{req.target_rir}', "
         f"Rep_Range: '{req.rep_range}' }}"
     )
-    
+
+    if isinstance(req, ChatRequest):
+        context_str += (
+            f"\nAnswer the user's question in at most three sentences: {req.message}"
+            f"\nWorkout: {req.workout_title}; Next: {req.next_workout}; Exercises: {req.exercise_names}"
+        )
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         api_key = os.getenv("OPENAI_API_KEY")
-    
+
     # If no key is set on the backend, fall back immediately to avoid hanging.
     if not api_key:
-        return {"cue": build_fallback_cue(req)}
+        return {"cue": build_chat_fallback(req) if isinstance(req, ChatRequest) else build_fallback_cue(req), "source": "local"}
 
     try:
         if api_key.startswith("AIza"):
             # Gemini payload
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             payload = {
                 "system_instruction": { "parts": [{"text": SYSTEM_PROMPT}] },
                 "contents": [{"parts": [{"text": context_str}]}]
@@ -94,13 +104,13 @@ async def generate_coach_cue(req: CoachRequest):
                 res.raise_for_status()
                 data = res.json()
                 reply = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                return {"cue": usable_cue_or_fallback(reply, req)}
+                return {"cue": usable_cue_or_fallback(reply, req), "source": "provider" if isinstance(reply, str) and reply.strip() else "local"}
         else:
             # OpenAI payload
             url = "https://api.openai.com/v1/chat/completions"
             headers = {"Authorization": f"Bearer {api_key}"}
             payload = {
-                "model": "gpt-4o-mini",
+                "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": context_str}
@@ -111,7 +121,29 @@ async def generate_coach_cue(req: CoachRequest):
                 res.raise_for_status()
                 data = res.json()
                 reply = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                return {"cue": usable_cue_or_fallback(reply, req)}
+                return {"cue": usable_cue_or_fallback(reply, req), "source": "provider" if isinstance(reply, str) and reply.strip() else "local"}
     except Exception as e:
-        print(f"[Coach AI] Error: {e}")
-        return {"cue": build_fallback_cue(req)}
+        print("[Coach AI] Provider unavailable; using local guidance.")
+        return {"cue": build_chat_fallback(req) if isinstance(req, ChatRequest) else build_fallback_cue(req), "source": "local"}
+
+
+class ChatRequest(CoachRequest):
+    message: str = Field(min_length=1, max_length=2000)
+    workout_title: str = Field(max_length=200)
+    next_workout: str = Field(max_length=200)
+    exercise_names: list[str] = Field(max_length=30)
+
+
+def build_chat_fallback(req: ChatRequest) -> str:
+    if re.search(r"next|plan|schedule", req.message, re.IGNORECASE):
+        return (
+            f"Your current workout is {req.workout_title}. "
+            f"Next in program order is {req.next_workout}. "
+            "Finish explicitly when you are ready; exercise checks are optional."
+        )
+    return build_fallback_cue(req)
+
+
+@router.post("/chat")
+async def chat(req: ChatRequest):
+    return await generate_coach_cue(req)

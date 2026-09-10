@@ -18,8 +18,8 @@ Open `http://localhost:3000`. The frontend expects the FastAPI Garmin bridge at 
 ## Checks
 
 ```powershell
-node test_render.mjs
-node test_core.mjs
+npm.cmd ci
+npm.cmd run verify
 python backend/test_api.py
 python -m compileall -q backend
 ```
@@ -29,3 +29,20 @@ The provider-neutral agent setup is verified together with the frontend checks:
 ```powershell
 npm.cmd run verify
 ```
+
+
+## Workout behavior
+
+Finish saves the named day and advances to the next unfinished day. Exercise checks
+are optional. Undo reopens the named latest completion while retaining subsequent
+progress, including a draft of the next cycle. Completed days are read-only; use
+Continue to return to the active day. Open an exercise to log sets, and use the
+history control to review or export local data.
+
+The service worker lives at `/service-worker.js`. Bump its cache version whenever
+shipping application assets. An installed app offers an update; save any unlogged
+input before applying it. The local bridge queues sets durably but does not yet
+publish workouts to Garmin. Optional provider configuration uses backend
+`OPENAI_API_KEY` / `GEMINI_API_KEY` and `OPENAI_MODEL` / `GEMINI_MODEL` variables.
+
+See `REVIEW_VERIFICATION.md` for regression coverage and device-only checks.

@@ -1,6 +1,7 @@
+import { Modal } from './Modal.js';
 /**
  * AuthUI.js
- * 
+ *
  * Manages the Garmin Login/MFA user interface.
  * Appears when the back-end bridge requires authentication.
  */
@@ -11,9 +12,10 @@ export class AuthUI {
         this.email = '';
         this.isMfaMode = false;
         this.isLoading = false;
-        
+
         this.injectStyles();
         this.render();
+        this.modal = new Modal(this.els.overlay, () => this.hide(), 'Connect Garmin');
     }
 
     injectStyles() {
@@ -123,7 +125,7 @@ export class AuthUI {
                 font-size: 13px;
                 display: none;
             }
-            
+
             .auth-loading-spinner {
                 display: none;
                 margin: 20px auto;
@@ -162,7 +164,7 @@ export class AuthUI {
             <div class="auth-card">
                 <div class="auth-title">Connect Garmin</div>
                 <div class="auth-subtitle">Verify your identity to bridge live biometrics to your dashboard.</div>
-                
+
                 <div id="login-fields">
                     <div class="auth-input-group">
                         <label class="auth-label">Email</label>
@@ -204,6 +206,9 @@ export class AuthUI {
             subtitle: overlay.querySelector('.auth-subtitle')
         };
 
+        this.els.email.setAttribute('aria-label', 'Garmin email');
+        this.els.pass.setAttribute('aria-label', 'Garmin password');
+        this.els.mfa.setAttribute('aria-label', 'Garmin verification code');
         this.els.skip = document.getElementById('auth-skip');
 
         this.els.submit.addEventListener('click', () => this.handleSubmit());
@@ -219,7 +224,7 @@ export class AuthUI {
     show(mode = 'login') {
         if (mode === 'offline') {
             this.els.title.innerText = 'Bridge Offline';
-            this.els.subtitle.innerText = 'The Garmin Bridge server is not running. Start it with:\npython -m uvicorn main:app --port 8001';
+            this.els.subtitle.innerText = 'Garmin is unavailable right now. Your workouts remain saved on this device.';
             this.els.loginFields.style.display = 'none';
             this.els.submit.style.display = 'none';
         } else {
@@ -228,16 +233,22 @@ export class AuthUI {
             this.els.loginFields.style.display = 'block';
             this.els.submit.style.display = 'block';
         }
+        this.modal.open();
         this.els.overlay.classList.add('visible');
     }
 
     hide() {
         this.els.overlay.classList.remove('visible');
+        this.els.pass.value = '';
+        this.els.mfa.value = '';
+        this.isMfaMode = false;
+        this.els.mfaFields.style.display = 'none';
+        this.modal.close();
     }
 
     async handleSubmit() {
         if (this.isLoading) return;
-        
+
         this.setLoading(true);
         this.hideError();
 
@@ -245,12 +256,12 @@ export class AuthUI {
             if (!this.isMfaMode) {
                 const email = this.els.email.value;
                 const pass = this.els.pass.value;
-                
+
                 if (!email || !pass) throw new Error('Please enter credentials');
-                
+
                 this.email = email;
                 const result = await this.garminSync.login(email, pass);
-                
+
                 if (result.status === 'MFA_REQUIRED') {
                     this.switchToMfa();
                 } else {
@@ -259,7 +270,7 @@ export class AuthUI {
             } else {
                 const code = this.els.mfa.value;
                 if (!code) throw new Error('Enter the 6-digit code');
-                
+
                 await this.garminSync.verifyMfa(this.email, code);
                 this.onSuccess();
             }

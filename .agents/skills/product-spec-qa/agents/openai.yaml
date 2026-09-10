@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Spec QA"
+  short_description: "Turn product requirements into traceable tests."
+  default_prompt: "Use $product-spec-qa to audit this change against PRODUCT_SPEC.md and add focused regression coverage."

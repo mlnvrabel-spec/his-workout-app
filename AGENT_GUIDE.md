@@ -44,6 +44,7 @@
 ## Task routing
 
 - Product intent and current behavior: `PRODUCT_SPEC.md`
+- Product-spec test design and coverage audits: `.agents/skills/product-spec-qa/SKILL.md`
 - Garmin/auth/sync/mapping changes: `.agents/skills/garmin-integration/SKILL.md`
 - Coaching behavior or provider calls: `.agents/skills/hypertrophy-coaching/SKILL.md`
 - UI design or interaction review: `.agents/skills/luxury-ui-review/SKILL.md`

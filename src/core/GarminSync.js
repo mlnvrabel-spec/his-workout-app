@@ -1,11 +1,11 @@
 /**
  * GarminSync.js
- * 
+ *
  * Connects the Hypertrophy Protocol dashboard to the Garmin Connect Bridge (FastAPI).
  * Handles biometric readiness data fetching, caching, and workout publishing.
  * Emits CustomEvents for the UI layer (Kai.js) to consume.
  */
-import { StorageManager } from './StorageManager.js?v=2';
+import { StorageManager } from './StorageManager.js';
 
 export class GarminSync {
     constructor(baseUrl = 'http://localhost:8001') {
@@ -15,19 +15,29 @@ export class GarminSync {
         this._cacheTime = 0;
         this._cacheTTL = 300000; // 5 minute client-side cache
         this.storage = new StorageManager();
-        
-        // Listen for completed workouts to potentially sync them back to Garmin
-        window.addEventListener('cycleCompleted', (e) => {
-            this.syncWorkoutData(e.detail);
-        });
 
-        // Listen for offline queue syncs passing WorkoutLog
-        window.addEventListener('workout:sync_queued', async (e) => {
-            const logs = Array.isArray(e.detail) ? e.detail : [e.detail];
-            if (logs[0]) {
+        this.retryAfter = 0;
+        this.draining = false;
+        window.addEventListener('workout:finished', () => this.drainQueue());
+        window.addEventListener('workout:sync_queued', () => this.drainQueue());
+        window.addEventListener('online', () => { this.retryAfter = 0; this.drainQueue(); });
+        window.addEventListener('offline', () => this.emitStatus(false));
+        window.addEventListener('focus', () => this.drainQueue());
+    }
+
+    async drainQueue() {
+        if (this.draining || Date.now() < this.retryAfter) return;
+        this.draining = true;
+        try {
+            // A set may be appended while a prior version is in flight.
+            while (Date.now() >= this.retryAfter) {
+                const logs = (await this.storage.getWorkoutLogs()).filter(log => log.sync_status !== 'synced');
+                if (!logs.length) break;
                 await this.syncOfflineLogs(logs);
+                if (this.retryAfter) break;
             }
-        });
+        } catch (error) { this.emitStatus(false); }
+        finally { this.draining = false; }
     }
 
     /**
@@ -35,6 +45,7 @@ export class GarminSync {
      */
     emitStatus(live) {
         window.dispatchEvent(new CustomEvent('garminStatusChanged', { detail: { live } }));
+        window.dispatchEvent(new CustomEvent('network:state_change', { detail: { state: live ? 'LIVE' : 'CACHED' } }));
     }
 
     /**
@@ -59,17 +70,18 @@ export class GarminSync {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            
+
             const res = await fetch(this.baseUrl + '/', { signal: controller.signal });
             clearTimeout(timeout);
-            
+
             if (res.ok) {
                 this.isAuthenticated = true;
                 this.emitStatus(true);
                 console.log('[GarminSync] ✅ Bridge connected at', this.baseUrl);
-                
+
                 // Immediately fetch readiness on connect
                 this.fetchReadiness();
+                this.drainQueue();
             } else if (res.status === 401) {
                 // Session missing or expired → show login
                 this.isAuthenticated = false;
@@ -90,6 +102,7 @@ export class GarminSync {
      */
     connect() {
         this.asyncConnect();
+        this.drainQueue();
     }
 
     /**
@@ -113,6 +126,7 @@ export class GarminSync {
                 this.isAuthenticated = true;
                 this.emitStatus(true);
                 this.fetchReadiness();
+                this.drainQueue();
                 return { status: 'SUCCESS' };
             }
 
@@ -140,6 +154,7 @@ export class GarminSync {
                 this.isAuthenticated = true;
                 this.emitStatus(true);
                 this.fetchReadiness();
+                this.drainQueue();
                 return { status: 'SUCCESS' };
             }
 
@@ -162,16 +177,16 @@ export class GarminSync {
             window.dispatchEvent(new CustomEvent('garminReadinessUpdated', { detail: this._cache }));
             return this._cache;
         }
-        
+
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
-            
+
             const res = await fetch(this.baseUrl + '/sync/readiness', {
                 signal: controller.signal
             });
             clearTimeout(timeout);
-            
+
             if (res.status === 401) {
                 // Session expired mid-use — re-trigger login
                 this.isAuthenticated = false;
@@ -180,12 +195,12 @@ export class GarminSync {
                 window.dispatchEvent(new CustomEvent('garminReadinessUpdated', { detail: null }));
                 return null;
             }
-            
+
             if (!res.ok) throw new Error('Bridge returned ' + res.status);
-            
+
             const data = await res.json();
             console.log('[GarminSync] 🏋️ Readiness data:', data);
-            
+
             const biometricScore = data.biometric_score ?? data.readiness_score;
             const consistencyRatio = this.storage.getWeeklyStats().consistencyRatio;
             data.biometric_score = biometricScore;
@@ -195,13 +210,14 @@ export class GarminSync {
             // Cache
             this._cache = data;
             this._cacheTime = Date.now();
-            
+
             // Broadcast to UI
             window.dispatchEvent(new CustomEvent('garminReadinessUpdated', { detail: data }));
-            
+
             return data;
-            
+
         } catch (err) {
+            this.emitStatus(false);
             console.log('[GarminSync] ⚡ Readiness fetch failed:', err.message);
             window.dispatchEvent(new CustomEvent('garminReadinessUpdated', { detail: null }));
             return null;
@@ -213,14 +229,14 @@ export class GarminSync {
      */
     async syncWorkoutData(workoutData) {
         if (!this.isAuthenticated) return;
-        
+
         try {
             const res = await fetch(this.baseUrl + '/workouts/publish', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(workoutData)
             });
-            
+
             if (res.ok) {
                 console.log('[GarminSync] ✅ Workout synced to Garmin Connect');
                 window.dispatchEvent(new CustomEvent('garminWorkoutSynced'));
@@ -242,6 +258,7 @@ export class GarminSync {
 
         try {
             const response = await fetch(this.baseUrl + '/sync/workout', {
+                signal: AbortSignal.timeout(5000),
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -250,6 +267,8 @@ export class GarminSync {
             });
 
             if (response.ok || response.status === 202) {
+                for (const log of queuedLogs) await this.storage.markWorkoutLogSynced(log);
+                this.retryAfter = 0;
                 window.dispatchEvent(new CustomEvent('workout:sync_completed', {
                     detail: { logs: queuedLogs }
                 }));
@@ -257,12 +276,13 @@ export class GarminSync {
                     detail: { state: 'LIVE' }
                 }));
             } else {
+                this.retryAfter = Date.now() + 30000;
                 window.dispatchEvent(new CustomEvent('network:state_change', {
                     detail: { state: 'CACHED' }
                 }));
             }
         } catch (error) {
-            console.warn('[GarminSync] Background sync failed, backend unreachable.', error);
+            this.retryAfter = Date.now() + 30000;
             window.dispatchEvent(new CustomEvent('network:state_change', {
                 detail: { state: 'CACHED' }
             }));

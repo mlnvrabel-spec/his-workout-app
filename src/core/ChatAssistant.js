@@ -1,249 +1,95 @@
-/**
- * ChatAssistant.js
- * 
- * Handles the Mr. Olympia AI interface, keeping the "Brain" separate from the "State".
- * Consumes state from the WorkoutEngine via CustomEvents.
- */
 import { StorageManager } from './StorageManager.js';
+import { Modal } from '../ui/Modal.js';
 
 export class ChatAssistant {
-    constructor() {
+    constructor(engine) {
+        this.engine = engine;
+        this.storage = engine?.storage || new StorageManager();
+        this.currentReadiness = 50;
         this.isOpen = false;
-        this.history = [];
-        this.currentWorkoutInfo = { title: 'Unknown', logsText: 'No logs available.' };
-        this.currentReadiness = 50; // default medium readiness
-        this.storage = new StorageManager();
-        
-        // Listen to updates from the Engine to keep context fresh
-        window.addEventListener('workoutStateUpdated', (e) => {
-            this.currentWorkoutInfo = e.detail;
+        this.sending = false;
+        // Remove the retired client-side secret, never read or transmit it.
+        try { localStorage.removeItem('ai_key'); } catch {}
+        window.addEventListener('garminReadinessUpdated', event => {
+            this.currentReadiness = typeof event.detail?.readiness_score === 'number' ? event.detail.readiness_score : 50;
         });
-
-        // Listen for Garmin Readiness updates
-        window.addEventListener('garminReadinessUpdated', (e) => {
-            if (e.detail && typeof e.detail.readiness_score === 'number') {
-                this.currentReadiness = e.detail.readiness_score;
-            }
-        });
-
-        this.initDOM();
-    }
-
-    initDOM() {
         this.ov = document.getElementById('chat-ov');
-        this.btn = document.getElementById('ai-fab');
-        this.close = document.getElementById('chat-close-btn');
-        this.setBtn = document.querySelector('.settings-btn');
-        this.cfg = document.getElementById('api-cfg');
+        this.body = document.getElementById('chat-body');
         this.input = document.getElementById('chat-input');
         this.sendBtn = document.getElementById('chat-send-btn');
-        this.body = document.getElementById('chat-body');
-        this.keyInput = document.getElementById('api-key-input');
-        
-        if(this.cfg) {
-            const ver = document.createElement('div');
-            ver.style = 'font-size:10px; opacity:0.5; margin-top:10px;';
-            ver.innerText = 'Logic Version: 4.0.4 - Modular Service';
-            this.cfg.appendChild(ver);
-        }
-
-        // Bind events if elements exist
-        if(this.btn) this.btn.addEventListener('click', () => this.toggle());
-        if(this.close) this.close.addEventListener('click', () => { this.isOpen = false; this.updateUI(); });
-        
-        if(this.setBtn && this.cfg) {
-            this.setBtn.addEventListener('click', () => {
-                this.cfg.classList.toggle('show');
-                if(this.cfg.classList.contains('show')) {
-                    const saved = localStorage.getItem('ai_key');
-                    if(saved) {
-                        this.keyInput.value = saved;
-                        this.keyInput.type = 'password';
-                    }
-                }
-            });
-
-            this.cfg.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const val = this.keyInput.value.trim();
-                if(val) {
-                    localStorage.setItem('ai_key', val);
-                    this.keyInput.type = 'password';
-                    this.cfg.classList.remove('show');
-                    this.addMsg('System', '✅ API Key saved. You\'re all set!', 'system');
-                }
-            });
-        }
-
-        if(this.sendBtn && this.input) {
-            this.sendBtn.addEventListener('click', () => this.send());
-            this.input.addEventListener('keypress', e => { if(e.key === 'Enter') this.send(); });
-        }
-
-        this.addMsg('Mr. Olympia', "Ready when you are. Ask me about technique, swaps, or your plan.", 'ai');
-        
-        // Dispatch event asking for initial state injection
-        window.dispatchEvent(new CustomEvent('requestWorkoutState'));
+        if (!this.ov) return;
+        this.modal = new Modal(this.ov, () => this.close(), 'Coaching assistant');
+        document.getElementById('ai-fab').onclick = () => this.toggle();
+        document.getElementById('chat-close-btn').onclick = () => this.close();
+        this.sendBtn.onclick = () => this.send();
+        this.input.addEventListener('keydown', event => { if (event.key === 'Enter') this.send(); });
+        this.body.setAttribute('role', 'log');
+        this.body.setAttribute('aria-live', 'polite');
+        this.addMsg('Coach', 'Ask about your current workout, previous sets, technique, or what comes next.');
     }
 
     toggle() {
-        this.isOpen = !this.isOpen;
-        this.updateUI();
-        if(this.isOpen && this.input) setTimeout(() => this.input.focus(), 300);
+        if (this.isOpen) return this.close();
+        this.isOpen = true;
+        this.modal.open();
+        this.ov.classList.add('show');
+        this.input.focus();
     }
+    close() { this.isOpen = false; this.ov.classList.remove('show'); this.modal.close(); }
 
-    updateUI() {
-        if(!this.ov) return;
-        if(this.isOpen) this.ov.classList.add('show');
-        else this.ov.classList.remove('show');
-    }
-
-    addMsg(sender, text, type) {
-        if(!this.body) return;
-        const d = document.createElement('div');
-        d.className = 'chat-msg ' + type;
-        d.innerHTML = type === 'system' ? text : `<strong>${sender}</strong><br/>${text.replace(/\n/g, '<br/>')}`;
-        this.body.appendChild(d);
+    addMsg(sender, text, type = 'ai') {
+        if (!this.body) return;
+        const row = document.createElement('div');
+        row.className = `chat-msg ${type}`;
+        const label = document.createElement('strong');
+        label.textContent = sender;
+        row.append(label, document.createElement('br'), document.createTextNode(text));
+        this.body.append(row);
         this.body.scrollTop = this.body.scrollHeight;
     }
 
     async send() {
-        if(!this.input) return;
-        const text = this.input.value.trim();
-        if(!text) return;
-
-        this.addMsg('System', 'AI chat is temporarily unavailable while secure server-side AI access is being configured.', 'system');
-        return;
-        
-        const key = localStorage.getItem('ai_key');
-        if(!key) {
-            this.addMsg('System', '⚠️ No API Key found. Tap the ⚙️ icon above, paste your Gemini (AIza...) or OpenAI (sk-...) key, and hit Save.', 'system');
-            if(this.cfg) this.cfg.classList.add('show');
-            return;
-        }
-
+        const message = this.input.value.trim();
+        if (!message || this.sending || !this.engine?.protocolData) return;
+        const workout = this.engine.protocolData[this.engine.state.day];
+        const exercise = workout.exercises.find(ex => message.toLowerCase().includes(ex.name.toLowerCase())) || workout.exercises[0];
+        const previous = this.engine.getPreviousLog(exercise._exerciseId)?.sets.at(-1);
+        const next = this.engine.protocolData[this.engine._nextDay(this.engine.state, this.engine.state.activeDay)];
+        const payload = {
+            readiness_score: this.currentReadiness, exercise_name: exercise.name,
+            last_session_log: previous ? `${previous.weight_kg}kg x ${previous.reps}` : 'First time performing this logged locally.',
+            target_rir: String(exercise.rir), rep_range: exercise.reps,
+            message: message.slice(0, 2000), workout_title: workout.title, next_workout: next.title,
+            exercise_names: workout.exercises.map(ex => ex.name)
+        };
+        this.sending = true;
+        this.sendBtn.disabled = true;
         this.input.value = '';
-        this.addMsg('You', text, 'user');
-        this.history.push({role: 'user', content: text});
-
-        const isGemini = key.startsWith('AIza');
-        const isAnthropic = key.startsWith('sk-ant');
-        
-        const sysPrompt = `Coach Olympia. Concise advice. Workout: ${this.currentWorkoutInfo.title}. Logs: ${this.currentWorkoutInfo.logsText}`;
-
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'chat-msg ai';
-        typingDiv.innerText = 'Analyzing...';
-        this.body.appendChild(typingDiv);
-        this.body.scrollTop = this.body.scrollHeight;
-
+        this.addMsg('You', message, 'user');
         try {
-            let replyText = '';
-            if(isGemini) {
-                const tryModel = async (modelName, retryOn429 = true) => {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: sysPrompt + '\n' + text }] }]
-                        })
-                    });
-                    if(res.status === 429 && retryOn429) {
-                        typingDiv.innerText = 'Rate limited, retrying...';
-                        await new Promise(r => setTimeout(r, 3000));
-                        return tryModel(modelName, false);
-                    }
-                    const data = await res.json();
-                    if(data.error) {
-                        const e = new Error(data.error.message);
-                        e.status = data.error.code || res.status;
-                        throw e;
-                    }
-                    return data.candidates[0].content.parts[0].text;
-                };
-                
-                try {
-                    replyText = await tryModel('gemini-2.0-flash');
-                } catch (e) {
-                    try {
-                        replyText = await tryModel('gemini-2.0-flash-lite');
-                    } catch (e2) {
-                        throw e2;
-                    }
-                }
-            } else if (isAnthropic) {
-                const res = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'x-api-key': key,
-                        'anthropic-version': '2023-06-01',
-                        'anthropic-dangerous-direct-browser-access': 'true'
-                    },
-                    body: JSON.stringify({ 
-                        model: 'claude-3-haiku-20240307', 
-                        max_tokens: 400,
-                        system: sysPrompt,
-                        messages: [...this.history]
-                    })
-                });
-                const data = await res.json();
-                if(data.error) {
-                    const e = new Error(data.error.message);
-                    e.status = res.status;
-                    throw e;
-                }
-                replyText = data.content[0].text;
-            } else {
-                const msgs = [{ role: 'system', content: sysPrompt }, ...this.history];
-                const res = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-                    body: JSON.stringify({ 
-                        model: 'gpt-4o-mini', 
-                        messages: msgs.map(m => ({role: m.role === 'system' ? 'system' : (m.role === 'user' ? 'user' : 'assistant'), content: m.content})) 
-                    })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
-                replyText = data.choices[0].message.content;
-            }
-
-            typingDiv.remove();
-            this.addMsg('Mr. Olympia', replyText, 'ai');
-            this.history.push({role: 'assistant', content: replyText});
-        } catch(err) {
-            console.error("Mr. Olympia API Error:", err);
-            typingDiv.remove();
-            const msg = err.message || 'Unknown error';
-            const status = err.status || 0;
-            
-            if(status === 429 || msg.includes('quota') || msg.includes('RATE') || msg.includes('exhausted')) {
-                this.addMsg('System', '⚠️ Rate limited or quota exhausted. Wait a minute and try again.', 'system');
-            } else if(status === 403 || msg.includes('API key') || msg.includes('PERMISSION') || msg.includes('forbidden')) {
-                this.addMsg('System', '⚠️ Invalid API Key. Please check your key in ⚙️ settings.', 'system');
-            } else if(status === 404 || msg.includes('not found')) {
-                this.addMsg('System', '⚠️ Model not available for this key. Try a different API key.', 'system');
-            } else {
-                this.addMsg('System', '⚠️ Error: ' + msg, 'system');
-            }
-        }
+            const response = await fetch('http://localhost:8001/api/ai/chat', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload), signal: AbortSignal.timeout(7000)
+            });
+            if (!response.ok) throw new Error('Coach unavailable');
+            const data = await response.json();
+            if (typeof data.cue !== 'string' || !data.cue.trim()) throw new Error('Empty response');
+            this.addMsg(data.source === 'local' ? 'Coach · local guidance' : 'Coach', data.cue);
+        } catch {
+            const response = /next|plan|schedule/i.test(message)
+                ? `Your current workout is ${workout.title}. Next in program order is ${next.title}. Finish explicitly when you are ready; exercise checks are optional.`
+                : this._fallbackCoachingCue(exercise.name, { targetRir: exercise.rir, repRange: exercise.reps }, previous);
+            this.addMsg('Coach · offline guidance', response);
+        } finally { this.sending = false; this.sendBtn.disabled = false; }
     }
 
-    /**
-     * Mr. Olympia Pre-Workout/In-Workout Coaching Cue.
-     * Hits the Python backend `/api/ai/coach` matching RAG constraints.
-     * @param {string} exerciseId - e.g., 'ex_001'
-     * @param {string} exerciseName - Optional display name
-     * @param {{ targetRir?: string, repRange?: string }} prescription - Exercise prescription from the protocol
-     * @returns {Promise<string>} The coaching cue text.
-     */
     async generateCoachingCue(exerciseId, exerciseName = "this exercise", prescription = {}) {
+        let previous;
         try {
-            const archiveLog = await this.storage.getLastArchiveLog(exerciseId);
+            const archiveLog = this.engine?.getPreviousLog(exerciseId) || await this.storage.getLastArchiveLog(exerciseId);
+            previous = archiveLog?.sets?.at(-1);
             let lastSessionStr = 'First time performing this logged locally.';
-            
+
             if (archiveLog && archiveLog.sets && archiveLog.sets.length > 0) {
                 const bestSet = archiveLog.sets.reduce((max, set) => set.weight_kg > max.weight_kg ? set : max, archiveLog.sets[0]);
                 lastSessionStr = `${bestSet.weight_kg}kg x ${bestSet.reps} reps @ rpe ${bestSet.rpe}`;
@@ -258,6 +104,7 @@ export class ChatAssistant {
             };
 
             const response = await fetch('http://localhost:8001/api/ai/coach', {
+                signal: AbortSignal.timeout(7000),
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -266,17 +113,17 @@ export class ChatAssistant {
             if (!response.ok) {
                 throw new Error('Backend failed');
             }
-            
+
             const data = await response.json();
-            return data.cue || this._fallbackCoachingCue(exerciseName, prescription);
-            
+            return data.cue || this._fallbackCoachingCue(exerciseName, prescription, previous);
+
         } catch (error) {
-            console.error('[ChatAssistant] Error generating coaching cue:', error);
-            return this._fallbackCoachingCue(exerciseName, prescription);
+
+            return this._fallbackCoachingCue(exerciseName, prescription, previous);
         }
     }
 
-    _fallbackCoachingCue(exerciseName, prescription) {
+    _fallbackCoachingCue(exerciseName, prescription, previous = null) {
         const repRange = prescription.repRange || 'the prescribed range';
         const targetRir = prescription.targetRir || '1-2';
         const target = this.currentReadiness > 75
@@ -284,6 +131,7 @@ export class ChatAssistant {
             : this.currentReadiness < 40
                 ? `Readiness is low: match or reduce the prior load and stay within ${repRange} at ${targetRir} RIR.`
                 : `Use a repeatable load within ${repRange} and finish around ${targetRir} RIR.`;
-        return `No prior session is available, so establish a clean baseline today. ${target} Use a controlled eccentric and full pain-free range on ${exerciseName}.`;
+        const history = previous ? `You previously logged ${previous.weight_kg}kg for ${previous.reps} reps.` : 'No prior session is available, so establish a clean baseline today.';
+        return `${history} ${target} Use a controlled eccentric and full pain-free range on ${exerciseName}.`;
     }
 }

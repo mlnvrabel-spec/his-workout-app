@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} WorkoutSet
  * @property {number} set_number - The sequential set number.
- * @property {number} weight_kg - Weight ALWAYS stored in kg in DB/JSON. UI converts to lbs.
+ * @property {number} weight_kg - Load stored and displayed in kilograms.
  * @property {number} reps - Reps completed.
  * @property {number} rpe - Rate of Perceived Exertion (1-10).
  * @property {string} timestamp - ISO 8601 string of when set was logged.
@@ -9,7 +9,7 @@
 
 /**
  * @typedef {Object} WorkoutLog
- * @property {string} session_id - ISO Date e.g., "2024-10-24"
+ * @property {string} session_id - Stable cycle:day ID; legacy logs use calendar dates.
  * @property {string} day_id - e.g., "D1_Push_A"
  * @property {string} exercise_id - e.g., "ex_001"
  * @property {WorkoutSet[]} sets - Array of completed sets.
@@ -17,7 +17,7 @@
  */
 
 const DB_NAME = 'HypertrophyDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /**
  * StorageManager
@@ -44,23 +44,29 @@ export class StorageManager {
 
             request.onerror = (event) => {
                 console.error("StorageManager: IndexedDB error:", event.target.error);
+                this.initPromise = null;
                 reject(event.target.error);
             };
 
             request.onsuccess = (event) => {
                 this.db = event.target.result;
+                this.db.onversionchange = () => { this.db.close(); this.db = null; this.initPromise = null; };
                 resolve();
             };
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                
+
+                if (!db.objectStoreNames.contains('hv3_sets')) {
+                    db.createObjectStore('hv3_sets', { keyPath: ['session_id', 'day_id', 'exercise_id'] });
+                }
+
                 // hv3_logs: Current session data
                 if (!db.objectStoreNames.contains('hv3_logs')) {
                     // Create an object store with a composite key path of session_id and exercise_id
                     db.createObjectStore('hv3_logs', { keyPath: ['session_id', 'exercise_id'] });
                 }
-                
+
                 // hv3_archive: Historical logs
                 if (!db.objectStoreNames.contains('hv3_archive')) {
                     db.createObjectStore('hv3_archive', { keyPath: ['session_id', 'exercise_id'] });
@@ -84,7 +90,7 @@ export class StorageManager {
     /**
      * TIER 1: localStorage (Light State)
      * Retrieves a light state object from localStorage.
-     * @param {string} key 
+     * @param {string} key
      * @returns {any}
      */
     getLightState(key) {
@@ -100,8 +106,8 @@ export class StorageManager {
     /**
      * TIER 1: localStorage (Light State)
      * Saves a light state object to localStorage.
-     * @param {string} key 
-     * @param {any} value 
+     * @param {string} key
+     * @param {any} value
      */
     setLightState(key, value) {
         try {
@@ -194,13 +200,84 @@ export class StorageManager {
     }
 
     async saveActiveWorkout(workout) {
+        return this._put('hv3_active_workout', { ...workout, id: 'current' });
+    }
+
+    async _put(store, value) {
         await this.init();
         return new Promise((resolve, reject) => {
-            const request = this.db.transaction(['hv3_active_workout'], 'readwrite')
-                .objectStore('hv3_active_workout').put({ ...workout, id: 'current' });
-            request.onsuccess = () => resolve();
-            request.onerror = event => reject(event.target.error);
+            const tx = this.db.transaction([store], 'readwrite');
+            tx.objectStore(store).put(value);
+            tx.oncomplete = () => resolve();
+            tx.onabort = tx.onerror = () => reject(tx.error || new Error('Local save failed'));
         });
+    }
+
+    // The reducer is synchronous and runs inside the serialized IDB transaction.
+    // Every window reads the latest record before applying its own intent.
+    async mutateWorkout(reducer) {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['hv3_active_workout', 'hv3_completed_workouts', 'hv3_sets', 'hv3_logs'], 'readwrite');
+            const active = tx.objectStore('hv3_active_workout');
+            const history = tx.objectStore('hv3_completed_workouts');
+            const a = active.get('current');
+            const h = history.getAll();
+            const legacy = tx.objectStore('hv3_logs').getAll();
+            const l = tx.objectStore('hv3_sets').getAll();
+            let result, failure;
+            l.onsuccess = () => {
+                try {
+                    result = reducer(a.result || null, h.result || [], [...(legacy.result || []), ...(l.result || [])]);
+                    if (!result) return;
+                    if (result.workout) {
+                        result.workout.revision = (a.result?.revision || 0) + 1;
+                        active.put({ ...result.workout, id: 'current' });
+                    }
+                    if (result.summary) history.put(result.summary);
+                    if (result.deleteSummary) history.delete(result.deleteSummary);
+                    if (result.log) tx.objectStore('hv3_sets').put(result.log);
+                } catch (error) { failure = error; tx.abort(); }
+            };
+            tx.oncomplete = () => resolve(result);
+            tx.onabort = tx.onerror = () => reject(failure || tx.error || new Error('Local save failed'));
+        });
+    }
+
+    async exportSnapshot() {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const tx = this.db.transaction(['hv3_active_workout', 'hv3_completed_workouts', 'hv3_sets', 'hv3_logs'], 'readonly');
+            const active = tx.objectStore('hv3_active_workout').get('current');
+            const workouts = tx.objectStore('hv3_completed_workouts').getAll();
+            const sets = tx.objectStore('hv3_sets').getAll();
+            const legacy = tx.objectStore('hv3_logs').getAll();
+            tx.oncomplete = () => resolve({
+                version: 1, exportedAt: new Date().toISOString(), active: active.result || null,
+                workouts: workouts.result.sort((a,b) => b.completedAt.localeCompare(a.completedAt)),
+                logs: [...legacy.result, ...sets.result]
+            });
+            tx.onerror = tx.onabort = () => reject(tx.error || new Error('Could not read history'));
+        });
+    }
+
+    async getCompletedWorkouts() {
+        await this.init();
+        return new Promise((resolve, reject) => {
+            const req = this.db.transaction('hv3_completed_workouts').objectStore('hv3_completed_workouts').getAll();
+            req.onsuccess = () => resolve(req.result.sort((a,b) => b.completedAt.localeCompare(a.completedAt)));
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    rebuildCompletionViews(summaries, legacyDates = []) {
+        const ordered = [...summaries].sort((a,b) => b.completedAt.localeCompare(a.completedAt));
+        const latest = ordered[0];
+        this.setLightState('hv3_memory', latest ? {
+            time: new Date(latest.completedAt).getTime(), title: latest.title,
+            subtitle: latest.subtitle, dayIndex: latest.day
+        } : null);
+        this.setLightState('hv3_completed_sessions', [...new Set([...legacyDates, ...ordered.map(s => s.sessionId)])].sort());
     }
 
     /**
@@ -245,12 +322,14 @@ export class StorageManager {
             );
             const completedWorkouts = transaction.objectStore('hv3_completed_workouts');
             let hasAnotherSessionOnDate = false;
+            let previousCompletion = null;
             const summariesRequest = completedWorkouts.getAll();
 
             summariesRequest.onsuccess = () => {
-                hasAnotherSessionOnDate = summariesRequest.result.some(summary => (
-                    summary.id !== summaryId && summary.sessionId === sessionId
-                ));
+                const remainingSummaries = summariesRequest.result.filter(summary => summary.id !== summaryId);
+                hasAnotherSessionOnDate = remainingSummaries.some(summary => summary.sessionId === sessionId);
+                previousCompletion = remainingSummaries
+                    .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0] || null;
                 transaction.objectStore('hv3_active_workout').put({ ...restoredWorkout, id: 'current' });
                 completedWorkouts.delete(summaryId);
             };
@@ -259,7 +338,14 @@ export class StorageManager {
             transaction.oncomplete = () => {
                 const sessions = new Set(this.getLightState('hv3_completed_sessions') || []);
                 if (!hasAnotherSessionOnDate) sessions.delete(sessionId);
-                this.setLightState(hv3_completed_sessions, [...sessions].sort());
+                this.setLightState('hv3_completed_sessions', [...sessions].sort());
+                this.setLightState('hv3_weekly', this.getWeeklyStats());
+                this.setLightState('hv3_memory', previousCompletion ? {
+                    time: new Date(previousCompletion.completedAt).getTime(),
+                    title: previousCompletion.title,
+                    subtitle: previousCompletion.subtitle,
+                    dayIndex: previousCompletion.day
+                } : null);
                 resolve();
             };
             transaction.onerror = event => reject(event.target.error);
@@ -270,31 +356,14 @@ export class StorageManager {
     /**
      * TIER 2: IndexedDB (Heavy State)
      * Saves a WorkoutLog to IndexedDB.
-     * @param {WorkoutLog} log 
+     * @param {WorkoutLog} log
      * @returns {Promise<void>}
      */
-    async saveWorkoutLog(log) {
-        await this.init();
-        
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['hv3_logs'], 'readwrite');
-            const store = transaction.objectStore('hv3_logs');
-            const request = store.put(log);
-
-            request.onsuccess = () => {
-                resolve();
-            };
-
-            request.onerror = (event) => {
-                console.error("StorageManager: Failed to save workout log.", event.target.error);
-                reject(event.target.error);
-            };
-        });
-    }
+    async saveWorkoutLog(log) { return this._put('hv3_logs', log); }
 
     /**
      * Method to fulfill direct pushes of sets to the StorageManager.
-     * @param {WorkoutLog} log 
+     * @param {WorkoutLog} log
      * @returns {Promise<void>}
      */
     async saveSet(log) {
@@ -307,14 +376,12 @@ export class StorageManager {
      */
     async getWorkoutLogs() {
         await this.init();
-
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['hv3_logs'], 'readonly');
-            const store = transaction.objectStore('hv3_logs');
-            const request = store.getAll();
-
-            request.onsuccess = (event) => resolve(event.target.result);
-            request.onerror = (event) => reject(event.target.error);
+            const tx = this.db.transaction(['hv3_logs', 'hv3_sets']);
+            const old = tx.objectStore('hv3_logs').getAll();
+            const current = tx.objectStore('hv3_sets').getAll();
+            tx.oncomplete = () => resolve([...old.result, ...current.result]);
+            tx.onabort = tx.onerror = () => reject(tx.error);
         });
     }
 
@@ -326,24 +393,20 @@ export class StorageManager {
      */
     async markWorkoutLogSynced(log) {
         await this.init();
-
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['hv3_logs'], 'readwrite');
-            const store = transaction.objectStore('hv3_logs');
-            const request = store.get([log.session_id, log.exercise_id]);
-
-            request.onsuccess = () => {
-                const storedLog = request.result;
-                const storedLastSet = storedLog?.sets?.at(-1);
-                const acknowledgedLastSet = log.sets?.at(-1);
-
-                if (storedLog && storedLastSet?.timestamp === acknowledgedLastSet?.timestamp) {
-                    storedLog.sync_status = 'synced';
-                    store.put(storedLog);
+            const storeName = log.workout_id ? 'hv3_sets' : 'hv3_logs';
+            const tx = this.db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            const req = store.get(log.workout_id
+                ? [log.session_id, log.day_id, log.exercise_id] : [log.session_id, log.exercise_id]);
+            req.onsuccess = () => {
+                const saved = req.result;
+                if (saved && saved.sets.length === log.sets.length && saved.sets.at(-1)?.timestamp === log.sets.at(-1)?.timestamp) {
+                    store.put({ ...saved, sync_status: 'synced' });
                 }
-                resolve();
             };
-            request.onerror = (event) => reject(event.target.error);
+            tx.oncomplete = () => resolve();
+            tx.onabort = tx.onerror = () => reject(tx.error);
         });
     }
 
@@ -352,22 +415,11 @@ export class StorageManager {
      * @param {WorkoutLog} log
      * @returns {Promise<void>}
      */
-    async archiveLog(log) {
-        await this.init();
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['hv3_archive'], 'readwrite');
-            const store = transaction.objectStore('hv3_archive');
-            const request = store.put(log);
-
-            request.onsuccess = () => resolve();
-            request.onerror = (event) => reject(event.target.error);
-        });
-    }
+    async archiveLog(log) { return this._put('hv3_archive', log); }
 
     /**
      * Retrieves the most recent log for a specific exercise from the archive.
-     * @param {string} exerciseId 
+     * @param {string} exerciseId
      * @returns {Promise<WorkoutLog|null>}
      */
     async getLastArchiveLog(exerciseId) {
@@ -381,12 +433,12 @@ export class StorageManager {
             request.onsuccess = (event) => {
                 const logs = event.target.result || [];
                 const exerciseLogs = logs.filter(l => l.exercise_id === exerciseId);
-                
+
                 if (exerciseLogs.length === 0) {
                     resolve(null);
                     return;
                 }
-                
+
                 // Sort by session_id (which is an ISO date string) descending
                 exerciseLogs.sort((a, b) => b.session_id.localeCompare(a.session_id));
                 resolve(exerciseLogs[0]);
