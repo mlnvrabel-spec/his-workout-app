@@ -2341,17 +2341,6 @@
             box-shadow: none;
         }
 
-        .nav-item.completed .nav-label::after {
-            content: '\2713';
-            margin-left: 3px;
-            color: var(--teal);
-            font-size: 9px;
-        }
-
-        .nav-item.completed .nav-label::after {
-            display: none;
-        }
-
         .nav-item.completed::before {
             content: '';
             position: absolute;
@@ -2873,7 +2862,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .card-wrapper.done .ex-name { color: var(--text1); opacity: .8; text-decoration: none; }
 .card-wrapper.done .ex-meta { opacity: .75; }
 .is-completed-workout .card-wrapper.done .card { opacity: 1; }
-.nav-item.completed .nav-label::after { display: inline; }
 .network-status { font-size: 9px; letter-spacing: 1px; color: var(--text2); }
 .network-status[data-state="LIVE"] { color: var(--teal); }
 .network-status[data-state="SYNCING"] { color: var(--accent); }

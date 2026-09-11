@@ -29,6 +29,7 @@ for (const storeName of ['hv3_active_workout', 'hv3_completed_workouts', 'hv3_lo
 }
 assert.doesNotMatch(heroSource, /flow-next|flow-week-count|completion fraction/i);
 assert.match(stylesSource, /mask-image: url\('\/public\/brand-mark\.svg'\)/, 'header mark must use the transparent vector asset');
+assert.doesNotMatch(stylesSource, /\.nav-item\.completed \.nav-label::after/, 'completed days must not add a bottom-nav checkmark');
 
 // PRODUCT_SPEC §3.1: checks never auto-finish; Finish completes the checklist and resets after four days.
 const completionEngine = await engine();
