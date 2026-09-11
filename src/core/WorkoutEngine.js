@@ -441,12 +441,15 @@ export class WorkoutEngine {
                     const id = workout.swaps?.[`${day}_${slot}`];
                     return id ? this._resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id }) : structuredClone(ex);
                 });
+                // Finishing a day confirms the whole checklist, including any exercises
+                // that were not manually checked during the session.
+                workout.done[day] = Object.fromEntries(exercises.map((_, i) => [`ex-${day}-${i}`, true]));
                 const summary = {
                     id: `${cycle}:${day}`, cycleId: cycle, day,
                     sessionId: this.storage.getDateKey(), completedAt: new Date().toISOString(),
                     title: this.protocolData[day].title, subtitle: this.protocolData[day].subtitle,
                     exercises, totalExercises: exercises.length,
-                    completedExercises: exercises.filter((_,i) => workout.done[day]?.[`ex-${day}-${i}`]).length,
+                    completedExercises: exercises.length,
                     done: structuredClone(workout.done), swaps: structuredClone(workout.swaps || {}),
                     completedDaysBefore: { ...workout.completedDays }
                 };
@@ -461,7 +464,12 @@ export class WorkoutEngine {
                     workout.completedDays = {};
                     delete workout.nextCycleDraft;
                     workout.activeDay = workout.day = 0;
-                } else workout.activeDay = workout.day = this._nextDay(workout, day);
+                } else {
+                    // Keep the saved day visible so its sole bottom action can become Undo.
+                    // The next unfinished day remains ready in the background.
+                    workout.activeDay = this._nextDay(workout, day);
+                    workout.day = day;
+                }
                 workout.lastCompletedSummaryId = summary.id;
                 summaries.push(summary);
                 return { summary, cycleCompleted };
@@ -486,6 +494,9 @@ export class WorkoutEngine {
                     workout.swaps = structuredClone(summary.swaps || {});
                     workout.completedDays = { ...summary.completedDaysBefore };
                 } else delete workout.completedDays[summary.day];
+                // Undo returns this day's checklist to a clean 0/total state. Logged
+                // sets and checks on later days remain durable and untouched.
+                workout.done[summary.day] = {};
                 workout.day = workout.activeDay = summary.day;
                 workout.lastCompletedSummaryId = null;
                 summaries.splice(index, 1);

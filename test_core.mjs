@@ -9,13 +9,14 @@ await a.toggleComplete('ex-0-0', 0);
 assert.equal(a.isDayCompleted(), false);
 const cycle = a.cycleId;
 assert.equal(await a.finishSession(), true);
-assert.equal(a.state.day, 1);
+assert.equal(a.state.day, 0);
 assert.equal(a.state.activeDay, 1);
-assert.equal(a.summaries[0].completedExercises, 1);
+assert.equal(a.summaries[0].completedExercises, a.protocolData[0].exercises.length);
+assert.equal(a.getCompletionSummary(0).completed, a.protocolData[0].exercises.length, 'Finish checks every remaining exercise');
 await a.toggleComplete('ex-1-0', 1);
 assert.equal(await a.reopenLastDay(), true);
 assert.equal(a.state.done[1]['ex-1-0'], true, 'Undo preserves subsequent checks');
-assert.equal(a.state.done[0]['ex-0-0'], true);
+assert.deepEqual(a.state.done[0], {}, 'Undo resets the reopened day to zero checks');
 assert.equal(a.canUndoLastCompletion(), false);
 assert.equal(a.storage.getWeeklyStats().completed, 0);
 let reloaded = await engine();
@@ -41,15 +42,15 @@ assert.equal(reloaded.getCompletionSummary().completed, 2);
 await Promise.all([a.finishSession(), b.finishSession()]);
 reloaded = await engine();
 assert.equal(reloaded.summaries.length, 1, 'Two windows can complete a workout only once');
-assert.equal(reloaded.state.day, 1);
-assert.equal(reloaded.summaries[0].completedExercises, 2);
+assert.equal(reloaded.state.day, 0);
+assert.equal(reloaded.summaries[0].completedExercises, reloaded.protocolData[0].exercises.length);
 
 // Two immediate calls never interpret the second as finishing the next day.
 environment();
 a = await engine();
 await Promise.all([a.finishSession(), a.finishSession()]);
 assert.equal(a.summaries.length, 1);
-assert.equal(a.state.day, 1);
+assert.equal(a.state.day, 0);
 
 // Transaction abort preserves both durable records and engine state.
 environment();
@@ -71,8 +72,9 @@ environment();
 a = await engine();
 await a.setDay(1); await a.finishSession();
 await a.setDay(0); await a.finishSession();
-assert.equal(a.state.day, 2);
-assert.equal(a.isDayCompleted(), false);
+assert.equal(a.state.day, 0);
+assert.equal(a.state.activeDay, 2);
+assert.equal(a.isDayCompleted(), true);
 assert.equal(a.storage.getWeeklyStats().completed, 1, 'Same-date completions count as one trained date');
 await a.reopenLastDay();
 assert.equal(a.storage.getWeeklyStats().completed, 1, 'Undo retains a date with another completed session');
@@ -80,7 +82,7 @@ assert.equal(a.storage.getWeeklyStats().completed, 1, 'Undo retains a date with 
 // Cycle-boundary undo and redo keep the new cycle draft, including after reload.
 environment();
 a = await engine();
-for (let day=0; day<4; day++) await a.finishSession();
+for (let day=0; day<4; day++) { await a.setDay(day); await a.finishSession(); }
 const nextCycle = a.cycleId;
 assert.deepEqual(a.state.completedDays, {});
 await a.toggleComplete('ex-0-2', 0);

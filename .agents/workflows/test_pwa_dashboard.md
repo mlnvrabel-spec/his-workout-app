@@ -34,9 +34,9 @@ When instructed to test the progressive web app dashboard, follow these standard
 
 ## Product-spec completion gate (§3.1 and §4)
 
-1. Check a non-total number of exercises; the active day must remain unfinished and show `Finish workout · n of total`.
-2. Tap Finish and verify the next program day becomes active, the prior nav day is marked complete, and Hero changes to `finished split → next split`.
-3. The next unfinished day must show both Finish and a separately labeled `Undo last completion` action.
+1. Check a non-total number of exercises; the active day must remain unfinished and show its named Finish action.
+2. Tap Finish and verify every exercise becomes checked, the displayed nav day is marked complete, and Hero changes to `finished split → next split`.
+3. The completed day must show only its labeled Undo action; Undo returns it to an empty checklist and restores the named Finish action.
 4. Navigate away, return, and reload; active day, Hero, completion marker, and actions must persist.
 5. Undo only in isolated test data when local deletion is authorized; otherwise cite the automated undo transaction test as `NOT RUN`.
 6. After four finished days, the next cycle must open clean on D1.

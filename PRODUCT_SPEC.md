@@ -27,7 +27,7 @@ The application utilizes a strictly typed, event-driven ES Module architecture o
 The dashboard Hero is a program-adherence surface, not a biometric dashboard. It makes the workout sequence and the user's calendar-week commitment immediately clear.
 *   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
 *   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
-*   **Completion rule**: A workout finishes only when the user taps **Finish workout**. Individual exercise checks remain optional, and the saved summary records their exact completion count. The most recent completion can be undone from the following workout. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
+*   **Completion rule**: A workout finishes only when the user taps **Finish workout**. Individual exercise checks remain optional; Finish marks every remaining exercise checked and saves a full-completion summary. Its single bottom action then becomes **Undo**, which reopens the displayed day with a clean unchecked checklist. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
 *   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown. The Finish area uses a full-width action without helper text; exact checked counts remain in training history.
 
 ### 3.2. Garmin Connect Bridge (Microservice & Sync Engine)
@@ -73,10 +73,10 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
 
 ## 6. Workout reliability and review
 
-- Finish is named for the displayed workout and disabled while saving. Repeated Finish calls cannot complete a second day.
+- Finish is named for the displayed workout and disabled while saving. It marks all of that day's exercises checked before committing, and repeated Finish calls cannot complete a second day.
 - A completed day is read-only, retains its actual substitutions, and offers Continue to the active unfinished day. Browsing history does not change the active workout.
 - Advance skips completed days, including when days were finished out of order. Finishing all four starts a new cycle with an empty checklist and retained substitutions.
-- Undo names the latest completed day, removes only that completion, and preserves later checks and sets. Across the cycle boundary, the new-cycle draft is retained and recovered when finishing again.
+- Undo names the latest completed day, removes only that completion, resets that day's checklist to zero checks, and preserves later checks and sets. Across the cycle boundary, the new-cycle draft is retained and recovered when finishing again.
 - All writes read the latest durable state in a single transaction. Failed/aborted writes leave the last saved state intact. Concurrent windows cannot overwrite unrelated checks or duplicate completion.
 - Expanded cards accept load in kilograms and whole-number reps, append sets to a stable cycle/day session, and show previous logged performance. Completed cards show saved sets without editing controls.
 - Training history shows finished sessions and their exercise snapshots; JSON export includes completed sessions, set logs, and the resumable state.

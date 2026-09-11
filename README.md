@@ -33,11 +33,11 @@ npm.cmd run verify
 
 ## Workout behavior
 
-Finish saves the named day and advances to the next unfinished day. Exercise checks
-are optional. Undo reopens the named latest completion while retaining subsequent
-progress, including a draft of the next cycle. Completed days are read-only; use
-Continue to return to the active day. Open an exercise to log sets, and use the
-history control to review or export local data.
+Finish checks every remaining exercise, saves the named day, and leaves it visible
+with one Undo action. Undo reopens that day with an empty checklist while retaining
+subsequent progress, including a draft of the next cycle. The next unfinished day
+is ready in the flow. Open an exercise to log sets, and use the history control to
+review or export local data.
 
 The service worker lives at `/service-worker.js`. Bump its cache version whenever
 shipping application assets. An installed app offers an update; save any unlogged

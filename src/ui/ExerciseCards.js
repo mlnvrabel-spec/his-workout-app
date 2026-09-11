@@ -139,12 +139,13 @@ export class ExerciseCards {
         const title = this.engine?.protocolData?.[day]?.title || 'workout';
         const activeTitle = this.engine?.protocolData?.[this.engine?.state.activeDay]?.title || 'workout';
         const disabled = this.engine?.pending ? 'disabled' : '';
-        const undo = latest && (!completion?.isFinished || summary?.id === latest.id)
-            ? `<button class="finish-btn finish-btn--undo" id="undo-workout-btn" ${disabled}>Undo ${escapeHTML(latest.title)} completion</button>` : '';
-        if (completion?.isFinished) {
-            actions.innerHTML = `<button class="finish-btn" id="continue-workout-btn" ${disabled}>Continue ${escapeHTML(activeTitle)}</button>${undo}`;
+        const canUndoDisplayedDay = completion?.isFinished && summary?.id === latest?.id;
+        if (canUndoDisplayedDay) {
+            actions.innerHTML = `<button class="finish-btn finish-btn--undo" id="undo-workout-btn" ${disabled}>Undo ${escapeHTML(latest.title)} completion</button>`;
+        } else if (completion?.isFinished) {
+            actions.innerHTML = `<button class="finish-btn" id="continue-workout-btn" ${disabled}>Continue ${escapeHTML(activeTitle)}</button>`;
         } else {
-            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn" ${disabled}>${this.engine?.pending ? 'Saving workout…' : `Finish ${escapeHTML(title)}`}</button>${undo}`;
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn" ${disabled}>${this.engine?.pending ? 'Saving workout…' : `Finish ${escapeHTML(title)}`}</button>`;
         }
         const existing = document.getElementById('workout-actions');
         if (existing) existing.replaceWith(actions);

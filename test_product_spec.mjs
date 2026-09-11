@@ -12,6 +12,7 @@ const { ChatAssistant } = await import('./src/core/ChatAssistant.js');
 const protocol = JSON.parse(fs.readFileSync('src/data/core_protocol.json', 'utf8'));
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 const heroSource = fs.readFileSync('src/ui/HeroHeader.js', 'utf8');
+const stylesSource = fs.readFileSync('src/ui/Elena.css', 'utf8');
 const kaiSource = fs.readFileSync('src/ui/Kai.js', 'utf8');
 const storageSource = fs.readFileSync('src/core/StorageManager.js', 'utf8');
 const garminSource = fs.readFileSync('src/core/GarminSync.js', 'utf8');
@@ -27,16 +28,18 @@ for (const storeName of ['hv3_active_workout', 'hv3_completed_workouts', 'hv3_lo
     assert.ok(storageSource.includes(`createObjectStore('${storeName}'`), `missing IndexedDB store ${storeName}`);
 }
 assert.doesNotMatch(heroSource, /flow-next|flow-week-count|completion fraction/i);
+assert.match(stylesSource, /mask-image: url\('\/public\/brand-mark\.svg'\)/, 'header mark must use the transparent vector asset');
 
-// PRODUCT_SPEC §3.1: checks never auto-finish; Finish records exact counts and resets after four days.
+// PRODUCT_SPEC §3.1: checks never auto-finish; Finish completes the checklist and resets after four days.
 const completionEngine = await engine();
 for (let exerciseIndex = 0; exerciseIndex < 5; exerciseIndex++) await completionEngine.toggleComplete(`ex-0-${exerciseIndex}`, 0);
 assert.equal(completionEngine.summaries.length, 0, 'checks never imply Finish');
-for (const [day, count] of [5,0,1,0].entries()) {
+for (const day of [0,1,2,3]) {
+    await completionEngine.setDay(day);
     if (day === 2) await completionEngine.toggleComplete('ex-2-0', 2);
     assert.equal(await completionEngine.finishSession(), true);
     const summary = completionEngine.summaries.find(s => s.day === day);
-    assert.equal(summary.completedExercises, count);
+    assert.equal(summary.completedExercises, protocol.workouts[day].exercises.length);
     assert.equal(summary.totalExercises, protocol.workouts[day].exercises.length);
 }
 assert.equal(completionEngine.state.day, 0);

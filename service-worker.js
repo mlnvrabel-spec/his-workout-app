@@ -1,6 +1,6 @@
-const CACHE_NAME = 'hypertrophy-v62';
+const CACHE_NAME = 'hypertrophy-v63';
 const ASSETS = [
-    '/', '/index.html', '/public/manifest.json', '/public/brand-mark.png',
+    '/', '/index.html', '/public/manifest.json', '/public/brand-mark.png', '/public/brand-mark.svg',
     '/src/ui/Elena.css', '/src/ui/Kai.js', '/src/ui/HeroHeader.js', '/src/ui/Haptics.js',
     '/src/ui/ExerciseCards.js', '/src/ui/AuthUI.js', '/src/ui/SettingsPanel.js',
     '/src/ui/Modal.js', '/src/ui/HistoryPanel.js',
