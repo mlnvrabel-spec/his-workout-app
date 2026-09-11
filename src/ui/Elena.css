@@ -2029,16 +2029,7 @@
             width: 96px;
             height: 60px;
             flex: 0 0 96px;
-            background: var(--text1);
-            -webkit-mask-image: url('/public/brand-mark.svg');
-            -webkit-mask-position: center;
-            -webkit-mask-repeat: no-repeat;
-            -webkit-mask-size: cover;
-            mask-image: url('/public/brand-mark.svg');
-            mask-mode: luminance;
-            mask-position: center;
-            mask-repeat: no-repeat;
-            mask-size: cover;
+            background: url('/public/brand-mark-cutout.png') center / cover no-repeat;
         }
 
         .header.scrolled .brand-mark {
@@ -2048,7 +2039,7 @@
         }
 
         body[data-theme="light"] .brand-mark {
-            background: var(--text1);
+            filter: invert(1);
         }
 
         .day-title {
