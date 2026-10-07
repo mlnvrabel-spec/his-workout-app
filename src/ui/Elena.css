@@ -2886,3 +2886,15 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
     .network-status { flex-basis: 100%; text-align: right; }
     .header-controls .ctrl-btn, .header-controls .theme-btn { width: 38px; height: 38px; }
 }
+
+/* The existing exercise number is the session reorder control. */
+.ex-num.reorder-handle { position: relative; padding: 0; cursor: grab; touch-action: none; user-select: none; }
+.ex-num.reorder-handle::before { content: ''; position: absolute; inset: -5px; }
+.ex-num.reorder-handle:disabled { cursor: default; }
+.reorder-handle:focus-visible, .reorder-options button:focus-visible, .undo-order-btn:focus-visible { outline: 2px solid var(--text1); outline-offset: 2px; }
+.reorder-options { position: relative; z-index: 2; display: flex; justify-content: flex-end; gap: 8px; padding: 8px 16px; }
+.reorder-options[hidden] { display: none; }
+.reorder-options button, .undo-order-btn { min-height: 44px; padding: 8px 16px; border: 0; border-radius: 12px; background: var(--glass-bg, #242424); color: var(--text1); font: inherit; cursor: pointer; }
+.undo-order-btn { width: 100%; margin-top: 8px; }
+.card-wrapper.is-reordering { position: relative; z-index: 5; opacity: .65; }
+.card-wrapper.reorder-target { outline: 2px solid var(--text2); outline-offset: 2px; border-radius: 20px; }

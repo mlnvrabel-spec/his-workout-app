@@ -4,6 +4,7 @@
  */
 import { HeroHeader } from './HeroHeader.js';
 import { ExerciseCards } from './ExerciseCards.js';
+import { ExerciseReorder } from './ExerciseReorder.js';
 import { triggerHaptic } from './Haptics.js';
 
 export class Kai {
@@ -30,6 +31,7 @@ export class Kai {
         this.drafts = new Map();
         this.setupListeners();
         this.setupEventDelegation();
+        this.exerciseReorder = new ExerciseReorder(this.els.cards, this.engine, message => this.showFeedback(message));
         this.setupNavGestures();
 
         if (this.els.themeBtn) {
@@ -160,7 +162,7 @@ export class Kai {
             card.classList.add('active');
             this.syncExpandedCards();
             this.scrollCardToTop(card);
-            if (!this.engine.isDayCompleted() && this.chat && !card.querySelector('.coach-cue')) {
+            if (!this.engine.isDaySealed() && this.chat && !card.querySelector('.coach-cue')) {
                 const exercise = this.engine.protocolData[this.engine.state.day].exercises[Number(card.dataset.idx)];
                 const cue = document.createElement('p');
                 cue.className = 'progression-cue coach-cue';
@@ -226,6 +228,10 @@ export class Kai {
      */
     updateCompletionState(state) {
         if (!state) return;
+        if (this.renderedDay !== state.day || this.renderedCycle !== this.engine.cycleId) {
+            this.render(state);
+            return;
+        }
 
         const doneArr = state.done?.[state.day]
             ? Object.keys(state.done[state.day]).filter(id => state.done[state.day][id])
@@ -235,12 +241,21 @@ export class Kai {
         const cards = document.querySelectorAll('.card-wrapper');
         cards.forEach(card => {
             card.querySelector('.check-wrap')?.setAttribute('aria-pressed', String(doneArr.includes(card.id)));
+            const handle = card.querySelector('.reorder-handle');
+            if (handle) {
+                handle.disabled = doneArr.includes(card.id);
+                handle.setAttribute('aria-expanded', 'false');
+                card.querySelector('.reorder-options').hidden = true;
+            }
             if (doneArr.includes(card.id)) {
                 card.classList.add('done');
             } else {
                 card.classList.remove('done');
             }
         });
+
+        this.updateNavState(state.day);
+        this.heroHeader.renderTrainingFlow(this.engine.StorageManager, this.engine.protocolData, state.activeDay);
 
         // 2. Update Finish Session Button State
         const protocolLen = this.engine?.protocolData?.length || 1;
@@ -286,7 +301,7 @@ export class Kai {
             if (e.target.closest('.check-wrap')) {
                 e.stopPropagation();
                 const wrap = e.target.closest('.card-wrapper');
-                if (wrap && this.engine?.toggleComplete && !this.engine.isDayCompleted?.(this.engine.state.day)) {
+                if (wrap && this.engine?.toggleComplete && !this.engine.isDaySealed?.(this.engine.state.day)) {
                     triggerHaptic(wrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseChecked');
                     this.engine.toggleComplete(wrap.id, this.engine.state.day);
                 }
@@ -312,7 +327,7 @@ export class Kai {
 
         // 2. Pointer Gestures (Swipe to complete & Swipe to swap)
         this.els.cards.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('input') || e.target.closest('.save-set-btn') || e.target.closest('.check-wrap')) return;
+            if (e.target.closest('input, .save-set-btn, .check-wrap, .reorder-handle, .reorder-options')) return;
 
             // Check if we're hitting a swappable head
             activeHead = e.target.closest('.card-head[data-swappable="true"]');
@@ -402,7 +417,7 @@ export class Kai {
                     setTimeout(() => nameEl.style.transition = '', 300);
                 }
 
-                if (!this.engine.isDayCompleted() && isSwapping && Math.abs(diffX) > 44) {
+                if (!this.engine.isDaySealed() && isSwapping && Math.abs(diffX) > 44) {
                     const direction = diffX < 0 ? 1 : -1;
                     triggerHaptic('exerciseSwapped');
                     if (nameEl) {
@@ -418,7 +433,7 @@ export class Kai {
                 activeWrap.classList.remove('dragging');
                 if (currentX > 60) {
                     triggerHaptic(activeWrap.classList.contains('done') ? 'exerciseUnchecked' : 'exerciseSwipeCompleted');
-                    if (this.engine?.toggleComplete && !this.engine.isDayCompleted?.(this.engine.state.day)) {
+                    if (this.engine?.toggleComplete && !this.engine.isDaySealed?.(this.engine.state.day)) {
                         this.engine.toggleComplete(activeWrap.id, this.engine.state.day);
                     }
                 }
@@ -559,7 +574,7 @@ export class Kai {
                     longPressed = true;
                     triggerHaptic('dayResetReady');
                     const dIdx = parseInt(item.dataset.day);
-                    if(!this.engine?.isDayCompleted?.(dIdx) && confirm(`Reset Day ${dIdx + 1}?`)) {
+                    if(!this.engine?.isDaySealed?.(dIdx) && confirm(`Reset Day ${dIdx + 1}?`)) {
                         this.engine?.resetDayLogs?.(dIdx);
                     }
                 }, 800);

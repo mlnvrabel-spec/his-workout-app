@@ -34,7 +34,7 @@ When instructed to test the progressive web app dashboard, follow these standard
 
 ## Product-spec completion gate (§3.1 and §4)
 
-1. Check a non-total number of exercises; the active day must remain unfinished and show its named Finish action.
+1. Check fewer than 50% of planned exercises: the day remains unfinished. Reach 50%: its navigation highlight appears, while same-day exercise checks remain editable. Verify a new calendar day advances qualified workouts once and retains unqualified workouts.
 2. Tap Finish and verify every exercise becomes checked, the displayed nav day is marked complete, and Hero changes to `finished split → next split`.
 3. The completed day must show only its labeled Undo action; Undo returns it to an empty checklist and restores the named Finish action.
 4. Navigate away, return, and reload; active day, Hero, completion marker, and actions must persist.

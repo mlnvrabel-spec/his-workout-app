@@ -27,7 +27,7 @@ The application utilizes a strictly typed, event-driven ES Module architecture o
 The dashboard Hero is a program-adherence surface, not a biometric dashboard. It makes the workout sequence and the user's calendar-week commitment immediately clear.
 *   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
 *   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
-*   **Completion rule**: A workout finishes only when the user taps **Finish workout**. Individual exercise checks remain optional; Finish marks every remaining exercise checked and saves a full-completion summary. Its single bottom action then becomes **Undo**, which reopens the displayed day with a clean unchecked checklist. Finished days remain marked through the current four-day program cycle; the next cycle begins cleanly after all four days finish.
+*   **Completion rule**: At least 50% of planned exercises checked automatically marks the workout day complete, including its bottom-navigation highlight. The same-day checklist remains editable; dropping below 50% removes automatic completion. On a new local calendar day, resume the next unfinished split only if the previous workout reached 50%; otherwise retain the unfinished workout. Advance once even after several missed days. Finish remains a manual full-checklist override with Undo. Completed days remain marked through the four-day cycle; automatic completion resets the cycle on the next calendar day after all four qualify. Existing undated checklists are reconciled on reopening; their original training date cannot be recovered.
 *   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown. The Finish area uses a full-width action without helper text; exact checked counts remain in training history.
 
 ### 3.2. Garmin Connect Bridge (Microservice & Sync Engine)
@@ -50,7 +50,7 @@ The dashboard Hero is a program-adherence surface, not a biometric dashboard. It
 ## 4. State & Data Persistence
 Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prevent AI hallucination.
 *   **`hv3_active_workout`** (IndexedDB): The canonical, resumable current-cycle checklist state (selected day, checked exercises, and completed days).
-*   **`hv3_completed_workouts`** (IndexedDB): Immutable summaries of explicitly finished workout days.
+*   **`hv3_completed_workouts`** (IndexedDB): Summaries of automatically completed or explicitly finished workout days; automatic summaries track same-day checklist edits.
 *   **`hv3_logs` / `hv3_archive`** (IndexedDB): Reserved legacy set-log storage; it is not part of checklist completion.
 *   **`hv3_memory`** (localStorage): Last fully completed split (`title`, `subtitle`, and local completion timestamp) for the Training Flow Hero.
 *   **`hv3_completed_sessions`** (localStorage): Unique local calendar dates of fully completed sessions; used to derive the current Monday–Sunday commitment.
@@ -84,3 +84,13 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
 - Offline application assets are cached as one version, installed with HTTP-cache revalidation and selected from that version's cache. Updates are offered explicitly and activate on request.
 - Pending logs retry on boot, finish, connectivity recovery, and focus. Bridge acknowledgment marks only the transmitted log version synced. The current bridge durably queues logs; it does not yet publish them into Garmin Connect.
 - `hv3_sets` is the active set store; legacy stores remain readable. Hero memory and weekly dates are projections of committed summaries, rebuilt after load and Undo.
+
+
+## 7. Session exercise order
+
+- Hold an unfinished exercise's existing number button for 350 ms and drag vertically. Show the selected card and target position; scroll near viewport edges. Movement before pickup, pointer cancellation, Escape, navigation, refresh and loss of window focus cancel the gesture.
+- Tap the exercise number for Move up/down, or use its ArrowUp/ArrowDown keys. Horizontal substitution and completion swipes remain separate.
+- Respect the selected slot and destination. Keep checked slots fixed and reject a checked destination. Evaluate the remaining unfinished order using protocol-owned primary/supporting muscle tags: minimize adjacent overlap, then prefer the priority opener when the user has not explicitly moved it, then minimize displacement from the requested order. Shared primary muscles carry weight 3 and shared supporting muscles weight 1. This is a deterministic sequencing heuristic, not a physiological recovery estimate.
+- Preserve canonical slot identity for checks and substitutions and exercise identity for logs and input drafts. Save display order in the existing local workout transaction before announcing success. Existing records with no order use the prescribed sequence.
+- Offer one-step Undo; refuse to undo if a new check would move a checked slot. Retain the order through reload and offline use. New cycles start with prescribed order; completion Undo across cycles restores the prior order and retains the next-cycle draft. A day reset restores its prescribed order.
+- Completion summaries and history retain the session's display order, including same-day automatic completion edits. Sealed days cannot be reordered. Report remaining adjacent overlap after a move when constraints prevent full separation.

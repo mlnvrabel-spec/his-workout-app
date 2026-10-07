@@ -7,7 +7,7 @@ Keep this matrix synchronized with `PRODUCT_SPEC.md` and the executable checks. 
 | §2 | Vanilla ES modules, engine-owned state, protocol-owned exercise data | `test_product_spec.mjs`, `test_protocol.mjs`, code review | Automated + review |
 | §3.1 Flow | Render only `Last → Today` in active program order | `HeroHeader` unit coverage and PWA DOM snapshot | Browser required |
 | §3.1 Weekly rhythm | Monday–Sunday unique local completion dates, without a numeric counter | `test_product_spec.mjs`; PWA DOM snapshot for presentation | Automated + browser |
-| §3.1 Completion | Explicit Finish, exact checked count, next-day advance, four-day reset, latest undo | `test_product_spec.mjs`, `test_core.mjs` | Automated |
+| §3.1 Completion | 50% automatic completion, same-day edits, calendar-day advance, explicit Finish, four-day reset, latest undo | `test_product_spec.mjs`, `test_core.mjs`, `test_schedule.mjs` | Automated |
 | §3.1 Live progress | Checklist is the only current-workout progress surface | PWA DOM snapshot | Browser required |
 | §3.2 Bridge | Frontend bridge defaults to `localhost:8001`; FastAPI accepts durable queue payloads | `test_product_spec.mjs`, `backend/test_api.py` | Automated + backend |
 | §3.2 Offline-first | Local set write precedes events/sync; failed sync returns `CACHED` without mutating the payload | `test_product_spec.mjs` | Automated |
@@ -31,3 +31,4 @@ Report any skipped row as `NOT RUN`; never infer a pass from adjacent evidence.
 
 
 See `REVIEW_VERIFICATION.md` at the repository root for the September 2026 regression and browser evidence. `test_sw.mjs` verifies isolated cache behavior; browser offline reload remains a separate check.
+| §7 Session order | Muscle relationships, selected destination, checked slots, persistent identity, Undo, cycles, transaction failure, hold/drop/cancel | test_reorder.mjs, test_render.mjs; local preview evidence in REVIEW_VERIFICATION.md | Automated + browser fallback controls; real Android hold/drag NOT RUN |

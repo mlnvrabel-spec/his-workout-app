@@ -20,7 +20,7 @@ For rendered UI, PWA, service-worker, offline, accessibility, motion, or narrow-
 
 ## Required gates
 
-- A workout completes only through the explicit Finish action; exercise checks never imply completion.
+- A workout automatically completes at 50% of planned exercise checks; Finish remains a manual full-checklist override. New calendar days advance only qualified workouts.
 - IndexedDB is written before sync or success events, and network failure preserves pending local data.
 - Completion summaries retain the exact checked-exercise count, advance program order, and reset only after the four-day cycle.
 - Undo restores the prior resumable state and its Hero/week metadata without resurrecting after reload.

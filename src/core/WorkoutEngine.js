@@ -5,6 +5,7 @@
  * Acts as the State Machine containing no UI rendering logic.
  */
 import { StorageManager } from './StorageManager.js';
+import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
 
 export class WorkoutEngine {
     constructor() {
@@ -46,6 +47,43 @@ export class WorkoutEngine {
 
     get StorageManager() {
         return this.storage;
+    }
+
+    getExerciseOrder(day = this.state.day, workout = this.state) {
+        const fallback = this.protocolData[day].exercises.map((_, slot) => slot);
+        const order = workout.orders?.[day];
+        return Array.isArray(order) && order.length === fallback.length && new Set(order).size === fallback.length && order.every(slot => fallback.includes(slot)) ? [...order] : fallback;
+    }
+
+    async reorderExercise(day, slot, destination) {
+        if (this.pending) return false;
+        const cycle = this.cycleId;
+        return this._commit('exercise_reorder', workout => {
+            const order = this.getExerciseOrder(day, workout);
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout) || !order.includes(slot) || !Number.isInteger(destination) || destination < 0 || destination >= order.length || workout.done[day]?.[`ex-${day}-${slot}`] || order.indexOf(slot) === destination) return false;
+            const locked = new Set(order.filter(value => workout.done[day]?.[`ex-${day}-${value}`]));
+            const relationships = this.rawWorkouts[day].exercises.map((ex, index) => this.exerciseLibrary[workout.swaps?.[`${day}_${index}`] || ex.id].sequencing);
+            const next = arrangeExercises(order, slot, destination, locked, relationships, this.rawWorkouts[day].priority_slot);
+            if (!next) return false;
+            workout.orders ||= {};
+            workout.orderUndo ||= {};
+            workout.orderUndo[day] = { before: order, after: next };
+            workout.orders[day] = next;
+            workout.orderNotice = next.slice(1).some((value, index) => sequenceConflict(relationships[next[index]], relationships[value]) > 0) ? 'Order saved. Some muscle overlap remains.' : 'Order saved. Non-competing exercises separated.';
+            return true;
+        });
+    }
+
+    async undoExerciseOrder(day = this.state.day) {
+        const cycle = this.cycleId;
+        return this._commit('exercise_reorder_undo', workout => {
+            const undo = workout.orderUndo?.[day];
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout) || !undo || JSON.stringify(this.getExerciseOrder(day, workout)) !== JSON.stringify(undo.after)) return false;
+            if (undo.before.some((slot, index) => workout.done[day]?.[`ex-${day}-${slot}`] && undo.after[index] !== slot)) return false;
+            workout.orders[day] = undo.before;
+            delete workout.orderUndo[day];
+            return true;
+        });
     }
 
     /**
@@ -216,9 +254,10 @@ export class WorkoutEngine {
         const slot = this.rawWorkouts?.[dayIndex]?.exercises[exerciseSlot];
         if (!slot || !this.swapGroupMap[slot.swap_group]?.includes(newExerciseId)) return false;
         return this._commit('exercise_swap', (workout) => {
-            if (workout.cycleId !== expectedCycle || workout.completedDays[dayIndex]) return false;
+            if (workout.cycleId !== expectedCycle || this.isDaySealed(dayIndex, workout)) return false;
             workout.swaps ||= {};
             workout.swaps[`${dayIndex}_${exerciseSlot}`] = newExerciseId;
+            workout.activeDay = dayIndex;
             // A substitution is a different exercise; don't carry over its check.
             if (workout.done[dayIndex]) delete workout.done[dayIndex][`ex-${dayIndex}-${exerciseSlot}`];
             return true;
@@ -286,7 +325,7 @@ export class WorkoutEngine {
         workout.completedDays ||= {};
         workout.day = Number.isInteger(workout.day) && workout.day >= 0 && workout.day < count ? workout.day : 0;
         workout.activeDay ??= workout.day;
-        if (workout.completedDays[workout.activeDay]) {
+        if (workout.completedDays[workout.activeDay] && !workout.autoCompletedDays?.[workout.activeDay]) {
             workout.activeDay = this._nextDay(workout, workout.activeDay);
         }
         if (!Object.hasOwn(workout, 'lastCompletedSummaryId')) {
@@ -296,7 +335,71 @@ export class WorkoutEngine {
             const represented = new Set(summaries.map(s => s.sessionId));
             workout.legacyDates = (this.storage.getLightState('hv3_completed_sessions') || []).filter(d => !represented.has(d));
         }
+        workout.workoutDate ??= saved ? '' : this.storage.getDateKey();
+        workout.autoCompletedDays ||= {};
         return workout;
+    }
+
+    isDaySealed(day = this.state.day, workout = this.state) {
+        return Boolean(workout.completedDays[day] && (!workout.autoCompletedDays?.[day] || workout.workoutDate !== this.storage.getDateKey()));
+    }
+
+    _reconcileCompletion(workout, summaries) {
+        const today = this.storage.getDateKey();
+        const day = workout.activeDay;
+        const total = this.protocolData[day].exercises.length;
+        const checked = Array.from({ length: total }, (_, i) => workout.done[day]?.[`ex-${day}-${i}`]).filter(Boolean).length;
+        let changes = {};
+        if (!this.isDaySealed(day, workout) || workout.workoutDate === '') {
+            const id = `${workout.cycleId}:${day}`;
+            const index = summaries.findIndex(s => s.id === id);
+            if (total > 0 && checked >= Math.ceil(total / 2)) {
+                const exercises = (this.defaultProtocol || this.protocolData)[day].exercises.map((ex, slot) => {
+                    const swap = workout.swaps?.[`${day}_${slot}`];
+                    return swap ? this._resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id: swap }) : structuredClone(ex);
+                });
+                const summary = {
+                    ...(summaries[index] || {}), id, cycleId: workout.cycleId, day,
+                    sessionId: workout.workoutDate || today, completedAt: summaries[index]?.completedAt || new Date().toISOString(),
+                    title: this.protocolData[day].title, subtitle: this.protocolData[day].subtitle,
+                    exercises, totalExercises: total, completedExercises: checked,
+                    done: structuredClone(workout.done), swaps: structuredClone(workout.swaps || {}),
+                    orders: structuredClone(workout.orders || {}), order: this.getExerciseOrder(day, workout),
+                    completedDaysBefore: summaries[index]?.completedDaysBefore || { ...workout.completedDays }
+                };
+                const previous = summaries[index];
+                const changed = !workout.autoCompletedDays[day] || !previous || previous.completedExercises !== checked || JSON.stringify(previous.done) !== JSON.stringify(summary.done) || JSON.stringify(previous.exercises) !== JSON.stringify(exercises) || JSON.stringify(previous.order) !== JSON.stringify(summary.order);
+                if (index < 0) summaries.push(summary); else summaries[index] = summary;
+                workout.completedDays[day] = true;
+                workout.autoCompletedDays[day] = true;
+                workout.lastCompletedSummaryId = id;
+                if (changed) changes = { summary, changed: true, automatic: true };
+            } else if (workout.autoCompletedDays[day]) {
+                delete workout.completedDays[day];
+                delete workout.autoCompletedDays[day];
+                if (index >= 0) summaries.splice(index, 1);
+                if (workout.lastCompletedSummaryId === id) workout.lastCompletedSummaryId = null;
+                changes = { deleteSummary: id, changed: true };
+            }
+        }
+        if (workout.workoutDate !== today) {
+            const last = summaries.find(s => s.id === workout.lastCompletedSummaryId);
+            if (workout.completedDays[day] || (last && last.sessionId !== today)) {
+                if (this.protocolData.every((_, i) => workout.completedDays[i])) {
+                    workout.cycleId = this._newCycleId();
+                    workout.done = {};
+                    workout.orders = {}; workout.orderUndo = {};
+                    workout.completedDays = {};
+                    workout.autoCompletedDays = {};
+                    workout.activeDay = 0;
+                } else if (workout.completedDays[day]) workout.activeDay = this._nextDay(workout, day);
+                workout.day = workout.activeDay;
+                changes.changed = true;
+            }
+            workout.autoCompletedDays = {};
+            workout.workoutDate = today;
+        }
+        return changes;
     }
 
     _nextDay(workout, from) {
@@ -343,7 +446,10 @@ export class WorkoutEngine {
     }
 
     async _restoreWorkoutCycle() {
-        const result = await this.storage.mutateWorkout((saved, summaries, logs) => ({ workout: this._normalize(saved, summaries), summaries, logs }));
+        const result = await this.storage.mutateWorkout((saved, summaries, logs) => {
+            const workout = this._normalize(saved, summaries);
+            return { workout, summaries, logs, ...this._reconcileCompletion(workout, summaries) };
+        });
         this._adopt(result.workout, result.summaries, result.logs);
     }
 
@@ -357,12 +463,13 @@ export class WorkoutEngine {
             try {
                 const result = await this.storage.mutateWorkout((saved, summaries, logs) => {
                     const workout = this._normalize(saved, summaries);
+                    const restored = this._reconcileCompletion(workout, summaries);
                     const changeResult = change(workout, summaries, logs);
                     const changes = typeof changeResult === 'object' && changeResult !== null ? changeResult : {};
-                    return { workout, summaries, logs, changed: Boolean(changeResult), ...changes };
+                    return { workout, summaries, logs, changed: Boolean(changeResult), ...restored, ...changes, ...this._reconcileCompletion(workout, summaries) };
                 });
                 this._adopt(result.workout, result.summaries, result.logs);
-                if (result.summary) {
+                if (result.summary && !result.automatic) {
                     window.dispatchEvent(new CustomEvent('workout:finished', { detail: { session: result.summary, state: this.state, cycleCompleted: result.cycleCompleted } }));
                 }
                 this._emit(type);
@@ -388,7 +495,7 @@ export class WorkoutEngine {
         if (this.pending) return false;
         const cycle = this.cycleId;
         return this._commit('exercise_complete', workout => {
-            if (workout.cycleId !== cycle || workout.completedDays[day] || !this.protocolData[day]?.exercises.some((_,i) => id === `ex-${day}-${i}`)) return false;
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout) || !this.protocolData[day]?.exercises.some((_,i) => id === `ex-${day}-${i}`)) return false;
             workout.done[day] ||= {};
             workout.done[day][id] = !workout.done[day][id];
             workout.activeDay = day;
@@ -400,7 +507,7 @@ export class WorkoutEngine {
         if (this.pending) return false;
         const cycle = this.cycleId;
         return this._commit('exercise_complete', workout => {
-            if (workout.cycleId !== cycle || workout.completedDays[day]) return false;
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout)) return false;
             workout.done[day] = Object.fromEntries(exercises.map((_, i) => [`ex-${day}-${i}`, isDone]));
             workout.activeDay = day;
             return true;
@@ -411,8 +518,11 @@ export class WorkoutEngine {
         if (this.pending) return false;
         const cycle = this.cycleId;
         return this._commit('readiness_shift', workout => {
-            if (workout.cycleId !== cycle || workout.completedDays[day]) return false;
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout)) return false;
             workout.done[day] = {};
+            if (workout.orders) delete workout.orders[day];
+            if (workout.orderUndo) delete workout.orderUndo[day];
+            workout.activeDay = day;
             return true;
         });
     }
@@ -420,7 +530,7 @@ export class WorkoutEngine {
     getCompletionSummary(day = this.state.day) {
         const total = this.protocolData?.[day]?.exercises.length || 0;
         const completed = Array.from({length:total}, (_,i) => this.state.done[day]?.[`ex-${day}-${i}`]).filter(Boolean).length;
-        return { total, completed, required: 0, eligible: total > 0, isFinished: this.isDayCompleted(day) };
+        return { total, completed, required: Math.ceil(total / 2), eligible: total > 0, isFinished: this.isDayCompleted(day) };
     }
 
     isDayCompleted(day = this.state.day) { return Boolean(this.state.completedDays?.[day]); }
@@ -435,7 +545,7 @@ export class WorkoutEngine {
         this._emit('saving');
         try {
             return await this._commit('workout_finished', (workout, summaries) => {
-                if (workout.cycleId !== cycle || workout.completedDays[day]) return false;
+                if (workout.cycleId !== cycle || this.isDaySealed(day, workout)) return false;
                 // Resolve the current persisted substitutions, not this window's stale view.
                 const exercises = (this.defaultProtocol || this.protocolData)[day].exercises.map((ex, slot) => {
                     const id = workout.swaps?.[`${day}_${slot}`];
@@ -451,8 +561,10 @@ export class WorkoutEngine {
                     exercises, totalExercises: exercises.length,
                     completedExercises: exercises.length,
                     done: structuredClone(workout.done), swaps: structuredClone(workout.swaps || {}),
-                    completedDaysBefore: { ...workout.completedDays }
+                    orders: structuredClone(workout.orders || {}), order: this.getExerciseOrder(day, workout),
+                    completedDaysBefore: Object.fromEntries(Object.entries(workout.completedDays).filter(([key]) => Number(key) !== day))
                 };
+                delete workout.autoCompletedDays[day];
                 workout.completedDays[day] = true;
                 const cycleCompleted = this.protocolData.every((_, i) => workout.completedDays[i]);
                 if (cycleCompleted) {
@@ -461,7 +573,9 @@ export class WorkoutEngine {
                     workout.cycleId = summary.nextCycleId;
                     workout.done = draft?.done || {};
                     workout.swaps = draft?.swaps || workout.swaps || {};
+                    workout.orders = draft?.orders || {}; workout.orderUndo = {};
                     workout.completedDays = {};
+                    workout.autoCompletedDays = {};
                     delete workout.nextCycleDraft;
                     workout.activeDay = workout.day = 0;
                 } else {
@@ -471,8 +585,9 @@ export class WorkoutEngine {
                     workout.day = day;
                 }
                 workout.lastCompletedSummaryId = summary.id;
-                summaries.push(summary);
-                return { summary, cycleCompleted };
+                const existing = summaries.findIndex(s => s.id === summary.id);
+                if (existing < 0) summaries.push(summary); else summaries[existing] = summary;
+                return { summary, cycleCompleted, automatic: false };
             });
         } finally { this.pending = false; this._emit('saved'); }
     }
@@ -488,14 +603,16 @@ export class WorkoutEngine {
                 if (index < 0 || workout.lastCompletedSummaryId !== target) return false;
                 const summary = summaries[index];
                 if (summary.cycleId !== workout.cycleId) {
-                    workout.nextCycleDraft = { cycleId: workout.cycleId, done: workout.done, swaps: workout.swaps || {} };
+                    workout.nextCycleDraft = { cycleId: workout.cycleId, done: workout.done, swaps: workout.swaps || {}, orders: workout.orders || {} };
                     workout.cycleId = summary.cycleId;
                     workout.done = structuredClone(summary.done || {});
                     workout.swaps = structuredClone(summary.swaps || {});
+                    workout.orders = structuredClone(summary.orders || {}); workout.orderUndo = {};
                     workout.completedDays = { ...summary.completedDaysBefore };
                 } else delete workout.completedDays[summary.day];
                 // Undo returns this day's checklist to a clean 0/total state. Logged
                 // sets and checks on later days remain durable and untouched.
+                delete workout.autoCompletedDays[summary.day];
                 workout.done[summary.day] = {};
                 workout.day = workout.activeDay = summary.day;
                 workout.lastCompletedSummaryId = null;
@@ -521,7 +638,7 @@ export class WorkoutEngine {
         const cycle = this.cycleId, day = this.state.day;
         let savedLog;
         const success = await this._commit('set_saved', (workout, summaries, logs) => {
-            if (workout.cycleId !== cycle || workout.completedDays[day]) return false;
+            if (workout.cycleId !== cycle || this.isDaySealed(day, workout)) return false;
             const slot = this.protocolData[day].exercises.findIndex(ex => ex._exerciseId === exerciseId);
             if (slot < 0 || (workout.swaps?.[`${day}_${slot}`] && workout.swaps[`${day}_${slot}`] !== exerciseId)) return false;
             const sessionId = `${cycle}:${day}`;

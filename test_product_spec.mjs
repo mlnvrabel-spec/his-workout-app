@@ -31,10 +31,10 @@ assert.doesNotMatch(heroSource, /flow-next|flow-week-count|completion fraction/i
 assert.match(stylesSource, /background: url\('\/public\/brand-mark-cutout\.png'\) center \/ cover no-repeat/, 'header mark must use the original cutout asset');
 assert.doesNotMatch(stylesSource, /\.nav-item\.completed \.nav-label::after/, 'completed days must not add a bottom-nav checkmark');
 
-// PRODUCT_SPEC §3.1: checks never auto-finish; Finish completes the checklist and resets after four days.
+// PRODUCT_SPEC §3.1: 50% checks auto-complete; Finish completes the checklist and resets after four days.
 const completionEngine = await engine();
 for (let exerciseIndex = 0; exerciseIndex < 5; exerciseIndex++) await completionEngine.toggleComplete(`ex-0-${exerciseIndex}`, 0);
-assert.equal(completionEngine.summaries.length, 0, 'checks never imply Finish');
+assert.equal(completionEngine.summaries.length, 1, '50% checks automatically save completion');
 for (const day of [0,1,2,3]) {
     await completionEngine.setDay(day);
     if (day === 2) await completionEngine.toggleComplete('ex-2-0', 2);

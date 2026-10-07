@@ -10,16 +10,19 @@ export class ExerciseCards {
     render(day, workout, doneIds, expandedCardId, onToggleCard, onCloseCard) {
         if (this.cards) this.cards.innerHTML = '';
 
-        workout.exercises.forEach((exercise, index) => {
+        const order = this.engine?.getExerciseOrder?.(day) || workout.exercises.map((_, index) => index);
+        order.forEach((index, position) => {
+            const exercise = workout.exercises[index];
             const id = `ex-${day}-${index}`;
             const isDone = doneIds.includes(id);
             const cardWrap = this.createCard(day, workout, exercise, index, id, isDone, expandedCardId === id);
             if (!this.cards) return;
+            cardWrap.querySelector('.ex-num').textContent = position + 1;
             this.cards.appendChild(cardWrap);
             this.bindCardInteractions(cardWrap, onToggleCard, onCloseCard);
         });
 
-        this.cards?.classList.toggle('is-completed-workout', Boolean(this.engine?.isDayCompleted?.(day)));
+        this.cards?.classList.toggle('is-completed-workout', Boolean(this.engine?.isDaySealed?.(day)));
         this.renderFinishButton(this.engine?.getCompletionSummary?.(day));
     }
 
@@ -44,7 +47,7 @@ export class ExerciseCards {
     }
 
     createCard(day, workout, exercise, index, id, isDone, isExpanded) {
-        const finished = this.engine?.isDayCompleted?.(day);
+        const finished = this.engine?.isDaySealed?.(day);
         const originalExerciseId = this.engine?.rawWorkouts?.[day]?.exercises?.[index]?.id;
         const isCustom = originalExerciseId && exercise._exerciseId !== originalExerciseId;
         const intensityClass = exercise.rir === 0 || exercise.rir === '0' ? 'intense' : 'controlled';
@@ -72,7 +75,7 @@ export class ExerciseCards {
             <div class="card" data-id="${id}" style="transition: transform 0.3s ${this.motionCurve}, height 0.4s ${this.motionCurve}">
                 <div class="intensity-bar ${intensityClass}"></div>
                 <div class="card-head" ${swapInfo?.options?.length > 1 ? 'data-swappable="true"' : ''}>
-                    <div class="ex-num">${index + 1}</div>
+                    ${!finished ? `<button type="button" class="ex-num reorder-handle" ${isDone ? 'disabled' : ''} aria-label="Move ${escapeHTML(exercise.name)}" aria-expanded="false" title="Hold the exercise number to drag, or use arrow keys">${index + 1}</button>` : `<div class="ex-num">${index + 1}</div>`}
                     <button type="button" class="ex-info" aria-expanded="${isExpanded}" aria-controls="details-${id}" aria-label="${escapeHTML(exercise.name)} details">
                         <div class="ex-name">${exercise.name}</div>
                         ${customTag}
@@ -91,7 +94,8 @@ export class ExerciseCards {
                     ${exercise.mistakes ? `<div class="detail-section"><span class="detail-label warn">Common Mistakes</span><ul class="detail-list">${mistakes}</ul></div>` : ''}
                     ${exercise.visualization ? `<div class="detail-section"><span class="detail-label viz">${exercise.visualization}</span><p class="detail-text" style="color:var(--text1)">${exercise.vizText || ''}</p></div>` : ''}
                 </div></div>
-            </div>`;
+            </div>
+            ${!finished ? `<div class="reorder-options" hidden><button type="button" data-move="-1">Move up</button><button type="button" data-move="1">Move down</button></div>` : ''}`;
 
         return cardWrap;
     }
@@ -99,7 +103,7 @@ export class ExerciseCards {
     bindCardInteractions(cardWrap, onToggleCard, onCloseCard) {
         const cardHead = cardWrap.querySelector('.card-head');
         cardHead.addEventListener('click', event => {
-            if (event.target.closest('.check-wrap')) return;
+            if (event.target.closest('.check-wrap, .reorder-handle, .reorder-options')) return;
             if (cardWrap.dataset.swipeHandled === 'true') {
                 delete cardWrap.dataset.swipeHandled;
                 return;
@@ -139,14 +143,16 @@ export class ExerciseCards {
         const title = this.engine?.protocolData?.[day]?.title || 'workout';
         const activeTitle = this.engine?.protocolData?.[this.engine?.state.activeDay]?.title || 'workout';
         const disabled = this.engine?.pending ? 'disabled' : '';
-        const canUndoDisplayedDay = completion?.isFinished && summary?.id === latest?.id;
+        const sealed = this.engine?.isDaySealed?.(day);
+        const canUndoDisplayedDay = sealed && summary?.id === latest?.id;
         if (canUndoDisplayedDay) {
             actions.innerHTML = `<button class="finish-btn finish-btn--undo" id="undo-workout-btn" ${disabled}>Undo ${escapeHTML(latest.title)} completion</button>`;
-        } else if (completion?.isFinished) {
+        } else if (sealed) {
             actions.innerHTML = `<button class="finish-btn" id="continue-workout-btn" ${disabled}>Continue ${escapeHTML(activeTitle)}</button>`;
         } else {
             actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn" ${disabled}>${this.engine?.pending ? 'Saving workout…' : `Finish ${escapeHTML(title)}`}</button>`;
         }
+        if (!sealed && this.engine?.state.orderUndo?.[day]) actions.innerHTML += '<button type="button" class="undo-order-btn">Undo exercise order</button>';
         const existing = document.getElementById('workout-actions');
         if (existing) existing.replaceWith(actions);
         else this.cards.appendChild(actions);

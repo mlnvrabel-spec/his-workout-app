@@ -1,10 +1,10 @@
-const CACHE_NAME = 'hypertrophy-v66';
+const CACHE_NAME = 'hypertrophy-v72';
 const ASSETS = [
     '/', '/index.html', '/public/manifest.json', '/public/brand-mark.png', '/public/brand-mark-cutout.png',
     '/src/ui/Elena.css', '/src/ui/Kai.js', '/src/ui/HeroHeader.js', '/src/ui/Haptics.js',
-    '/src/ui/ExerciseCards.js', '/src/ui/AuthUI.js', '/src/ui/SettingsPanel.js',
+    '/src/ui/ExerciseCards.js', '/src/ui/ExerciseReorder.js', '/src/ui/AuthUI.js', '/src/ui/SettingsPanel.js',
     '/src/ui/Modal.js', '/src/ui/HistoryPanel.js',
-    '/src/core/WorkoutEngine.js', '/src/core/StorageManager.js', '/src/core/GarminSync.js',
+    '/src/core/WorkoutEngine.js', '/src/core/ExerciseOrder.js', '/src/core/StorageManager.js', '/src/core/GarminSync.js',
     '/src/core/ChatAssistant.js', '/src/data/core_protocol.json'
 ];
 self.addEventListener('install', event => {

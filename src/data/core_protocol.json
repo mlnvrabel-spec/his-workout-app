@@ -62,7 +62,8 @@
           "rir": "0-1",
           "rest_sec": 90
         }
-      ]
+      ],
+      "priority_slot": 0
     },
     {
       "id": "PULL_A",
@@ -113,7 +114,8 @@
           "rir": "0-1",
           "rest_sec": 90
         }
-      ]
+      ],
+      "priority_slot": 0
     },
     {
       "id": "PUSH_B",
@@ -163,7 +165,8 @@
           "rir": "0-1",
           "rest_sec": 90
         }
-      ]
+      ],
+      "priority_slot": 0
     },
     {
       "id": "PULL_B",
@@ -213,7 +216,8 @@
           "rir": "0-1",
           "rest_sec": 90
         }
-      ]
+      ],
+      "priority_slot": 0
     }
   ],
   "exercise_library": {
@@ -230,7 +234,8 @@
       ],
       "visualization": "Bicep to Pec: Drive the inner biceps toward the upper chest.",
       "proTip": "This is the first lift because chest is the priority; preserve the highest-quality sets here.",
-      "garmin": { "cat": "CHEST_PRESS", "enum": "DUMBBELL_INCLINE_BENCH_PRESS" }
+      "garmin": { "cat": "CHEST_PRESS", "enum": "DUMBBELL_INCLINE_BENCH_PRESS" },
+      "sequencing": {"primary": "chest", "muscles": ["chest", "front_delts", "triceps"], "kind": "compound"}
     },
     "INC_MACH_PR": {
       "name": "Incline Machine Press",
@@ -245,7 +250,8 @@
       ],
       "visualization": "Hug the Ceiling: Press up and slightly inward as if hugging something overhead.",
       "proTip": "A stable alternative when dumbbells are unavailable or their setup limits effort.",
-      "garmin": { "cat": "CHEST_PRESS", "enum": "MACHINE_INCLINE_CHEST_PRESS" }
+      "garmin": { "cat": "CHEST_PRESS", "enum": "MACHINE_INCLINE_CHEST_PRESS" },
+      "sequencing": {"primary": "chest", "muscles": ["chest", "front_delts", "triceps"], "kind": "compound"}
     },
     "REVERSE_HACK_SQUAT": {
       "name": "Reverse Hack Squat",
@@ -260,7 +266,8 @@
       ],
       "visualization": "Elevator Descent: Let the hips travel down while the knees travel forward.",
       "proTip": "Keep this as the primary squat pattern while it is pain-free and progressing; pendulum is an option, not an upgrade.",
-      "garmin": { "cat": "SQUAT", "enum": "HACK_SQUAT" }
+      "garmin": { "cat": "SQUAT", "enum": "HACK_SQUAT" },
+      "sequencing": {"primary": "quads", "muscles": ["quads", "glutes"], "kind": "compound"}
     },
     "PENDULUM_SQUAT": {
       "name": "Pendulum Squat",
@@ -275,7 +282,8 @@
       ],
       "visualization": "Piston Cue: Let the femurs compress a spring at the bottom.",
       "proTip": "Use this only if it is at least as comfortable and progressive as your reverse hack.",
-      "garmin": { "cat": "SQUAT", "enum": "SQUAT" }
+      "garmin": { "cat": "SQUAT", "enum": "SQUAT" },
+      "sequencing": {"primary": "quads", "muscles": ["quads", "glutes"], "kind": "compound"}
     },
     "HACK_SQUAT": {
       "name": "Hack Squat",
@@ -290,7 +298,8 @@
       ],
       "visualization": "Elevator Shaft: Let the torso move straight down and up.",
       "proTip": "A valid substitute, not inherently better or worse than reverse hack or pendulum.",
-      "garmin": { "cat": "SQUAT", "enum": "HACK_SQUAT" }
+      "garmin": { "cat": "SQUAT", "enum": "HACK_SQUAT" },
+      "sequencing": {"primary": "quads", "muscles": ["quads", "glutes"], "kind": "compound"}
     },
     "LEG_PRESS": {
       "name": "Leg Press",
@@ -305,7 +314,8 @@
       ],
       "visualization": "Push the Earth: Drive the sled away while staying pinned to the pad.",
       "proTip": "A useful quad-pattern alternative if the squat machines are busy or uncomfortable.",
-      "garmin": { "cat": "LEG_PRESS", "enum": "LEG_PRESS" }
+      "garmin": { "cat": "LEG_PRESS", "enum": "LEG_PRESS" },
+      "sequencing": {"primary": "quads", "muscles": ["quads", "glutes"], "kind": "compound"}
     },
     "CABLE_FLY": {
       "name": "Cable Fly",
@@ -320,7 +330,8 @@
       ],
       "visualization": "Barrel Hug: Wrap the arms around a large tree.",
       "proTip": "It follows the non-competing squat slot so the chest is locally rested after the first press.",
-      "garmin": { "cat": "CHEST_PRESS", "enum": "CABLE_CROSSOVER" }
+      "garmin": { "cat": "CHEST_PRESS", "enum": "CABLE_CROSSOVER" },
+      "sequencing": {"primary": "chest", "muscles": ["chest"], "kind": "isolation"}
     },
     "MACH_LATERAL": {
       "name": "Machine Lateral Raise",
@@ -335,7 +346,8 @@
       ],
       "visualization": "Puppet Strings: Imagine the elbows are being pulled out to the walls.",
       "proTip": "Direct lateral-delt work matters more for shoulder width than adding more front-delt pressing.",
-      "garmin": { "cat": "LATERAL_RAISE", "enum": "LATERAL_RAISE" }
+      "garmin": { "cat": "LATERAL_RAISE", "enum": "LATERAL_RAISE" },
+      "sequencing": {"primary": "side_delts", "muscles": ["side_delts"], "kind": "isolation"}
     },
     "CABLE_LATERAL": {
       "name": "Cable Lateral Raise",
@@ -350,7 +362,8 @@
       ],
       "visualization": "Reach for the Walls: Sweep the elbows outward, not upward.",
       "proTip": "A good alternative if the machine is busy and you can keep the cable path stable.",
-      "garmin": { "cat": "LATERAL_RAISE", "enum": "CABLE_LATERAL_RAISE" }
+      "garmin": { "cat": "LATERAL_RAISE", "enum": "CABLE_LATERAL_RAISE" },
+      "sequencing": {"primary": "side_delts", "muscles": ["side_delts"], "kind": "isolation"}
     },
     "DB_LATERAL": {
       "name": "Dumbbell Lateral Raise",
@@ -365,7 +378,8 @@
       ],
       "visualization": "Scarecrow Arms: The elbows move wide while the hands stay quiet.",
       "proTip": "Use this when cables and the lateral-raise machine are unavailable.",
-      "garmin": { "cat": "LATERAL_RAISE", "enum": "DUMBBELL_LATERAL_RAISE" }
+      "garmin": { "cat": "LATERAL_RAISE", "enum": "DUMBBELL_LATERAL_RAISE" },
+      "sequencing": {"primary": "side_delts", "muscles": ["side_delts"], "kind": "isolation"}
     },
     "LEG_EXTENSION": {
       "name": "Leg Extension",
@@ -380,7 +394,8 @@
       ],
       "visualization": "Glue Cue: Keep the pelvis super-glued to the seat.",
       "proTip": "This adds knee-extension volume with little systemic fatigue; it is not a mandatory pre-exhaustion exercise.",
-      "garmin": { "cat": "LEG_EXTENSION", "enum": "LEG_EXTENSION" }
+      "garmin": { "cat": "LEG_EXTENSION", "enum": "LEG_EXTENSION" },
+      "sequencing": {"primary": "quads", "muscles": ["quads"], "kind": "isolation"}
     },
     "CABLE_OH_EXT": {
       "name": "Overhead Cable Extension",
@@ -395,7 +410,8 @@
       ],
       "visualization": "Throwing the Ball: Extend the rope as if throwing a medicine ball overhead.",
       "proTip": "The overhead position gives the long head of the triceps a useful lengthened stimulus.",
-      "garmin": { "cat": "TRICEPS_EXTENSION", "enum": "OVERHEAD_TRICEPS_EXTENSION" }
+      "garmin": { "cat": "TRICEPS_EXTENSION", "enum": "OVERHEAD_TRICEPS_EXTENSION" },
+      "sequencing": {"primary": "triceps", "muscles": ["triceps"], "kind": "isolation"}
     },
     "RDL_BARBELL": {
       "name": "Romanian Deadlift",
@@ -410,7 +426,8 @@
       ],
       "visualization": "Car Door: Close a car door behind you with the hips.",
       "proTip": "It is first because it is the most technical and systemically demanding lift of Pull A.",
-      "garmin": { "cat": "DEADLIFT", "enum": "BARBELL_ROMANIAN_DEADLIFT" }
+      "garmin": { "cat": "DEADLIFT", "enum": "BARBELL_ROMANIAN_DEADLIFT" },
+      "sequencing": {"primary": "hamstrings", "muscles": ["hamstrings", "glutes", "lower_back"], "kind": "compound"}
     },
     "DB_RDL": {
       "name": "Dumbbell Romanian Deadlift",
@@ -425,7 +442,8 @@
       ],
       "visualization": "Drinking Bird: Tip from the hips with a rigid torso.",
       "proTip": "A practical alternative when the barbell setup is unavailable.",
-      "garmin": { "cat": "DEADLIFT", "enum": "DUMBBELL_ROMANIAN_DEADLIFT" }
+      "garmin": { "cat": "DEADLIFT", "enum": "DUMBBELL_ROMANIAN_DEADLIFT" },
+      "sequencing": {"primary": "hamstrings", "muscles": ["hamstrings", "glutes", "lower_back"], "kind": "compound"}
     },
     "SMITH_RDL": {
       "name": "Smith Machine RDL",
@@ -440,7 +458,8 @@
       ],
       "visualization": "Iron Rail: Hinge around a fixed bar path.",
       "proTip": "A stable alternative when a fixed path feels better for hamstring loading.",
-      "garmin": { "cat": "DEADLIFT", "enum": "SMITH_MACHINE_ROMANIAN_DEADLIFT" }
+      "garmin": { "cat": "DEADLIFT", "enum": "SMITH_MACHINE_ROMANIAN_DEADLIFT" },
+      "sequencing": {"primary": "hamstrings", "muscles": ["hamstrings", "glutes", "lower_back"], "kind": "compound"}
     },
     "NEUTRAL_PULLUP": {
       "name": "Weighted Pull-Up",
@@ -455,7 +474,8 @@
       ],
       "visualization": "Elbows to Pockets: Drive the elbows into the back pockets.",
       "proTip": "The vertical pull alternates with the hinge so the posterior chain gets time before direct curls.",
-      "garmin": { "cat": "PULL_UP", "enum": "PULL_UP" }
+      "garmin": { "cat": "PULL_UP", "enum": "PULL_UP" },
+      "sequencing": {"primary": "back", "muscles": ["back", "biceps"], "kind": "compound"}
     },
     "LAT_PULLDOWN": {
       "name": "Lat Pulldown",
@@ -470,7 +490,8 @@
       ],
       "visualization": "Bend the Bar: Pull the bar around the upper chest.",
       "proTip": "A vertical-pull alternative when weighted pull-ups are not the best choice that day.",
-      "garmin": { "cat": "PULL_UP", "enum": "LAT_PULLDOWN" }
+      "garmin": { "cat": "PULL_UP", "enum": "LAT_PULLDOWN" },
+      "sequencing": {"primary": "back", "muscles": ["back", "biceps"], "kind": "compound"}
     },
     "SEATED_L_CURL": {
       "name": "Seated Leg Curl",
@@ -485,7 +506,8 @@
       ],
       "visualization": "Dig a Trench: Pull the heels back and under the seat.",
       "proTip": "It complements the RDL by training knee flexion with the hip flexed.",
-      "garmin": { "cat": "LEG_CURL", "enum": "LEG_CURL" }
+      "garmin": { "cat": "LEG_CURL", "enum": "LEG_CURL" },
+      "sequencing": {"primary": "hamstrings", "muscles": ["hamstrings"], "kind": "isolation"}
     },
     "CS_ROW": {
       "name": "Chest-Supported Row",
@@ -500,7 +522,8 @@
       ],
       "visualization": "Wrap Around the Pad: Let the upper back wrap around the pad at the bottom.",
       "proTip": "Chest support limits low-back fatigue after RDLs while letting the back work hard.",
-      "garmin": { "cat": "ROW", "enum": "SEATED_ROW" }
+      "garmin": { "cat": "ROW", "enum": "SEATED_ROW" },
+      "sequencing": {"primary": "back", "muscles": ["back", "biceps", "rear_delts"], "kind": "compound"}
     },
     "WIDE_CABLE_ROW": {
       "name": "Wide Grip Cable Row",
@@ -515,7 +538,8 @@
       ],
       "visualization": "Scarecrow Pull: Pull the elbows apart and back.",
       "proTip": "This complements the lat pulldown by giving Pull B an upper-back horizontal pull.",
-      "garmin": { "cat": "ROW", "enum": "WIDE_GRIP_SEATED_CABLE_ROW" }
+      "garmin": { "cat": "ROW", "enum": "WIDE_GRIP_SEATED_CABLE_ROW" },
+      "sequencing": {"primary": "back", "muscles": ["back", "biceps", "rear_delts"], "kind": "compound"}
     },
     "REV_PEC_DECK": {
       "name": "Reverse Pec Deck",
@@ -530,7 +554,8 @@
       ],
       "visualization": "Push the Walls Away: Move the backs of the hands outward.",
       "proTip": "Direct rear-delt work balances the pressing volume without adding another compound.",
-      "garmin": { "cat": "FLY", "enum": "REAR_DELTOID_FLY" }
+      "garmin": { "cat": "FLY", "enum": "REAR_DELTOID_FLY" },
+      "sequencing": {"primary": "rear_delts", "muscles": ["rear_delts", "upper_back"], "kind": "isolation"}
     },
     "FACE_PULL": {
       "name": "Face Pull",
@@ -545,7 +570,8 @@
       ],
       "visualization": "Double Biceps: Finish in a relaxed double-biceps position.",
       "proTip": "Use this for rear delts and shoulder comfort, not as a heavy strength lift.",
-      "garmin": { "cat": "FLY", "enum": "REAR_DELTOID_FLY" }
+      "garmin": { "cat": "FLY", "enum": "REAR_DELTOID_FLY" },
+      "sequencing": {"primary": "rear_delts", "muscles": ["rear_delts", "upper_back"], "kind": "isolation"}
     },
     "INC_DB_CURL": {
       "name": "Incline DB Curl",
@@ -560,7 +586,8 @@
       ],
       "visualization": "Elbows in Cement: The elbows hinge but do not travel forward.",
       "proTip": "This provides a lengthened biceps stimulus; preacher curls later give a different resistance profile.",
-      "garmin": { "cat": "CURL", "enum": "DUMBBELL_INCLINE_CURL" }
+      "garmin": { "cat": "CURL", "enum": "DUMBBELL_INCLINE_CURL" },
+      "sequencing": {"primary": "biceps", "muscles": ["biceps"], "kind": "isolation"}
     },
     "PREACHER_CURL": {
       "name": "Preacher Curl",
@@ -575,7 +602,8 @@
       ],
       "visualization": "Hinge Cue: The elbow is a hinge and the upper arm stays fixed.",
       "proTip": "It complements, rather than replaces, the incline curl by loading the biceps differently.",
-      "garmin": { "cat": "CURL", "enum": "PREACHER_CURL" }
+      "garmin": { "cat": "CURL", "enum": "PREACHER_CURL" },
+      "sequencing": {"primary": "biceps", "muscles": ["biceps"], "kind": "isolation"}
     },
     "HIGH_INC_SMITH": {
       "name": "High Incline Smith Press",
@@ -590,7 +618,8 @@
       ],
       "visualization": "Scrape the Chin: Position the bench so the bar travels close to the chin on the way down.",
       "proTip": "This is first on Push B because upper-chest pressing is the priority of that day.",
-      "garmin": { "cat": "CHEST_PRESS", "enum": "SMITH_MACHINE_INCLINE_BENCH_PRESS" }
+      "garmin": { "cat": "CHEST_PRESS", "enum": "SMITH_MACHINE_INCLINE_BENCH_PRESS" },
+      "sequencing": {"primary": "chest", "muscles": ["chest", "front_delts", "triceps"], "kind": "compound"}
     },
     "SEATED_DB_OHP": {
       "name": "Seated DB OHP",
@@ -605,7 +634,8 @@
       ],
       "visualization": "Head Through the Window: Bring the head slightly through the arms near the top.",
       "proTip": "Two quality sets preserve direct anterior-delt and overhead strength work without displacing chest priority.",
-      "garmin": { "cat": "SHOULDER_PRESS", "enum": "SEATED_DUMBBELL_SHOULDER_PRESS" }
+      "garmin": { "cat": "SHOULDER_PRESS", "enum": "SEATED_DUMBBELL_SHOULDER_PRESS" },
+      "sequencing": {"primary": "front_delts", "muscles": ["front_delts", "triceps"], "kind": "compound"}
     },
     "TRI_PUSHDOWN": {
       "name": "Triceps Pushdown",
@@ -620,7 +650,8 @@
       ],
       "visualization": "Break the Rope: Separate the rope as the elbows extend.",
       "proTip": "This gives the triceps a shortened-position complement to overhead extensions.",
-      "garmin": { "cat": "TRICEPS_EXTENSION", "enum": "TRICEPS_PUSHDOWN" }
+      "garmin": { "cat": "TRICEPS_EXTENSION", "enum": "TRICEPS_PUSHDOWN" },
+      "sequencing": {"primary": "triceps", "muscles": ["triceps"], "kind": "isolation"}
     },
     "STANDING_CALF_RAISE": {
       "name": "Standing Calf Raise",
@@ -635,7 +666,8 @@
       ],
       "visualization": "Reach Tall: Push the floor away through the big toe and grow tall at the top.",
       "proTip": "Standing work is the one calf exercise because it is the best single choice for gastrocnemius and whole-calf growth; your calves are maintained, not prioritized.",
-      "garmin": { "cat": "CALF_RAISE", "enum": "STANDING_CALF_RAISE" }
+      "garmin": { "cat": "CALF_RAISE", "enum": "STANDING_CALF_RAISE" },
+      "sequencing": {"primary": "calves", "muscles": ["calves"], "kind": "isolation"}
     }
   },
   "swap_groups": [

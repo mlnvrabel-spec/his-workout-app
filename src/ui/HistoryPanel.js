@@ -41,7 +41,8 @@ export class HistoryPanel {
                     note.textContent = 'This older session has a completion count only.';
                     details.append(note);
                 }
-                for (const [index, exercise] of (workout.exercises || []).entries()) {
+                for (const index of (workout.order || (workout.exercises || []).map((_, i) => i))) {
+                    const exercise = workout.exercises[index];
                     const row = document.createElement('p');
                     const checked = workout.done?.[workout.day]?.[`ex-${workout.day}-${index}`];
                     const log = data.logs.find(l => l.workout_id === `${workout.cycleId}:${workout.day}` && l.exercise_id === exercise._exerciseId);
