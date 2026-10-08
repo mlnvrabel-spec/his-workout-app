@@ -327,7 +327,8 @@ export class Kai {
 
         // 2. Pointer Gestures (Swipe to complete & Swipe to swap)
         this.els.cards.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('input, .save-set-btn, .check-wrap, .reorder-handle, .reorder-options')) return;
+            const control = e.target.closest('input, textarea, select, a, button, [contenteditable], .reorder-options');
+            if (control && !control.matches('.ex-info')) return;
 
             // Check if we're hitting a swappable head
             activeHead = e.target.closest('.card-head[data-swappable="true"]');
@@ -344,10 +345,6 @@ export class Kai {
             activeCard = card;
             activeWrap = card.closest('.card-wrapper');
             activeBg = activeWrap.querySelector('.swipe-bg');
-
-            if (!activeHead) {
-                try { activeCard.setPointerCapture(e.pointerId); } catch(err) {}
-            }
 
             if (!activeHead) {
                 activeWrap.classList.add('dragging');
@@ -379,12 +376,16 @@ export class Kai {
                 // Swap logic (left or right)
                 if (Math.abs(diffX) > 8 && Math.abs(diffX) > diffY * 1.5) {
                     isSwapping = true;
+                    try { activeHead.setPointerCapture(e.pointerId); } catch(err) {}
                     e.preventDefault(); // prevent scroll
                     const nameEl = activeHead.querySelector('.ex-name');
                     if (nameEl) nameEl.style.transform = `translateX(${Math.round(diffX * 0.25)}px)`;
                 }
             } else {
                 // Swipe to complete logic (right only)
+                if (Math.abs(diffX) > 10) {
+                    try { activeCard.setPointerCapture(e.pointerId); } catch(err) {}
+                }
                 currentX = diffX;
                 if (currentX < 0) currentX = 0;
                 activeCard.style.transform = `translateX(${currentX}px)`;
@@ -456,7 +457,7 @@ export class Kai {
         };
 
         this.els.cards.addEventListener('pointerup', onPointerEnd);
-        this.els.cards.addEventListener('pointercancel', () => {
+        const cancelSwipe = () => {
             activeWrap?.classList.remove('dragging');
             if (activeCard) { activeCard.style.transform = ''; activeCard.style.transition = ''; }
             const name = activeHead?.querySelector('.ex-name');
@@ -464,7 +465,9 @@ export class Kai {
             if (activeBg) { activeBg.style.opacity = 0; activeBg.classList.remove('active'); }
             isDragging = false;
             activeCard = activeWrap = activeBg = activeHead = null;
-        });
+        };
+        this.els.cards.addEventListener('pointercancel', cancelSwipe);
+        this.els.cards.addEventListener('exercise:reorder_started', cancelSwipe);
     }
 
     scrollCardToTop(cardWrap) {

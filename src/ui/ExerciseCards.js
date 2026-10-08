@@ -75,7 +75,7 @@ export class ExerciseCards {
             <div class="card" data-id="${id}" style="transition: transform 0.3s ${this.motionCurve}, height 0.4s ${this.motionCurve}">
                 <div class="intensity-bar ${intensityClass}"></div>
                 <div class="card-head" ${swapInfo?.options?.length > 1 ? 'data-swappable="true"' : ''}>
-                    ${!finished ? `<button type="button" class="ex-num reorder-handle" ${isDone ? 'disabled' : ''} aria-label="Move ${escapeHTML(exercise.name)}" aria-expanded="false" title="Hold the exercise number to drag, or use arrow keys">${index + 1}</button>` : `<div class="ex-num">${index + 1}</div>`}
+                    ${!finished ? `<button type="button" class="ex-num reorder-handle" ${isDone ? 'disabled' : ''} aria-label="Move ${escapeHTML(exercise.name)}" aria-expanded="false" title="Hold the exercise card to drag, or use arrow keys">${index + 1}</button>` : `<div class="ex-num">${index + 1}</div>`}
                     <button type="button" class="ex-info" aria-expanded="${isExpanded}" aria-controls="details-${id}" aria-label="${escapeHTML(exercise.name)} details">
                         <div class="ex-name">${exercise.name}</div>
                         ${customTag}

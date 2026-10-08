@@ -88,3 +88,25 @@ Coverage: §7 maps to `test_reorder.mjs`, `test_render.mjs` and the browser obse
 
 Removed the separate grip icon at user request. The existing exercise number now provides hold-to-drag, tap-to-open movement options and keyboard arrows. Checked numbers stay visible and disable reordering. `npm.cmd run verify` passes, including the no-grip rendering regression. Real Android long-press remains NOT RUN.
 PASS: updated in-app preview at 497×764 shows no grip icons; tapping the number opens Move up/down, Escape closes it. Screenshot: exercise-number-reorder.jpg in this chat visualization directory. Viewport override restored.
+
+## Bug Hub #2 — whole-card exercise pickup (2026-10-08)
+
+Confirmed brief: PRODUCT_SPEC.md §7 now accepts a 350 ms hold on the exercise card surface, including the name and expanded details. No separate visible grip was added. Inputs, links, completion checks and action buttons remain independent. The existing number retains its keyboard and tap movement options. Checked cards and sealed days remain fixed; ordering policy and persistence are unchanged.
+
+Pickup clears competing swipe state, captures the pointer only after the hold, and suppresses the following click. Moving horizontally or vertically before pickup cancels reorder; touch movement prevents scrolling only after pickup. Swipe capture now waits for horizontal movement so a short name tap remains usable. Cancellation releases only reorder-owned capture, preserving quick swipes.
+
+- PASS reproduction: ran the new card-body assertion against the original HEAD ExerciseReorder module. It failed with `Holding the card body must start pickup without a handle` (drag undefined). Temporary reproduction files were removed.
+- PASS `npm.cmd run verify`: all standard suites, including whole-card pickup, name/number pickup, control exclusions, checked/sealed guards, vertical/horizontal early movement, pointer cancellation, Escape, blur/state-change cancellation, post-drag click suppression and active/pre-pickup touch scroll handling. Combined actual Kai/ExerciseReorder listeners cover short-tap capture, held drag versus completion swipe, and quick completion swipe. These are deterministic event tests, not device gestures.
+- PASS in-app browser on isolated origin `http://127.0.0.1:54320`: ordinary Cable Fly name tap opens details; entered and saved 15 kg × 12; keyboard movement changed the displayed order and survived reload; completion check disables that exercise's movement control and unchecking restores it; number tap opens Move up/down and Escape closes it. No captured console errors or warnings during final scoped checks.
+- PASS screenshots at desktop 1280×720 and phone 390×844: no separate grip, preserved card styling, phone document scrollWidth=clientWidth=390. Phone evidence: [bug2-reorder-mobile.png](bug2-reorder-mobile.png).
+- PASS service-worker update prompt and explicit activation to v74. Stopped the isolated frontend server and reloaded the root offline; all six cards, reordered sequence and the saved test set remained available.
+- NOT RUN timed browser hold/drag/drop, browser edge-scroll gesture, real Android/iOS touch scrolling versus pickup, physical-device cancellation, vibration, installed-PWA or screen-reader certification. The available browser drag API does not expose a stationary timed hold. Deterministic handlers and viewport screenshots do not establish those passes. Outstanding required device/gesture gates need an explicit waiver before publication.
+- NOT RUN backend/Garmin/auth checks: no backend boundary changed, no backend service started, no credentials touched.
+
+Used the existing checkout, which was clean except the pre-existing `her-workout-app` deletion; that deletion and recent completion/ordering commits were preserved. The temporary frontend server was stopped and viewport override reset. No deployment, publication, commit, merge, Bug Hub database write or message to another task was performed.
+
+Changed paths: `src/ui/ExerciseReorder.js`, `src/ui/Kai.js`, `src/ui/ExerciseCards.js`, `src/ui/Elena.css`, `service-worker.js`, `test_reorder.mjs`, `PRODUCT_SPEC.md`, `.agents/skills/product-spec-qa/references/spec-coverage.md`, `REVIEW_VERIFICATION.md`, `bug2-reorder-mobile.png`.
+
+### Publication authorization — 8 October 2026
+
+The user explicitly waived the outstanding physical hold/drag and edge-scroll checks and requested publication to the existing GitHub repository, allowing its automatic Vercel deployment. Publish only this fix to `mlnvrabel-spec/his-workout-app` on `main`; preserve the unrelated `her-workout-app` deletion. Successful checks above remain valid because runtime source, dependencies and configuration are unchanged since verification. This waiver does not establish a device/gesture pass.

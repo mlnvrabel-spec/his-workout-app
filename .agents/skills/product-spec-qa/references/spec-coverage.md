@@ -31,4 +31,4 @@ Report any skipped row as `NOT RUN`; never infer a pass from adjacent evidence.
 
 
 See `REVIEW_VERIFICATION.md` at the repository root for the September 2026 regression and browser evidence. `test_sw.mjs` verifies isolated cache behavior; browser offline reload remains a separate check.
-| §7 Session order | Muscle relationships, selected destination, checked slots, persistent identity, Undo, cycles, transaction failure, hold/drop/cancel | test_reorder.mjs, test_render.mjs; local preview evidence in REVIEW_VERIFICATION.md | Automated + browser fallback controls; real Android hold/drag NOT RUN |
+| §7 Session order | Muscle relationships, selected destination, checked slots, persistent identity, Undo, cycles, transaction failure, whole-card hold/drop/cancel, embedded-control exclusions, swipe arbitration | test_reorder.mjs, test_render.mjs; local preview evidence in REVIEW_VERIFICATION.md | Automated + browser fallback controls and offline reload; timed browser and real Android hold/drag NOT RUN |

@@ -3,10 +3,15 @@ export class ExerciseReorder {
         this.cards = cards;
         this.engine = engine;
         this.feedback = feedback;
+        cards.addEventListener('click', event => {
+            if (!this.suppressClick) return;
+            this.suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
         cards.addEventListener('click', async event => {
             const handle = event.target.closest('.reorder-handle');
             if (handle) {
-                if (this.suppressClick) { this.suppressClick = false; return; }
                 const options = handle.closest('.card-wrapper').querySelector('.reorder-options');
                 options.hidden = !options.hidden;
                 handle.setAttribute('aria-expanded', String(!options.hidden));
@@ -31,16 +36,21 @@ export class ExerciseReorder {
             }
         });
         cards.addEventListener('pointerdown', event => {
-            const handle = event.target.closest('.reorder-handle');
-            if (!handle || event.button !== 0 || this.engine.pending) return;
+            const surface = event.target.closest('.card');
+            const card = surface?.closest('.card-wrapper');
+            const control = event.target.closest('input, textarea, select, a, button, [contenteditable], .reorder-options');
+            if (!card || (control && !control.matches('.ex-info, .reorder-handle')) || event.button !== 0 || event.isPrimary === false || this.engine.pending) return;
+            if (card.classList.contains('done') || engine.isDaySealed?.(engine.state.day)) return;
             this.cancel();
-            const card = handle.closest('.card-wrapper');
-            this.drag = { card, handle, day: engine.state.day, cycle: engine.cycleId, slot: Number(card.dataset.idx), pointer: event.pointerId, start: event.clientY, y: event.clientY, active: false };
-            handle.setPointerCapture(event.pointerId);
+            this.suppressClick = false;
+            this.drag = { card, handle: surface, day: engine.state.day, cycle: engine.cycleId, slot: Number(card.dataset.idx), pointer: event.pointerId, startX: event.clientX, start: event.clientY, y: event.clientY, active: false };
+            this.destination = [...cards.querySelectorAll('.card-wrapper')].indexOf(card);
             this.timer = setTimeout(() => {
                 if (!this.drag) return;
+                cards.dispatchEvent(new CustomEvent('exercise:reorder_started'));
                 this.drag.active = true;
-                this.drag.surface = card.querySelector('.card');
+                surface.setPointerCapture(event.pointerId);
+                this.drag.surface = surface;
                 this.drag.transition = this.drag.surface.style.transition;
                 this.drag.surface.style.transition = 'none';
                 card.classList.add('is-reordering');
@@ -51,8 +61,15 @@ export class ExerciseReorder {
         cards.addEventListener('pointermove', event => {
             if (!this.drag || this.drag.pointer !== event.pointerId) return;
             this.drag.y = event.clientY;
-            if (!this.drag.active && Math.abs(this.drag.y - this.drag.start) > 10) this.cancel();
+            if (!this.drag.active && (Math.abs(this.drag.y - this.drag.start) > 10 || Math.abs(event.clientX - this.drag.startX) > 10)) this.cancel();
             else if (this.drag.active) event.preventDefault();
+        });
+        // Keep native scrolling before pickup; a held touch owns movement afterward.
+        cards.addEventListener('touchmove', event => {
+            if (this.drag?.active && event.cancelable) event.preventDefault();
+        }, { passive: false });
+        cards.addEventListener('contextmenu', event => {
+            if (this.drag) event.preventDefault();
         });
         cards.addEventListener('pointerup', async event => {
             const drag = this.drag;
@@ -95,7 +112,7 @@ export class ExerciseReorder {
             drag.surface.style.transform = '';
             drag.surface.style.transition = drag.transition;
         }
-        if (drag?.handle.hasPointerCapture(drag.pointer)) drag.handle.releasePointerCapture(drag.pointer);
+        if (drag?.active && drag.handle.hasPointerCapture(drag.pointer)) drag.handle.releasePointerCapture(drag.pointer);
         this.cards.querySelectorAll('.is-reordering, .reorder-target').forEach(card => card.classList.remove('is-reordering', 'reorder-target'));
     }
 

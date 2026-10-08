@@ -2887,7 +2887,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
     .header-controls .ctrl-btn, .header-controls .theme-btn { width: 38px; height: 38px; }
 }
 
-/* The existing exercise number is the session reorder control. */
+/* Hold the card to reorder; the existing number also offers keyboard controls. */
+.card-wrapper:not(.done) .card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.card input, .card textarea, .card [contenteditable] { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
 .ex-num.reorder-handle { position: relative; padding: 0; cursor: grab; touch-action: none; user-select: none; }
 .ex-num.reorder-handle::before { content: ''; position: absolute; inset: -5px; }
 .ex-num.reorder-handle:disabled { cursor: default; }
