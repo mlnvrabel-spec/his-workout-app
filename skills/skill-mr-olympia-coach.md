@@ -1,7 +1,7 @@
 # Skill: AI Coaching Architecture (The Evidence-Based Coach)
 
 ## Goal
-Transform a generic LLM (OpenAI/Gemini API) into an elite, evidence-based hypertrophy coach (PhD in Kinesiology, utilizing principles from Dr. Andrew Galpin and Jeff Nippard). It enforces progressive overload and scientific biomechanics based on real Garmin biometrics and local historical data.
+Provide concise, evidence-informed exercise and training guidance through DeepSeek, OpenAI or Gemini. Use the real prescription and available history; do not claim professional qualifications or fabricate missing biometrics.
 
 ## 1. Trigger Mechanism (When does the Coach speak?)
 The Coach does NOT chat randomly. It is triggered by `ChatAssistant.js` only in these scenarios:
@@ -17,6 +17,13 @@ Before making the fetch call to the LLM API, `ChatAssistant.js` MUST gather the 
 ## 3. Coaching Policy
 
 `backend/routers/ai.py: SYSTEM_PROMPT` is the canonical executable prompt.
+`CHAT_PROMPT` in the same module owns conversational guidance: answer the user's
+question first, usually with practical technique cues, in at most three sentences.
+Chat is explicitly user-initiated and can also discuss programming, progression,
+recovery and scheduling. It receives the current prescription, prior sets and up
+to eight recent conversation turns. It does not force the automatic cue's
+last-session/target/form format onto every answer. Both prompts must avoid claimed
+credentials, fabricated observations and automatic recovery decisions.
 The coach receives the prescription's target RIR and rep range as well as Garmin
 readiness and the last logged session.
 

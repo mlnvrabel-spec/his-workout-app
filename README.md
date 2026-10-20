@@ -57,3 +57,42 @@ publish workouts to Garmin. Optional provider configuration uses backend
 `OPENAI_API_KEY` / `GEMINI_API_KEY` and `OPENAI_MODEL` / `GEMINI_MODEL` variables.
 
 See `REVIEW_VERIFICATION.md` for regression coverage and device-only checks.
+
+## Coach connection from a phone
+
+Home / Workout / Coach are available in the bottom bar. Recent training shows
+recorded gym and run sessions/week over the last 14 and 28 calendar days.
+
+Open Coach → AI connection. Use a provider API key, not a DeepSeek account password.
+The backend supports DeepSeek (default), OpenAI and Gemini. Provider calls use the
+server; keys never enter localStorage or IndexedDB. Only the backend URL is saved.
+Phone-entered keys live in server memory for up to eight hours, with an HttpOnly
+cookie on the phone; disconnect, expiry, eviction or a server restart removes access.
+This deliberately requires reconnection rather than storing permanent credentials.
+
+The frontend repository alone does not provide a hosted Python service. To enable
+phone use, host `backend/coach_app.py` behind HTTPS, preferably on the same site as the app.
+This AI-only entrypoint does not expose the local Garmin bridge's auth/sync routes.
+Keep the existing Garmin bridge local; do not expose it as the phone coach service.
+
+- Set `COACH_ALLOWED_ORIGINS` to the exact frontend HTTPS origin (comma-separated
+  when needed), and `COACH_ACCESS_CODE` to a random secret of at least 24 characters.
+  Generate one privately with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+- Enter that access code and your provider API key in the phone connection form.
+  Alternatively configure `DEEPSEEK_API_KEY`, `OPENAI_API_KEY` or `GEMINI_API_KEY` on
+  the backend and leave the phone key field blank. Never commit these values.
+- Run one backend worker because sessions are process-local. Use trusted proxy/TLS
+  configuration so the app receives the correct HTTPS scheme. Restrict request-body
+  logging; never log connection forms, provider headers or chat content. Keep host,
+  dependency and account security maintained. Cross-site cookie restrictions on a
+  phone can prevent connection; a same-site reverse proxy avoids that dependency.
+- No backend was provisioned or deployed by the GitHub push. Until an HTTPS backend
+  and a real provider key are available, the app labels its local guidance clearly.
+
+For loopback development only, HTTP on localhost is supported. Include the local
+preview origin in `COACH_ALLOWED_ORIGINS` and run `python -m uvicorn coach_app:app --app-dir backend --host 127.0.0.1 --port 8001`.
+New credential-flow checks: `python backend/test_coach.py` (mock providers; no billing).
+The current DeepSeek default, `deepseek-flash`, and endpoint were verified against
+the [official API guide](https://api-docs.deepseek.com/) on 20 October 2026;
+`DEEPSEEK_MODEL` can select another supported model. OpenAI/Gemini model variables
+remain supported. Real-provider and physical-phone tests require the actual setup.

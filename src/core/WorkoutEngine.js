@@ -5,6 +5,7 @@
  * Acts as the State Machine containing no UI rendering logic.
  */
 import { StorageManager } from './StorageManager.js';
+import { trainingAverages } from './TrainingStats.js';
 import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
 import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, suggestedRunDate } from './TrainingSchedule.js';
 
@@ -339,7 +340,8 @@ export class WorkoutEngine {
         const schedule = this.state.schedule;
         if (!schedule) return { entries: [], today: context.today, officeDays: [1, 4], canUndo: false };
         const rule = schedule.officeRules?.filter(rule => rule.from <= context.today).at(-1);
-        return { entries: scheduleEntries(schedule, context), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
+        const entries = scheduleEntries(schedule, context);
+        return { entries, averages: trainingAverages(entries, context.today), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
             officeDays: rule?.days || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
             runSuggestion: suggestedRunDate(schedule, context) };
     }

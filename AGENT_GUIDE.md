@@ -23,7 +23,7 @@
 - Use `CustomEvent` for cross-module communication. Preserve event names and payload shapes when changing producers or consumers.
 - `src/data/core_protocol.json` is the programming-data source of truth. Do not hardcode exercises in UI modules.
 - IndexedDB is the durable local source of truth for workout logs. Remote sync is asynchronous and must never block logging or rendering.
-- Keep credentials out of source control and browser storage. Backend environment variables own provider credentials.
+- Keep credentials out of source control and browser storage. Provider credentials belong in backend environment variables or bounded, expiring server-memory coach sessions. Never persist phone-entered provider keys in the browser or expose them in responses/logs.
 
 ## Product invariants
 

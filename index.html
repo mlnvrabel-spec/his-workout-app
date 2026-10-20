@@ -46,7 +46,6 @@
                     </div>
                 </div>
                 <div class="header-controls">
-                    <button type="button" class="agenda-home-btn" id="agenda-home-btn">Agenda</button>
                     <span id="network-status" class="network-status" role="status" data-state="CACHED">CACHED</span>
                     <button class="ctrl-btn" id="history-btn" aria-label="Workout history" title="Completed gym sessions and saved sets"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11a9 9 0 1 1 3 7M3 5v6h6M12 7v5l3 2"/></svg><span>History</span></button>
                     <button class="ctrl-btn" id="settings-btn" aria-label="Settings">
@@ -139,31 +138,30 @@
         <p id="session-feedback" class="session-feedback" role="status" hidden></p>
         <button id="app-update-btn" hidden>Update app after saving your sets</button>
         <section id="training-agenda" aria-label="Training agenda"></section>
+        <nav class="nav-dock workout-session-nav" id="nav-dock" aria-label="Workout sessions">
+            <button type="button" class="nav-item active" data-day="0"><span class="nav-label">Push A</span><span class="nav-sub">D1</span></button>
+            <button type="button" class="nav-item" data-day="1"><span class="nav-label">Pull A</span><span class="nav-sub">D2</span></button>
+            <button type="button" class="nav-item" data-day="2"><span class="nav-label">Push B</span><span class="nav-sub">D3</span></button>
+            <button type="button" class="nav-item" data-day="3"><span class="nav-label">Pull B</span><span class="nav-sub">D4</span></button>
+        </nav>
         <main class="cards" id="cards"></main>
     </div>
 
     <div class="dock-veil" aria-hidden="true"></div>
 
     <div class="nav-wrap">
-        <nav class="nav-dock" id="nav-dock">
-            <button type="button" class="nav-item active" data-day="0"><span class="nav-label">D1</span><span class="nav-sub">Push</span></button>
-            <button type="button" class="nav-item" data-day="1"><span class="nav-label">D2</span><span class="nav-sub">Pull</span></button>
-            <button type="button" class="nav-item" data-day="2"><span class="nav-label">D3</span><span class="nav-sub">Push</span></button>
-            <button type="button" class="nav-item" data-day="3"><span class="nav-label">D4</span><span class="nav-sub">Pull</span></button>
+        <nav class="app-nav" aria-label="Primary navigation">
+            <button type="button" id="agenda-home-btn" class="app-nav-item" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/></svg><span>Home</span></button>
+            <button type="button" id="workout-nav-btn" class="app-nav-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3 8v8M17 4v16M21 8v8M7 12h10"/></svg><span>Workout</span></button>
+            <button type="button" id="ai-fab" class="app-nav-item" aria-label="Open coaching assistant"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4zM8 9h8M8 12h5"/></svg><span>Coach</span></button>
         </nav>
-
-        <button type="button" class="ai-fab" id="ai-fab" aria-label="Open coaching assistant">
-            <svg viewBox="0 0 24 24">
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 11H7V9h2v2zm4 0h-2V9h2v2zm4 0h-2V9h2v2z" />
-            </svg>
-        </button>
     </div>
 
     <div class="chat-ov" id="chat-ov">
         <div class="chat-window" id="chat-window">
             <canvas id="chat-orb-canvas"></canvas>
             <div class="chat-head">
-                <div class="chat-title">Mr. Olympia</div>
+                <div class="chat-title">Your coach</div>
                 <div class="chat-acts">
                     <button class="icon-btn" id="chat-close-btn" aria-label="Close assistant">
                         <svg viewBox="0 0 24 24">
@@ -173,6 +171,19 @@
                 </div>
             </div>
 
+            <details class="coach-connection" id="coach-connection">
+                <summary>AI connection <span id="coach-connection-status">Not connected</span></summary>
+                <form id="coach-connect-form">
+                    <label>Backend HTTPS address<input name="backend" type="url" required autocomplete="url" placeholder="https://your-coach-backend.example"></label>
+                    <label>Provider<select name="provider"><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="gemini">Gemini</option></select></label>
+                    <label>Coach access code<input name="accessCode" type="password" required maxlength="200" autocomplete="off"></label>
+                    <label>Provider API key<input name="apiKey" type="password" maxlength="1000" autocomplete="off" placeholder="Leave blank if configured on backend"></label>
+                    <p>Use an API key, not your account password. The key stays in backend memory for up to 8 hours. Your questions, exercise prescription and previous sets go to the selected AI provider.</p>
+                    <p>A hosted HTTPS backend and its access code are required on your phone. A backend on the same site avoids third-party cookie restrictions.</p>
+                    <div class="coach-connect-actions"><button type="submit">Connect</button><button type="button" id="coach-disconnect-btn">Disconnect</button></div>
+                    <p id="coach-connect-feedback" role="status"></p>
+                </form>
+            </details>
             <div class="chat-body" id="chat-body"></div>
 
             <div class="chat-foot">
@@ -250,18 +261,25 @@
             const kai = new Kai(engine, chat);
             const agendaElement = document.getElementById('training-agenda');
             const agenda = new TrainingAgenda(agendaElement, engine);
-            document.getElementById('agenda-home-btn').addEventListener('click', () => {
-                document.body.dataset.view = 'agenda';
+            const setView = view => {
+                document.body.dataset.view = view;
                 document.getElementById('app').scrollTop = 0;
+                for (const [id, active] of [['agenda-home-btn', view === 'agenda'], ['workout-nav-btn', view === 'workout']]) {
+                    const button = document.getElementById(id);
+                    if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+                }
+            };
+            document.getElementById('agenda-home-btn').addEventListener('click', () => {
+                setView('agenda');
                 agenda.render();
             });
+            document.getElementById('workout-nav-btn').addEventListener('click', () => setView('workout'));
             agendaElement.addEventListener('agenda:open-workout', async event => {
                 const { day, cycleId } = event.detail;
                 if (cycleId && cycleId !== engine.cycleId) return;
                 if (!await engine.setDay(Number.isInteger(day) ? day : engine.state.activeDay)) return;
-                document.body.dataset.view = 'workout';
-                document.getElementById('app').scrollTop = 0;
-                document.getElementById('agenda-home-btn').focus({ preventScroll: true });
+                setView('workout');
+                document.getElementById('workout-nav-btn').focus({ preventScroll: true });
             });
 
             // Initialize the UI elements

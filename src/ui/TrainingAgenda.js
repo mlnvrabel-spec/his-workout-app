@@ -42,6 +42,7 @@ export class TrainingAgenda {
         const focusAction = this.element.contains(focused) ? focused.dataset.agendaAction : null;
         const focusId = focused?.dataset.entryId;
         const focusDate = focused?.dataset.date;
+        this.statsOpen = this.element.querySelector('.agenda-averages')?.open ?? this.statsOpen;
         this.view = this.engine.getScheduleView();
         const { entries, today } = this.view;
         if (!today) return;
@@ -59,6 +60,7 @@ export class TrainingAgenda {
                 <div><p class="agenda-eyebrow">${selected === today ? 'Today' : 'Selected day'} · ${escape(dateLabel(selected))}</p><h2>${escape(selectedItems.map(entry => entry.title).join(' · ') || (selected < today ? 'Nothing recorded' : 'Rest'))}</h2>${current ? `<p class="agenda-next">${current.status === 'started' ? 'In progress' : 'Next gym'}: ${escape(current.title)} · ${escape(dateLabel(current.date))}</p>` : ''}</div>
                 ${summaryGym ? `<button type="button" class="agenda-primary" data-agenda-action="open" data-entry-id="${escape(summaryGym.id)}">${summaryGym.status === 'started' ? 'Resume' : 'Open'} ${escape(summaryGym.title)} <span aria-hidden="true">↗</span></button>` : ''}
             </div>
+            ${this.view.averages ? `<details class="agenda-averages" ${this.statsOpen ? 'open' : ''}><summary>Recent training <span>4 weeks · Gym ${this.view.averages[1].gym.perWeek.toFixed(1)} · Runs ${this.view.averages[1].run.perWeek.toFixed(1)} / week</span></summary><table><caption>Completed sessions per week · through ${escape(dateLabel(today))}</caption><thead><tr><th scope="col">Average / week</th>${this.view.averages.map(period => `<th scope="col">${period.weeks} weeks</th>`).join('')}</tr></thead><tbody>${[['gym', 'Gym'], ['run', 'Runs']].map(([kind, title]) => `<tr><th scope="row">${title}</th>${this.view.averages.map(period => `<td>${period[kind].perWeek.toFixed(1)}<span>${period[kind].count} recorded</span></td>`).join('')}</tr>`).join('')}</tbody></table><p>Last 14 / 28 calendar days, including today. Saved history only; missing records can lower these averages.</p></details>` : ''}
             <div class="agenda-toolbar" aria-label="Schedule actions">
                 <button type="button" class="agenda-add" data-agenda-action="add" data-date="${selected}">+ Add</button>
                 <button type="button" data-agenda-action="office">Office days</button>

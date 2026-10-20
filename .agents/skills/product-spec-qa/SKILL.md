@@ -25,7 +25,7 @@ For rendered UI, PWA, service-worker, offline, accessibility, motion, or narrow-
 - Completion summaries retain the exact checked-exercise count, advance program order, and reset only after the four-day cycle.
 - Undo restores the prior resumable state and its Hero/week metadata without resurrecting after reload.
 - UI tests dispatch intent through engine methods; they do not create a second workout state store.
-- Garmin credentials and tokens never enter browser persistence. Backend provider keys remain environment-owned.
+- Garmin credentials and tokens never enter browser persistence. Provider keys remain in backend environment variables or bounded, expiring server-memory coach sessions; never persist phone-entered keys in browser storage.
 - Reports distinguish `PASS`, `FAIL`, `NOT RUN`, and `SPEC CONFLICT`, with the relevant spec section and evidence.
 
 Do not claim visual, offline-reload, service-worker-control, or Garmin-auth coverage from unit tests alone.

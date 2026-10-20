@@ -1,23 +1,29 @@
 import { StorageManager } from './StorageManager.js';
 import { Modal } from '../ui/Modal.js';
+import { CoachConnection } from './CoachConnection.js';
 
 export class ChatAssistant {
     constructor(engine) {
         this.engine = engine;
         this.storage = engine?.storage || new StorageManager();
         this.currentReadiness = 50;
+        this.hasReadiness = false;
         this.isOpen = false;
         this.sending = false;
+        this.history = [];
         // Remove the retired client-side secret, never read or transmit it.
         try { localStorage.removeItem('ai_key'); } catch {}
         window.addEventListener('garminReadinessUpdated', event => {
-            this.currentReadiness = typeof event.detail?.readiness_score === 'number' ? event.detail.readiness_score : 50;
+            this.hasReadiness = Number.isFinite(event.detail?.readiness_score);
+            this.currentReadiness = this.hasReadiness ? event.detail.readiness_score : 50;
         });
         this.ov = document.getElementById('chat-ov');
         this.body = document.getElementById('chat-body');
         this.input = document.getElementById('chat-input');
         this.sendBtn = document.getElementById('chat-send-btn');
         if (!this.ov) return;
+        this.connection = new CoachConnection();
+        this.setupConnection();
         this.modal = new Modal(this.ov, () => this.close(), 'Coaching assistant');
         document.getElementById('ai-fab').onclick = () => this.toggle();
         document.getElementById('chat-close-btn').onclick = () => this.close();
@@ -33,9 +39,39 @@ export class ChatAssistant {
         this.isOpen = true;
         this.modal.open();
         this.ov.classList.add('show');
+        document.getElementById('ai-fab').setAttribute('aria-expanded', 'true');
         this.input.focus();
+        this.connection.status().then(() => this.connectionStatus()).catch(() => this.connectionStatus('Backend unavailable · open AI connection'));
     }
-    close() { this.isOpen = false; this.ov.classList.remove('show'); this.modal.close(); }
+    close() { this.isOpen = false; this.ov.classList.remove('show'); document.getElementById('ai-fab').setAttribute('aria-expanded', 'false'); this.modal.close(); }
+
+    connectionStatus(message) {
+        document.getElementById('coach-connection-status').textContent = message || (this.connection.connected ? `${this.connection.provider} · session ready` : 'Not connected');
+        document.getElementById('coach-disconnect-btn').disabled = !this.connection.connected;
+    }
+
+    setupConnection() {
+        const form = document.getElementById('coach-connect-form');
+        const feedback = document.getElementById('coach-connect-feedback');
+        form.elements.backend.value = this.connection.base;
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const submit = form.querySelector('[type="submit"]');
+            submit.disabled = true;
+            feedback.textContent = 'Connecting…';
+            try {
+                await this.connection.connect(form.elements.backend.value, form.elements.provider.value, form.elements.accessCode.value, form.elements.apiKey.value.trim());
+                feedback.textContent = 'Session ready. Your API key will be checked when you send a question.';
+                this.connectionStatus();
+                document.getElementById('coach-connection').open = false;
+            } catch (error) { feedback.textContent = error.message || 'Connection failed. Check the backend address.'; }
+            finally { form.elements.accessCode.value = ''; form.elements.apiKey.value = ''; submit.disabled = false; }
+        });
+        document.getElementById('coach-disconnect-btn').addEventListener('click', async () => {
+            try { await this.connection.disconnect(); this.history = []; this.connectionStatus(); feedback.textContent = 'Disconnected. The backend session key has been removed.'; }
+            catch { feedback.textContent = 'Could not disconnect from the backend. The session expires automatically within 8 hours.'; }
+        });
+    }
 
     addMsg(sender, text, type = 'ai') {
         if (!this.body) return;
@@ -52,38 +88,36 @@ export class ChatAssistant {
         const message = this.input.value.trim();
         if (!message || this.sending || !this.engine?.protocolData) return;
         const workout = this.engine.protocolData[this.engine.state.day];
-        const exercise = workout.exercises.find(ex => message.toLowerCase().includes(ex.name.toLowerCase())) || workout.exercises[0];
+        const exercise = this.engine.protocolData.flatMap(day => day.exercises).find(ex => message.toLowerCase().includes(ex.name.toLowerCase())) || workout.exercises.find(ex => ex._exerciseId === this.focusedExerciseId) || workout.exercises[0];
         const previous = this.engine.getPreviousLog(exercise._exerciseId)?.sets.at(-1);
         const next = this.engine.protocolData[this.engine._nextDay(this.engine.state, this.engine.state.activeDay)];
         const payload = {
-            readiness_score: this.currentReadiness, exercise_name: exercise.name,
+            readiness_score: this.currentReadiness, readiness_available: this.hasReadiness, exercise_name: exercise.name,
             last_session_log: previous ? `${previous.weight_kg}kg x ${previous.reps}` : 'First time performing this logged locally.',
             target_rir: String(exercise.rir), rep_range: exercise.reps,
             message: message.slice(0, 2000), workout_title: workout.title, next_workout: next.title,
-            exercise_names: workout.exercises.map(ex => ex.name)
+            exercise_names: workout.exercises.map(ex => ex.name), history: this.history.slice(-8)
         };
         this.sending = true;
         this.sendBtn.disabled = true;
         this.input.value = '';
         this.addMsg('You', message, 'user');
         try {
-            const response = await fetch('http://localhost:8001/api/ai/chat', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload), signal: AbortSignal.timeout(7000)
-            });
-            if (!response.ok) throw new Error('Coach unavailable');
-            const data = await response.json();
+            const data = await this.connection.request('chat', { method: 'POST', body: payload });
             if (typeof data.cue !== 'string' || !data.cue.trim()) throw new Error('Empty response');
             this.addMsg(data.source === 'local' ? 'Coach · local guidance' : 'Coach', data.cue);
+            if (data.source === 'provider') this.history = [...this.history, { role: 'user', content: message.slice(0, 2000) }, { role: 'assistant', content: data.cue.slice(0, 2000) }].slice(-8);
+            else this.connectionStatus('AI unavailable · check connection, key or balance');
         } catch {
             const response = /next|plan|schedule/i.test(message)
-                ? `Your current workout is ${workout.title}. Next in program order is ${next.title}. Finish explicitly when you are ready; exercise checks are optional.`
-                : this._fallbackCoachingCue(exercise.name, { targetRir: exercise.rir, repRange: exercise.reps }, previous);
+                ? `Your current workout is ${workout.title}. Next in program order is ${next.title}. Use Home for the actual planned dates.`
+                : `The AI connection is unavailable, so this is general local guidance. Follow the saved prescription and use a controlled, pain-free range on ${exercise.name}. Open AI connection to check the backend and session.`;
             this.addMsg('Coach · offline guidance', response);
         } finally { this.sending = false; this.sendBtn.disabled = false; }
     }
 
     async generateCoachingCue(exerciseId, exerciseName = "this exercise", prescription = {}) {
+        this.focusedExerciseId = exerciseId;
         let previous;
         try {
             const archiveLog = this.engine?.getPreviousLog(exerciseId) || await this.storage.getLastArchiveLog(exerciseId);
@@ -97,24 +131,14 @@ export class ChatAssistant {
 
             const payload = {
                 readiness_score: this.currentReadiness,
+                readiness_available: this.hasReadiness,
                 exercise_name: exerciseName,
                 last_session_log: lastSessionStr,
                 target_rir: prescription.targetRir || '1-2',
                 rep_range: prescription.repRange || ''
             };
 
-            const response = await fetch('http://localhost:8001/api/ai/coach', {
-                signal: AbortSignal.timeout(7000),
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error('Backend failed');
-            }
-
-            const data = await response.json();
+            const data = this.connection ? await this.connection.request('coach', { method: 'POST', body: payload }) : {};
             return data.cue || this._fallbackCoachingCue(exerciseName, prescription, previous);
 
         } catch (error) {
