@@ -15,7 +15,7 @@ export class AuthUI {
 
         this.injectStyles();
         this.render();
-        this.modal = new Modal(this.els.overlay, () => this.hide(), 'Connect Garmin');
+        this.modal = new Modal(this.els.overlay, () => this.hide(), 'Connect Garmin', () => this.show('login'));
     }
 
     injectStyles() {

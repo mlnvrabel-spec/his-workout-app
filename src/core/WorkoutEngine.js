@@ -423,7 +423,7 @@ export class WorkoutEngine {
                     return swap ? this._resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id: swap }) : structuredClone(ex);
                 });
                 const summary = {
-                    ...(summaries[index] || {}), id, cycleId: workout.cycleId, day,
+                    ...(summaries[index] || {}), id, cycleId: workout.cycleId, day, completionType: 'counted',
                     sessionId: workout.workoutDate || today, completedAt: summaries[index]?.completedAt || new Date().toISOString(),
                     title: this.protocolData[day].title, subtitle: this.protocolData[day].subtitle,
                     exercises, totalExercises: total, completedExercises: checked,
@@ -607,6 +607,19 @@ export class WorkoutEngine {
     canUndoLastCompletion() { return Boolean(this.getLastCompletion()); }
     getDaySummary(day = this.state.day) { return this.summaries.find(s => s.cycleId === this.cycleId && s.day === day) || null; }
 
+    getSessionStatus(day = this.state.day, cycleId = this.cycleId) {
+        const summary = this.summaries.find(s => s.cycleId === cycleId && s.day === day);
+        if (summary?.completionType === 'finished') return 'Finished';
+        if (summary?.completionType === 'counted' || (cycleId === this.cycleId && this.state.autoCompletedDays?.[day])) {
+            return cycleId === this.cycleId && !this.isDaySealed(day)
+                ? 'Counted toward training · Still editable today' : 'Counted toward training';
+        }
+        if (summary) return 'Recorded';
+        const started = cycleId === this.cycleId && (Object.values(this.state.done[day] || {}).some(Boolean)
+            || this.logs.some(log => log.session_id === `${cycleId}:${day}` && log.sets.length));
+        return started ? 'In progress' : 'Planned';
+    }
+
     async finishSession() {
         if (this.pending) return false;
         const cycle = this.cycleId, day = this.state.day;
@@ -624,7 +637,7 @@ export class WorkoutEngine {
                 // that were not manually checked during the session.
                 workout.done[day] = Object.fromEntries(exercises.map((_, i) => [`ex-${day}-${i}`, true]));
                 const summary = {
-                    id: `${cycle}:${day}`, cycleId: cycle, day,
+                    id: `${cycle}:${day}`, cycleId: cycle, day, completionType: 'finished',
                     sessionId: this.storage.getDateKey(), completedAt: new Date().toISOString(),
                     title: this.protocolData[day].title, subtitle: this.protocolData[day].subtitle,
                     exercises, totalExercises: exercises.length,
@@ -694,13 +707,12 @@ export class WorkoutEngine {
     async logExercise(name, weight, reps) {
         const exercise = this.protocolData[this.state.day].exercises.find(ex => ex.name === name);
         if (!exercise) return false;
-        const rir = parseInt(exercise.rir) || 0;
-        return this.logSet(exercise._exerciseId, Number(weight), Number(reps), 10 - rir);
+        return this.logSet(exercise._exerciseId, Number(weight), Number(reps));
     }
 
-    async logSet(exerciseId, weight, reps, rpe) {
+    async logSet(exerciseId, weight, reps, rpe = null) {
         if (this.pending) return false;
-        if (!Number.isFinite(weight) || weight < 0 || weight > 2000 || !Number.isInteger(reps) || reps < 1 || reps > 1000 || !Number.isFinite(rpe) || rpe < 0 || rpe > 10) {
+        if (!Number.isFinite(weight) || weight < 0 || weight > 2000 || !Number.isInteger(reps) || reps < 1 || reps > 1000 || (rpe !== null && (!Number.isFinite(rpe) || rpe < 0 || rpe > 10))) {
             this._error(new Error('Enter a valid load and a whole number of reps.'));
             return false;
         }
@@ -715,7 +727,7 @@ export class WorkoutEngine {
                 session_id: sessionId, workout_id: sessionId, day_id: this.protocolData[day].id,
                 exercise_id: exerciseId, sets: [], sync_status: 'pending'
             };
-            savedLog.sets.push({ set_number: savedLog.sets.length + 1, weight_kg: weight, reps, rpe, timestamp: new Date().toISOString() });
+            savedLog.sets.push({ set_number: savedLog.sets.length + 1, weight_kg: weight, reps, rpe, rpe_source: rpe === null ? 'unreported' : 'reported', timestamp: new Date().toISOString() });
             savedLog.sync_status = 'pending';
             if (!logs.includes(savedLog)) logs.push(savedLog);
             workout.activeDay = day;
@@ -729,6 +741,32 @@ export class WorkoutEngine {
     }
 
     getExerciseLogs(exerciseId) { return this.currentSession.logs[exerciseId]?.sets || []; }
+
+    async editSet(exerciseId, setNumber, weight, reps, expectedSet, sessionId) {
+        if (this.pending) return false;
+        if (!Number.isFinite(weight) || weight < 0 || weight > 2000 || !Number.isInteger(reps) || reps < 1 || reps > 1000) {
+            this._error(new Error('Enter a valid load and a whole number of reps.'));
+            return false;
+        }
+        const day = this.state.day;
+        let savedLog;
+        const success = await this._commit('set_corrected', (workout, summaries, logs) => {
+            if (`${workout.cycleId}:${day}` !== sessionId || this.isDaySealed(day, workout)) {
+                throw new Error('This session is no longer editable. Reopen the workout before editing.');
+            }
+            savedLog = logs.find(log => log.session_id === sessionId && log.exercise_id === exerciseId);
+            const set = savedLog?.sets.find(item => item.set_number === setNumber);
+            if (!set || JSON.stringify(set) !== JSON.stringify(expectedSet)) {
+                throw new Error('This set changed in another view. Cancel and open Edit again to use the latest values.');
+            }
+            set.weight_kg = weight;
+            set.reps = reps;
+            savedLog.sync_status = 'pending';
+            return { log: savedLog };
+        });
+        if (success) window.dispatchEvent(new CustomEvent('workout:sync_queued', { detail: [savedLog] }));
+        return success;
+    }
 
     getPreviousLog(exerciseId) {
         return this.logs.filter(l => l.exercise_id === exerciseId && l.session_id !== this.currentSession.session_id && l.sets.length)

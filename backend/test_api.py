@@ -1,6 +1,8 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import os
+import sqlite3
+import json
 
 from fastapi.testclient import TestClient
 
@@ -26,6 +28,20 @@ def test_workout_queue():
             assert response.status_code == 202, response.text
             assert response.json()["accepted"] == 1
             assert sync.QUEUE_DB_PATH.exists()
+            with TestClient(app) as client:
+                for effort in ({}, {"rpe": None, "rpe_source": "unreported"}, {"rpe": 8, "rpe_source": "reported"}):
+                    item = {**payload[0], "sets": [{**{k: v for k, v in payload[0]["sets"][0].items() if k != "rpe"}, **effort}]}
+                    response = client.post("/sync/workout", json=[item])
+                    assert response.status_code == 202, response.text
+                    with sqlite3.connect(sync.QUEUE_DB_PATH) as connection:
+                        saved = json.loads(connection.execute("SELECT payload FROM workout_logs").fetchone()[0])
+                        assert saved["sets"][0]["rpe"] == effort.get("rpe")
+                        assert saved["sets"][0]["rpe_source"] == effort.get("rpe_source", "unknown")
+                invalid = {**payload[0], "sets": [{**payload[0]["sets"][0], "rpe_source": "guessed"}]}
+                assert client.post("/sync/workout", json=[invalid]).status_code == 422
+            with sqlite3.connect(sync.QUEUE_DB_PATH) as connection:
+                saved = json.loads(connection.execute("SELECT payload FROM workout_logs").fetchone()[0])
+                assert saved["sets"][0]["rpe_source"] == "reported"
         finally:
             sync.QUEUE_DB_PATH = original_path
 

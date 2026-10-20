@@ -51,7 +51,8 @@ This is stored locally by `StorageManager.js` and sent to the FastAPI queue.
  * @property {number} set_number
  * @property {number} weight_kg
  * @property {number} reps
- * @property {number} rpe
+ * @property {number|null} rpe - Actual effort, null if unreported.
+ * @property {"reported"|"unreported"|"unknown"} [rpe_source] - Missing legacy provenance is unknown.
  * @property {string} timestamp - ISO 8601
  */
 
@@ -68,6 +69,7 @@ This is stored locally by `StorageManager.js` and sent to the FastAPI queue.
 Constraints:
 
 - Persist locally before requesting remote sync.
+- Quick logs never derive actual effort from prescribed RIR. Set correction preserves set number, original timestamp and effort provenance; compare the original set within the transaction before editing. Bridge acknowledgments compare the entire set payload, including corrections.
 - Keep logged load in kilograms; convert only in presentation.
 - `session_id`, `day_id`, and `exercise_id` jointly identify an idempotent
   queued log.

@@ -86,7 +86,7 @@ export class TrainingAgenda {
     entryHTML(entry, includeDate = false, compact = false) {
         const movable = Boolean(entry.movable);
         const recorded = entry.status === 'completed';
-        const label = recorded ? (entry.kind === 'gym' ? 'Completed' : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'office' ? (entry.recurring ? 'Weekly office day' : 'Office day') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
+        const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'office' ? (entry.recurring ? 'Weekly office day' : 'Office day') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
         const openable = entry.kind === 'gym' && entry.cycleId === this.view.currentCycleId;
         const recordable = ['run', 'activity'].includes(entry.kind) && !recorded && entry.date <= this.view.today;
         return `<article class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-entry-id="${escape(entry.id)}" data-movable="${movable}" ${movable ? '' : `title="${escape(entry.movableReason || 'Recorded history stays in place')}"`}>

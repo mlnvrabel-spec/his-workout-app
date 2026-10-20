@@ -3,7 +3,8 @@
  * @property {number} set_number - The sequential set number.
  * @property {number} weight_kg - Load stored and displayed in kilograms.
  * @property {number} reps - Reps completed.
- * @property {number} rpe - Rate of Perceived Exertion (1-10).
+ * @property {number|null} rpe - Actual effort, or null when unreported.
+ * @property {"reported"|"unreported"|"unknown"} [rpe_source] - Missing legacy provenance is unknown.
  * @property {string} timestamp - ISO 8601 string of when set was logged.
  */
 
@@ -255,7 +256,9 @@ export class StorageManager {
             tx.oncomplete = () => resolve({
                 version: 1, exportedAt: new Date().toISOString(), active: active.result || null,
                 workouts: workouts.result.sort((a,b) => b.completedAt.localeCompare(a.completedAt)),
-                logs: [...legacy.result, ...sets.result]
+                logs: [...legacy.result, ...sets.result].map(log => ({
+                    ...log, sets: log.sets.map(set => ({ ...set, rpe_source: set.rpe_source || 'unknown' }))
+                }))
             });
             tx.onerror = tx.onabort = () => reject(tx.error || new Error('Could not read history'));
         });
@@ -401,7 +404,7 @@ export class StorageManager {
                 ? [log.session_id, log.day_id, log.exercise_id] : [log.session_id, log.exercise_id]);
             req.onsuccess = () => {
                 const saved = req.result;
-                if (saved && saved.sets.length === log.sets.length && saved.sets.at(-1)?.timestamp === log.sets.at(-1)?.timestamp) {
+                if (saved && JSON.stringify(saved.sets) === JSON.stringify(log.sets)) {
                     store.put({ ...saved, sync_status: 'synced' });
                 }
             };

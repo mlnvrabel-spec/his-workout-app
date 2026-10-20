@@ -14,7 +14,7 @@ export class SettingsPanel {
         this.isLive = false;
 
         this.render();
-        this.modal = new Modal(this.els.panel, () => this.close(), 'Preferences');
+        this.modal = new Modal(this.els.panel, () => this.close(), 'Preferences', () => this.open());
         this.attachListeners();
     }
 

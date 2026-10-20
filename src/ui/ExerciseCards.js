@@ -1,5 +1,7 @@
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+import { effortLabel } from '../core/SetRecord.js';
+
 export class ExerciseCards {
     constructor(cards, engine, motionCurve) {
         this.cards = cards;
@@ -17,7 +19,7 @@ export class ExerciseCards {
             const isDone = doneIds.includes(id);
             const cardWrap = this.createCard(day, workout, exercise, index, id, isDone, expandedCardId === id);
             if (!this.cards) return;
-            cardWrap.querySelector('.ex-num').textContent = position + 1;
+            (cardWrap.querySelector('.ex-number') || cardWrap.querySelector('.ex-num')).textContent = position + 1;
             this.cards.appendChild(cardWrap);
             this.bindCardInteractions(cardWrap, onToggleCard, onCloseCard);
         });
@@ -62,6 +64,7 @@ export class ExerciseCards {
             : '';
         const originalName = isCustom ? (this.engine?.exerciseLibrary?.[originalExerciseId]?.name || originalExerciseId) : '';
         const customTag = isCustom ? `<div class="ex-custom-tag">&#8634; ${originalName}</div>` : '';
+        const alternatives = this.engine?.getSwapOptions?.(exercise._exerciseId) || [];
         const cardWrap = document.createElement('div');
 
         cardWrap.id = id;
@@ -75,7 +78,7 @@ export class ExerciseCards {
             <div class="card" data-id="${id}" style="transition: transform 0.3s ${this.motionCurve}, height 0.4s ${this.motionCurve}">
                 <div class="intensity-bar ${intensityClass}"></div>
                 <div class="card-head" ${swapInfo?.options?.length > 1 ? 'data-swappable="true"' : ''}>
-                    ${!finished ? `<button type="button" class="ex-num reorder-handle" ${isDone ? 'disabled' : ''} aria-label="Move ${escapeHTML(exercise.name)}" aria-expanded="false" title="Hold the exercise card to drag, or use arrow keys">${index + 1}</button>` : `<div class="ex-num">${index + 1}</div>`}
+                    ${!finished ? `<button type="button" class="ex-num reorder-handle" aria-label="Actions for ${escapeHTML(exercise.name)}" aria-expanded="false" title="Exercise actions; arrow keys move unfinished exercises"><span class="ex-number">${index + 1}</span><span class="ex-actions-label">Actions</span></button>` : `<div class="ex-num">${index + 1}</div>`}
                     <button type="button" class="ex-info" aria-expanded="${isExpanded}" aria-controls="details-${id}" aria-label="${escapeHTML(exercise.name)} details">
                         <div class="ex-name">${exercise.name}</div>
                         ${customTag}
@@ -90,12 +93,14 @@ export class ExerciseCards {
                 </div>
                 <div class="card-details" id="details-${id}" ${isExpanded ? "" : "hidden"}><div class="details-inner">
                     ${this.renderLogForm(exercise, finished)}
+                    <details class="technique-disclosure"><summary>Technique & guidance</summary><div class="technique-content">
                     ${exercise.technique ? `<div class="detail-section"><span class="detail-label tech">Technique</span><ul class="detail-list">${technique}</ul></div>` : ''}
                     ${exercise.mistakes ? `<div class="detail-section"><span class="detail-label warn">Common Mistakes</span><ul class="detail-list">${mistakes}</ul></div>` : ''}
                     ${exercise.visualization ? `<div class="detail-section"><span class="detail-label viz">${exercise.visualization}</span><p class="detail-text" style="color:var(--text1)">${exercise.vizText || ''}</p></div>` : ''}
+                    </div></details>
                 </div></div>
             </div>
-            ${!finished ? `<div class="reorder-options" hidden><button type="button" data-move="-1">Move up</button><button type="button" data-move="1">Move down</button></div>` : ''}`;
+            ${!finished ? `<div class="reorder-options" hidden><button type="button" data-move="-1" ${isDone ? 'disabled' : ''}>Move up</button><button type="button" data-move="1" ${isDone ? 'disabled' : ''}>Move down</button>${alternatives.map(option => `<button type="button" data-replace-exercise="${escapeHTML(option.id)}">Use ${escapeHTML(option.name)}</button>`).join('')}<p class="reorder-note" ${isDone ? '' : 'hidden'}>Uncheck this exercise to move it. A replacement starts unchecked.</p></div>` : ''}`;
 
         return cardWrap;
     }
@@ -118,7 +123,7 @@ export class ExerciseCards {
         const sets = this.engine?.getExerciseLogs?.(exercise._exerciseId) || [];
         const previous = this.engine?.getPreviousLog?.(exercise._exerciseId);
         const last = sets.at(-1) || previous?.sets.at(-1);
-        const logRows = sets.map(set => `<li>Set ${set.set_number}<strong>${set.weight_kg} kg × ${set.reps}</strong><span>RPE ${set.rpe}</span></li>`).join('');
+        const logRows = sets.map(set => `<li><span>Set ${set.set_number}<span class="set-effort">${escapeHTML(effortLabel(set))}</span></span><strong>${set.weight_kg} kg × ${set.reps}</strong>${finished ? '' : `<button type="button" class="edit-set-btn" data-edit-set="${set.set_number}" data-exercise="${escapeHTML(exercise._exerciseId)}" aria-label="Edit ${escapeHTML(exercise.name)} set ${set.set_number}">Edit</button>`}</li>`).join('');
         const prior = previous?.sets.at(-1);
         return `<section class="set-logging" aria-label="${escapeHTML(exercise.name)} set log">
             <p class="detail-label">${finished ? 'Saved sets' : 'Your sets'}</p>
@@ -146,12 +151,13 @@ export class ExerciseCards {
         const sealed = this.engine?.isDaySealed?.(day);
         const canUndoDisplayedDay = sealed && summary?.id === latest?.id;
         if (canUndoDisplayedDay) {
-            actions.innerHTML = `<button class="finish-btn finish-btn--undo" id="undo-workout-btn" ${disabled}>Undo ${escapeHTML(latest.title)} completion</button>`;
+            actions.innerHTML = `<button class="finish-btn finish-btn--undo" id="undo-workout-btn" ${disabled}>Undo ${escapeHTML(latest.title)} completion<span class="action-consequence">Clears exercise checks · Keeps saved sets</span></button>`;
         } else if (sealed) {
             actions.innerHTML = `<button class="finish-btn" id="continue-workout-btn" ${disabled}>Continue ${escapeHTML(activeTitle)}</button>`;
         } else {
-            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn" ${disabled}>${this.engine?.pending ? 'Saving workout…' : `Finish ${escapeHTML(title)}`}</button>`;
+            actions.innerHTML = `<button class="finish-btn" id="finish-workout-btn" ${disabled}>${this.engine?.pending ? 'Saving workout…' : `Finish ${escapeHTML(title)}`}<span class="action-consequence">Marks every exercise complete</span></button>`;
         }
+        if (summary) actions.insertAdjacentHTML('afterbegin', `<p class="workout-state-label" role="status">${escapeHTML(this.engine?.getSessionStatus?.(day) || 'Recorded')}</p>`);
         if (!sealed && this.engine?.state.orderUndo?.[day]) actions.innerHTML += '<button type="button" class="undo-order-btn">Undo exercise order</button>';
         const existing = document.getElementById('workout-actions');
         if (existing) existing.replaceWith(actions);

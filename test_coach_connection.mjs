@@ -40,10 +40,16 @@ coach.connection = { request: async (_, options) => { sent.push(options.body); r
 await coach.send();
 coach.input.value = 'Should that stay constant?'; await coach.send();
 assert.equal(sent[0].exercise_name, 'Cable Fly');
-assert.equal(sent[0].last_session_log, '20kg x 12');
+assert.equal(sent[0].last_session_log, '20 kg × 12 · Effort unreported');
 assert.equal(sent[0].readiness_available, false);
 assert.deepEqual(sent[1].history.map(turn => turn.role), ['user', 'assistant']);
 assert.equal(sent[1].history[0].content, 'How do I set my elbows for Cable Fly?');
+coach.engine.getPreviousLog = () => ({ sets: [{ weight_kg: 20, reps: 12, rpe: 9 }] });
+await coach.generateCoachingCue('fly', 'Cable Fly', { targetRir: '0-1', repRange: '10-15' });
+assert.equal(sent.at(-1).last_session_log, '20 kg × 12 · RPE 9 · unverified');
+coach.engine.getPreviousLog = () => ({ sets: [{ weight_kg: 20, reps: 12, rpe: null, rpe_source: 'unreported' }] });
+await coach.generateCoachingCue('fly', 'Cable Fly', { targetRir: '0-1', repRange: '10-15' });
+assert.equal(sent.at(-1).last_session_log, '20 kg × 12 · Effort unreported');
 coach.connection.request = async () => { throw new Error('offline'); };
 coach.input.value = 'What about my elbow?'; await coach.send();
 assert.equal(coach.sending, false); assert.equal(coach.sendBtn.disabled, false);

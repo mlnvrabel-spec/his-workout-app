@@ -2900,3 +2900,50 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .undo-order-btn { width: 100%; margin-top: 8px; }
 .card-wrapper.is-reordering { position: relative; z-index: 5; opacity: .65; }
 .card-wrapper.reorder-target { outline: 2px solid var(--text2); outline-offset: 2px; border-radius: 20px; }
+
+/* Recording flow: keep the working controls ahead of optional instruction. */
+.ex-num.reorder-handle { width: 48px; height: 48px; min-width: 48px; display: flex; flex-direction: column; justify-content: center; gap: 3px; border-radius: 12px; }
+.ex-actions-label { font-size: 9px; font-weight: 500; letter-spacing: 0; color: var(--text2); }
+.check-wrap { width: 48px; height: 48px; min-width: 48px; }
+.card-head { gap: 10px; }
+.ex-info { min-width: 0; }
+.reorder-options { flex-wrap: wrap; }
+.reorder-options button { min-height: 48px; white-space: normal; text-align: left; }
+.reorder-options p { width: 100%; color: var(--text2); font-size: 12px; line-height: 1.5; }
+.reorder-options button:disabled { opacity: .5; }
+.logged-sets li { align-items: center; flex-wrap: wrap; }
+.logged-sets li > span { flex: 1 1 90px; }
+.logged-sets strong { color: var(--text1); }
+.set-effort { display: block; font-size: 11px; line-height: 1.5; margin-top: 4px; color: var(--text2); }
+.edit-set-btn { min-width: 48px; min-height: 48px; border: 0; border-radius: 12px; background: var(--surface2); color: var(--text1); font: inherit; cursor: pointer; }
+.technique-disclosure { margin-top: 22px; border-top: 1px solid var(--border); }
+.technique-disclosure > summary { min-height: 48px; padding: 16px 0; color: var(--text2); cursor: pointer; font-size: 13px; }
+.technique-content .detail-section:first-child { margin-top: 0; }
+.technique-disclosure .coach-cue { margin-bottom: 0; }
+.workout-state-label { margin: 12px 0; color: var(--text2); font-size: 13px; text-align: center; line-height: 1.5; }
+.finish-btn { height: auto; min-height: 64px; flex-direction: column; padding-block: 14px; gap: 5px; white-space: normal; }
+.action-consequence { display: block; font-size: 11px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.set-editor { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.65); overflow-y: auto; }
+.set-editor[hidden] { display: none; }
+.set-editor-form { width: min(100%, 440px); max-height: calc(100dvh - 40px - var(--visual-viewport-bottom, 0px)); overflow-y: auto; background: var(--bg); color: var(--text1); border-radius: 24px; padding: 24px; }
+.set-editor-context { margin: 12px 0 24px; color: var(--text2); line-height: 1.5; }
+.set-editor-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.set-editor-fields label { color: var(--text2); font-size: 13px; min-width: 0; }
+.set-editor-fields input { width: 100%; min-width: 0; min-height: 48px; display: block; margin-top: 8px; padding: 12px; border: 1px solid var(--check-border); border-radius: 12px; background: var(--surface2); color: var(--text1); font: inherit; font-size: 16px; }
+.set-editor-effort { margin-top: 16px; color: var(--text2); font-size: 12px; }
+.set-editor-error { margin-top: 12px; color: var(--text1); line-height: 1.5; }
+.set-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.set-editor-actions button { min-height: 48px; padding: 12px 16px; border: 0; border-radius: 12px; background: var(--surface2); color: var(--text1); font: inherit; cursor: pointer; }
+.set-editor-actions button[type="submit"] { background: var(--text1); color: var(--bg); }
+.set-editor :focus-visible, .edit-set-btn:focus-visible, .technique-disclosure > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.header-controls .ctrl-btn, .header-controls .theme-btn { width: 48px; height: 48px; flex-shrink: 0; }
+.header-controls { gap: 2px; }
+@media (max-width: 380px) {
+    .header-top { gap: 6px; flex-wrap: wrap; }
+    .header-controls { margin-left: auto; gap: 0; }
+    .header .workout-identity { gap: 8px; min-width: 0; }
+    .header .workout-identity .brand-mark { width: 28px; height: 28px; flex-basis: 28px; }
+    .header .workout-identity .day-title { font-size: 28px; }
+    .header .agenda-identity h1 { font-size: 24px; }
+    .set-editor { padding: 12px; align-items: flex-start; padding-top: max(24px, env(safe-area-inset-top)); }
+}

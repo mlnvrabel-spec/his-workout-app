@@ -1,6 +1,7 @@
 import { StorageManager } from './StorageManager.js';
 import { Modal } from '../ui/Modal.js';
 import { CoachConnection } from './CoachConnection.js';
+import { describeSet } from './SetRecord.js';
 
 export class ChatAssistant {
     constructor(engine) {
@@ -24,7 +25,7 @@ export class ChatAssistant {
         if (!this.ov) return;
         this.connection = new CoachConnection();
         this.setupConnection();
-        this.modal = new Modal(this.ov, () => this.close(), 'Coaching assistant');
+        this.modal = new Modal(this.ov, () => this.close(), 'Coaching assistant', () => this.open());
         document.getElementById('ai-fab').onclick = () => this.toggle();
         document.getElementById('chat-close-btn').onclick = () => this.close();
         this.sendBtn.onclick = () => this.send();
@@ -36,6 +37,10 @@ export class ChatAssistant {
 
     toggle() {
         if (this.isOpen) return this.close();
+        this.open();
+    }
+
+    open() {
         this.isOpen = true;
         this.modal.open();
         this.ov.classList.add('show');
@@ -93,7 +98,7 @@ export class ChatAssistant {
         const next = this.engine.protocolData[this.engine._nextDay(this.engine.state, this.engine.state.activeDay)];
         const payload = {
             readiness_score: this.currentReadiness, readiness_available: this.hasReadiness, exercise_name: exercise.name,
-            last_session_log: previous ? `${previous.weight_kg}kg x ${previous.reps}` : 'First time performing this logged locally.',
+            last_session_log: previous ? describeSet(previous) : 'First time performing this logged locally.',
             target_rir: String(exercise.rir), rep_range: exercise.reps,
             message: message.slice(0, 2000), workout_title: workout.title, next_workout: next.title,
             exercise_names: workout.exercises.map(ex => ex.name), history: this.history.slice(-8)
@@ -126,7 +131,7 @@ export class ChatAssistant {
 
             if (archiveLog && archiveLog.sets && archiveLog.sets.length > 0) {
                 const bestSet = archiveLog.sets.reduce((max, set) => set.weight_kg > max.weight_kg ? set : max, archiveLog.sets[0]);
-                lastSessionStr = `${bestSet.weight_kg}kg x ${bestSet.reps} reps @ rpe ${bestSet.rpe}`;
+                lastSessionStr = describeSet(bestSet);
             }
 
             const payload = {

@@ -13,6 +13,8 @@ export class ExerciseReorder {
             const handle = event.target.closest('.reorder-handle');
             if (handle) {
                 const options = handle.closest('.card-wrapper').querySelector('.reorder-options');
+                cards.querySelectorAll('.reorder-options').forEach(other => { if (other !== options) other.hidden = true; });
+                cards.querySelectorAll('.reorder-handle').forEach(other => { if (other !== handle) other.setAttribute('aria-expanded', 'false'); });
                 options.hidden = !options.hidden;
                 handle.setAttribute('aria-expanded', String(!options.hidden));
             }
@@ -38,7 +40,7 @@ export class ExerciseReorder {
         cards.addEventListener('pointerdown', event => {
             const surface = event.target.closest('.card');
             const card = surface?.closest('.card-wrapper');
-            const control = event.target.closest('input, textarea, select, a, button, [contenteditable], .reorder-options');
+            const control = event.target.closest('input, textarea, select, a, button, summary, [contenteditable], .reorder-options');
             if (!card || (control && !control.matches('.ex-info, .reorder-handle')) || event.button !== 0 || event.isPrimary === false || this.engine.pending) return;
             if (card.classList.contains('done') || engine.isDaySealed?.(engine.state.day)) return;
             this.cancel();

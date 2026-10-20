@@ -3,7 +3,8 @@
  * @property {number} set_number - The sequential set number.
  * @property {number} weight_kg - Weight ALWAYS stored in kg in DB/JSON. UI converts to lbs.
  * @property {number} reps - Reps completed.
- * @property {number} rpe - Rate of Perceived Exertion (1-10).
+ * @property {number|null} rpe - Actual effort, null or omitted if unreported.
+ * @property {"reported"|"unreported"|"unknown"} [rpe_source] - Missing legacy provenance is unknown.
  * @property {string} timestamp - ISO 8601 string of when set was logged.
  */
 

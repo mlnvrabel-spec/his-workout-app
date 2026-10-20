@@ -37,3 +37,13 @@ See `REVIEW_VERIFICATION.md` at the repository root for the September 2026 regre
 | §8 Agenda interaction | Visible Move/locked state, hold cancellation, invalid target feedback, accessible fallback, escaped labels and focus return | `test_training_agenda.mjs`; browser evidence in `REVIEW_VERIFICATION.md` | Automated handlers + browser; physical touch still separate |
 | §8.7 Recorded averages and navigation | Trailing 14/28-day counts, deduplication, date bounds, completed-only data; Home/Workout/Coach and preserved split selection | `test_training_stats.mjs`; browser evidence in `REVIEW_VERIFICATION.md` | Automated + browser |
 | §9 Coach connection | HTTPS/loopback validation, no browser key persistence, origin/access-code guards, cookies, expiry/logout, rate limits, key redaction, preserved providers and question-first context/history | `test_coach_connection.mjs`, `backend/test_coach.py`, `backend/test_api.py`; browser mock flow in `REVIEW_VERIFICATION.md` | Automated + mock browser/API; real HTTPS/phone/provider setup remains separate |
+
+## Recording-flow refinement — 20 October 2026
+
+| Spec | Requirement | Evidence | Gate |
+|---|---|---|---|
+| §6 Recording | Unreported quick-log effort; labelled legacy provenance; atomic load/reps correction; same-set conflict rejection; independent edits retained; full-payload sync acknowledgment | test_recording.mjs, backend/test_api.py, test_coach_connection.mjs | Automated + backend + browser |
+| §6 Completion wording | Counted versus explicitly Finished; unchanged threshold, Finish override and Undo check reset with sets retained | test_recording.mjs; REVIEW_VERIFICATION.md | Automated + browser |
+| §6 Interaction | Focused logging, guidance disclosure, labelled exercise actions, Back/Forward dismissal and focus restoration | test_modal.mjs, test_reorder.mjs; REVIEW_VERIFICATION.md | Automated + browser; real Android remains separate |
+
+For §6, the canonical Undo requirement is to clear the reopened day's checks while retaining saved sets and later progress, as specified in PRODUCT_SPEC.md. Earlier wording about restoring the prior checklist is superseded.

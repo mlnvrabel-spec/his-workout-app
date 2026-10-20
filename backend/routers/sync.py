@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from cachetools import TTLCache, cached
 from auth_manager import get_garmin_client
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Literal
 import json
 import sqlite3
 router = APIRouter()
@@ -106,7 +107,8 @@ class WorkoutSet(BaseModel):
     set_number: int
     weight_kg: float
     reps: int
-    rpe: float
+    rpe: float | None = Field(default=None, ge=0, le=10)
+    rpe_source: Literal["reported", "unreported", "unknown"] = "unknown"
     timestamp: str
 
 class WorkoutLog(BaseModel):

@@ -73,6 +73,15 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
 
 ## 6. Workout reliability and review
 
+### Recording-flow refinement
+
+- Preserve the 50% counting rule and next-day progression. Present automatic qualification as **Counted toward training**, with **Still editable today** while applicable; reserve **Finished** for explicit Finish. History, agenda and workout use the same distinction. This clarifies existing rules rather than changing them.
+- Finish explicitly communicates that it checks every remaining exercise. Completion Undo explicitly communicates that it clears checks while retaining sets and later progress. Keep ordinary completion actions direct, without a mandatory confirmation dialog.
+- Quick logs record load and reps, leaving actual RPE unreported. Prescribed RIR remains a target, never a measured effort. Explicitly supplied effort has provenance; legacy numeric effort without provenance remains intact and is labelled unverified. Apply this contract to history, export, coaching and the bridge queue.
+- An editable session offers Edit set for load/reps. Corrections retain the set number, exercise/session identity, original timestamp and effort provenance; persist atomically, reject stale edits to the same set, and requeue the corrected log. Finished history remains read-only. Old sync acknowledgments cannot acknowledge corrected records.
+- Expanded exercises prioritize logging. Technique, mistakes and longer guidance share a secondary disclosure. Exercise alternatives and order changes have a labelled action entry as well as gesture/keyboard shortcuts.
+- Browser Back dismisses the current overlay before leaving the underlying view. Close/Escape and Forward remain consistent; focus and unsaved form values survive ordinary overlay navigation. Authentication secrets are still cleared when its overlay closes.
+
 - Finish is named for the displayed workout and disabled while saving. It marks all of that day's exercises checked before committing, and repeated Finish calls cannot complete a second day.
 - A completed day is read-only, retains its actual substitutions, and offers Continue to the active unfinished day. Browsing history does not change the active workout.
 - Advance skips completed days, including when days were finished out of order. Finishing all four starts a new cycle with an empty checklist and retained substitutions.
