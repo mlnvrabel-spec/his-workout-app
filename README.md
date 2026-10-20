@@ -33,6 +33,17 @@ npm.cmd run verify
 
 ## Workout behavior
 
+The app opens to a dated training agenda. Open the active workout to use the
+existing checklist and set logger; use Agenda to return. Office days, rest,
+4×4 runs and other activities can be scheduled locally. Review displaced dates
+before applying a calendar change. Calendar Undo is separate from workout Undo
+and will not overwrite intervening training progress.
+
+Four gym sessions per week is the planning target; 3.5 is the user's acceptable
+long-term average. The split rolls across weeks. The accepted training evidence,
+preferences and deferred Garmin authority rules are recorded in
+[TRAINING_SCHEDULING_DECISIONS.md](TRAINING_SCHEDULING_DECISIONS.md).
+
 Finish checks every remaining exercise, saves the named day, and leaves it visible
 with one Undo action. Undo reopens that day with an empty checklist while retaining
 subsequent progress, including a draft of the next cycle. The next unfinished day

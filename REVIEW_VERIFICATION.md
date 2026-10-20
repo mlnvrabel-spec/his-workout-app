@@ -110,3 +110,32 @@ Changed paths: `src/ui/ExerciseReorder.js`, `src/ui/Kai.js`, `src/ui/ExerciseCar
 ### Publication authorization — 8 October 2026
 
 The user explicitly waived the outstanding physical hold/drag and edge-scroll checks and requested publication to the existing GitHub repository, allowing its automatic Vercel deployment. Publish only this fix to `mlnvrabel-spec/his-workout-app` on `main`; preserve the unrelated `her-workout-app` deletion. Successful checks above remain valid because runtime source, dependencies and configuration are unchanged since verification. This waiver does not establish a device/gesture pass.
+
+## Flexible training agenda — 20 October 2026
+
+Scope: PRODUCT_SPEC.md §8; rationale and research limitations are in TRAINING_SCHEDULING_DECISIONS.md. Implemented the dated agenda, manual activities and office patterns, forward-only gym displacement, preview, transaction-safe Undo, backdated actuals, and protected started/completed history. Garmin integration remains deferred. The previous publication authorization applies only to the earlier exercise-card fix, not this work.
+
+- PASS: final `npm.cmd run verify` (exit 0, 20 October). All eleven frontend suites pass. New suites cover the five scheduling scenarios, stable cycle identity, missed sessions, backdated add versus move, recurring office exceptions, actual-history protection, deterministic proposals, stale previews, aborted writes, persistence, Undo, and pointer lifecycle/focus behavior. Existing workout, completion, reorder and service-worker regressions pass.
+- PASS: isolated in-app browser at `http://127.0.0.1:54322/`, using synthetic local data. Recorded a forgotten run; changed office weekdays after that actual; inserted a run onto a gym date; moved a gym session across the cycle boundary; moved a planned run into the past; applied and undid cascades. Actual history stayed fixed. Reload preserved the plan. Fixed office conflicts produced a clear message.
+- PASS: demanding hike on 24 October previewed Push B moving from 24 to 25 October, without adding a rest day. The preview showed a next-day recovery warning. Apply placed Push B on 25 October; focus returned to the original date's Add button; Undo restored 24 October. Extending the agenda exposed 5 November.
+- PASS: opening/resuming a workout, completing an exercise and returning to the agenda protected that started session. Keyboard modal focus containment, Escape and focus restoration were checked. Console checks captured no errors or warnings during connected scoped checks.
+- PASS: desktop 1280×720 and phone 390×844 previews; phone document width and scrollWidth both 390. Dark and light themes inspected. Screenshot: `C:/Users/mlnvr/.codex/visualizations/2026/10/18/01a15041-692c-73b0-ab0b-8c7f80128ff6/training-agenda-mobile.jpg`.
+- PASS: service-worker update activation through v78. Stopped the localhost server and reloaded offline: the recorded run remained visible, Resume opened Push A, and the saved Low Incline DB Press completion remained pressed. No captured console errors during that offline check.
+- NOT RUN: real Android/iOS hold-and-drag, physical edge scrolling/cancellation, installed-PWA behavior or screen-reader certification. Deterministic handler tests do not establish physical-device passes. Required unmet release gates need an explicit waiver before publication.
+- NOT RUN: backend, Garmin authentication/sync or external service tests; these boundaries were unchanged. No credentials or production records were touched.
+- NOT YET VALIDATED: actual training adherence, gym performance, running tolerance and long-term hypertrophy/aerobic outcomes. The decision brief defines the proposed real-world validation.
+
+Preview server stopped, viewport override reset and temporary tab closed. Pre-existing `her-workout-app` deletion preserved. No deployment, publication, commit or merge performed.
+
+### Agenda visual review follow-up — 20 October 2026
+
+- PASS: all eleven suites via `npm.cmd run verify` after final source changes; `git diff --check`. Added behavioral coverage for selected-date summary, date-specific Add, absence of an unrelated workout action on a selected rest date, and Today reset.
+- PASS: in-app preview at 390×844 and 1280×720. Past and future dates use the same vertical layout. Phone end-of-agenda screenshot shows the final range action with a 20 px agenda inset and zero extra app padding. The native scrollbar is thin and themed. Phone document width equals scrollWidth (390 px).
+- PASS: date selection by pointer and keyboard updates the summary; Today restores today. History opens the existing gym archive and export control. Workout Open/Resume and the existing dock remain usable. Dark and light themes inspected; no captured console errors/warnings in scoped checks.
+- PASS: explicit service-worker activation to v80; after stopping the preview server, offline reload retained the revised Rest copy, saved workout progress and date-selection behavior. Screenshot: `C:/Users/mlnvr/.codex/visualizations/2026/10/18/01a15041-692c-73b0-ab0b-8c7f80128ff6/agenda-refinements-mobile.jpg`.
+- PROPOSED ONLY: Home / Workout / Coach bottom navigation, documented in the decision brief. The current header Agenda control and four workout tabs remain in place.
+- NOT RUN: physical-device scrollbar/gesture behavior or screen-reader certification. Prior device limitations remain. No backend, Garmin, publication or deployment work performed. Preview server stopped and viewport override reset; the existing user preview tab remains available with cached assets.
+
+### GitHub publication preparation — 20 October 2026
+
+The user requested a GitHub push. Publish the verified implementation and decision records to `codex/flexible-training-agenda` in `mlnvrabel-spec/his-workout-app`, retaining the unrelated `her-workout-app` deletion locally. `vercel.json` disables automatic deployment for this exact branch; other branches retain their existing behavior. This is source publication, not a production release or a waiver of outstanding physical-device release checks. No pull request or release was requested. Frontend verification above remains applicable because runtime source and dependencies are unchanged; JSON configuration is checked separately before commit.

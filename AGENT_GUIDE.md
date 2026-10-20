@@ -44,6 +44,7 @@
 ## Task routing
 
 - Product intent and current behavior: `PRODUCT_SPEC.md`
+- Accepted training and scheduling rationale: `TRAINING_SCHEDULING_DECISIONS.md`. Keep user preferences, research findings and untested assumptions distinct. Scheduling must not invent recovery scores, substitute exercises automatically, or rewrite started/completed training to fit a plan.
 - Product-spec test design and coverage audits: `.agents/skills/product-spec-qa/SKILL.md`
 - Garmin/auth/sync/mapping changes: `.agents/skills/garmin-integration/SKILL.md`
 - Coaching behavior or provider calls: `.agents/skills/hypertrophy-coaching/SKILL.md`

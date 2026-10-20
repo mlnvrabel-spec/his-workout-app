@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": ".",
+  "git": {
+    "deploymentEnabled": {
+      "codex/flexible-training-agenda": false
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",

@@ -14,6 +14,7 @@ When instructed to test the progressive web app dashboard, follow these standard
 - Check the Network tab to ensure `manifest.json` and `service-worker.js` load without errors.
 
 ## 2. Core Render Checks
+- The default home is the dated agenda (PRODUCT_SPEC §8). Check recent days, Today and upcoming dates; use Open workout before checking the exercise view below. Agenda returns to the calendar without changing workout progress.
 - Inspect `.cards`. If it's missing or empty, explicitly check the `WorkoutEngine` variables or report the exact DOM structure under `<main id="cards">` to the main agent.
 - Verify the navigation dock (`.nav-dock`) exists and the active day matches the header.
 - Ensure the Hero visibly contains only `Last → Today`, and the network indicator exposes only `LIVE`, `CACHED`, or `SYNCING`.

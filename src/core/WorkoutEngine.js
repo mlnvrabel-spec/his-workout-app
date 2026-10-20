@@ -6,6 +6,7 @@
  */
 import { StorageManager } from './StorageManager.js';
 import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
+import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, suggestedRunDate } from './TrainingSchedule.js';
 
 export class WorkoutEngine {
     constructor() {
@@ -316,6 +317,67 @@ export class WorkoutEngine {
         return `cycle-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
+    _scheduleContext(workout = this.state, summaries = this.summaries, logs = this.logs) {
+        return { today: this.storage.getDateKey(), cycleId: workout.cycleId, activeDay: workout.activeDay,
+            workout, summaries, logs, protocolData: this.protocolData };
+    }
+
+    _reconcileSchedule(workout, summaries, logs) {
+        workout.schedule = reconcileSchedule(workout.schedule, this._scheduleContext(workout, summaries, logs));
+    }
+
+    // A preview is invalidated by training progress, date rollover or another
+    // calendar edit, not by merely browsing a split or refreshing the window.
+    _scheduleToken(workout = this.state, summaries = this.summaries, logs = this.logs) {
+        return JSON.stringify([this.storage.getDateKey(), workout.cycleId, workout.schedule,
+            workout.done, workout.completedDays, summaries.map(s => [s.id, s.sessionId, s.completedExercises]).sort((a, b) => a[0].localeCompare(b[0])),
+            logs.map(log => [log.session_id, log.exercise_id, log.sets]).sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]))]);
+    }
+
+    getScheduleView() {
+        const context = this._scheduleContext();
+        const schedule = this.state.schedule;
+        if (!schedule) return { entries: [], today: context.today, officeDays: [1, 4], canUndo: false };
+        const rule = schedule.officeRules?.filter(rule => rule.from <= context.today).at(-1);
+        return { entries: scheduleEntries(schedule, context), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
+            officeDays: rule?.days || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
+            runSuggestion: suggestedRunDate(schedule, context) };
+    }
+
+    previewSchedule(intent) {
+        if (this.pending) throw new Error('Wait for the workout to finish saving.');
+        const result = proposeSchedule(this.state.schedule, intent, this._scheduleContext());
+        return { ...result, intent: structuredClone(intent), token: this._scheduleToken() };
+    }
+
+    async applySchedule(preview) {
+        if (!preview || this.pending) return false;
+        return this._commit('schedule_changed', (workout, summaries, logs) => {
+            if (preview.token !== this._scheduleToken(workout, summaries, logs)) {
+                throw new Error('Your training or calendar changed. Review the move again.');
+            }
+            const before = structuredClone(workout.schedule);
+            // Recompute inside the durable transaction; never trust UI-owned state.
+            const result = proposeSchedule(workout.schedule, preview.intent, this._scheduleContext(workout, summaries, logs));
+            workout.schedule = result.schedule;
+            workout.scheduleUndo = { before, token: this._scheduleToken(workout, summaries, logs) };
+            return true;
+        });
+    }
+
+    async undoSchedule() {
+        if (this.pending) return false;
+        return this._commit('schedule_undo', (workout, summaries, logs) => {
+            const undo = workout.scheduleUndo;
+            if (!undo || undo.token !== this._scheduleToken(workout, summaries, logs)) {
+                throw new Error('Training or calendar changes prevent Undo. Move the remaining planned session instead.');
+            }
+            workout.schedule = undo.before;
+            delete workout.scheduleUndo;
+            return true;
+        });
+    }
+
     _normalize(saved, summaries = []) {
         const count = this.protocolData.length;
         const workout = saved ? structuredClone(saved) : {
@@ -386,7 +448,7 @@ export class WorkoutEngine {
             const last = summaries.find(s => s.id === workout.lastCompletedSummaryId);
             if (workout.completedDays[day] || (last && last.sessionId !== today)) {
                 if (this.protocolData.every((_, i) => workout.completedDays[i])) {
-                    workout.cycleId = this._newCycleId();
+                    workout.cycleId = nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
                     workout.done = {};
                     workout.orders = {}; workout.orderUndo = {};
                     workout.completedDays = {};
@@ -448,7 +510,9 @@ export class WorkoutEngine {
     async _restoreWorkoutCycle() {
         const result = await this.storage.mutateWorkout((saved, summaries, logs) => {
             const workout = this._normalize(saved, summaries);
-            return { workout, summaries, logs, ...this._reconcileCompletion(workout, summaries) };
+            const changes = this._reconcileCompletion(workout, summaries);
+            this._reconcileSchedule(workout, summaries, logs);
+            return { workout, summaries, logs, ...changes };
         });
         this._adopt(result.workout, result.summaries, result.logs);
     }
@@ -464,9 +528,12 @@ export class WorkoutEngine {
                 const result = await this.storage.mutateWorkout((saved, summaries, logs) => {
                     const workout = this._normalize(saved, summaries);
                     const restored = this._reconcileCompletion(workout, summaries);
+                    this._reconcileSchedule(workout, summaries, logs);
                     const changeResult = change(workout, summaries, logs);
                     const changes = typeof changeResult === 'object' && changeResult !== null ? changeResult : {};
-                    return { workout, summaries, logs, changed: Boolean(changeResult), ...restored, ...changes, ...this._reconcileCompletion(workout, summaries) };
+                    const reconciled = this._reconcileCompletion(workout, summaries);
+                    this._reconcileSchedule(workout, summaries, logs);
+                    return { workout, summaries, logs, changed: Boolean(changeResult), ...restored, ...changes, ...reconciled };
                 });
                 this._adopt(result.workout, result.summaries, result.logs);
                 if (result.summary && !result.automatic) {
@@ -569,7 +636,7 @@ export class WorkoutEngine {
                 const cycleCompleted = this.protocolData.every((_, i) => workout.completedDays[i]);
                 if (cycleCompleted) {
                     const draft = workout.nextCycleDraft;
-                    summary.nextCycleId = draft?.cycleId || this._newCycleId();
+                    summary.nextCycleId = draft?.cycleId || nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
                     workout.cycleId = summary.nextCycleId;
                     workout.done = draft?.done || {};
                     workout.swaps = draft?.swaps || workout.swaps || {};
