@@ -17,8 +17,11 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 #app::-webkit-scrollbar-button { display: none; }
 @media (forced-colors: active) { #app { scrollbar-color: auto; } }
 #training-agenda { max-width: 832px; margin-inline: auto; padding: 16px 24px 20px; }
-#history-btn { width: 50px; min-width: 44px; padding: 4px; gap: 1px; flex-direction: column; flex-shrink: 0; border-radius: 14px; color: var(--text1); font: 500 9px var(--font); }
-#history-btn svg { width: 17px; height: 17px; flex-shrink: 0; fill: none; }
+#history-btn { color: var(--text2); }
+#history-btn svg { fill: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.header-controls .network-status { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 18px; width: 18px; height: 24px; letter-spacing: 0; }
+.network-status svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 #training-agenda button, .agenda-dialog button { min-height: 44px; border: 0; border-radius: 12px; background: var(--surface3); color: var(--text1); padding: 10px 14px; font: 500 13px var(--font); cursor: pointer; }
 #training-agenda button:disabled, .agenda-dialog button:disabled { opacity: .4; cursor: default; }
 #training-agenda button:focus-visible, .agenda-dialog :focus-visible, #agenda-home-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -28,11 +31,11 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 #training-agenda .agenda-suggestion button { background: transparent; color: var(--accent); padding: 6px; }
 .agenda-today h2 { font: 400 clamp(24px, 4vw, 32px)/1.2 var(--display); max-width: 390px; }
 .agenda-eyebrow { margin-bottom: 9px; font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: .06em; }
-.agenda-today .agenda-primary { flex-shrink: 0; min-height: 48px !important; text-align: left; }
-.agenda-today .agenda-primary span { margin-left: 12px; }
+.agenda-today .agenda-primary { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; flex-shrink: 0; min-height: 48px !important; padding-block: 14px !important; line-height: 1.25 !important; text-align: left; }
+.agenda-today .agenda-primary span { display: block; }
+.agenda-today .agenda-primary svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .agenda-averages { margin: 0 0 24px; }
 .agenda-averages summary { font-size: 13px; font-weight: 500; padding: 10px 0; min-height: 48px; cursor: pointer; }
-.agenda-averages summary span { display: block; color: var(--text2); font-size: 11px; margin-top: 6px; font-weight: 400; }
 .agenda-averages table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .agenda-averages caption { text-align: left; color: var(--text2); font-size: 10px; margin-bottom: 12px; }
 .agenda-averages th { text-align: left; font-weight: 500; color: var(--text2); padding: 7px 0; }
@@ -97,6 +100,11 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .agenda-day.is-past .agenda-entry { background: var(--surface); }
 .agenda-day.is-past .agenda-entry--office, .agenda-day.is-past .agenda-entry--rest { background: transparent; }
 .agenda-day.is-past .agenda-entry h3, .agenda-day.is-past .agenda-date strong { color: var(--text2); }
+.agenda-items.is-grouped { background: var(--surface2); border-radius: 16px; }
+.agenda-day.is-past .agenda-items.is-grouped { background: var(--surface); }
+.agenda-items.is-grouped .agenda-entry { background: transparent; margin-bottom: 0; }
+#training-agenda .agenda-entry--context { min-height: 32px; padding-block: 0 10px; }
+.agenda-entry--context h3 { font-size: 11px; font-weight: 400; color: var(--text2); }
 #training-agenda .agenda-range { display: block; margin: 16px auto 0; background: transparent; color: var(--text2); font-size: 11px; }
 .agenda-overdue { margin-top: 24px; }
 .agenda-overdue > h3 { font-size: 12px; font-weight: 500; margin-bottom: 8px; color: var(--accent); }
@@ -140,5 +148,9 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
     #training-agenda .agenda-entry-actions button { padding-inline: 8px; }
     .agenda-dialog { padding: 12px; align-items: flex-end; }
     .agenda-dialog-panel { padding: 20px; max-height: calc(100dvh - 24px); border-radius: 22px; }
+}
+@media (max-width: 430px) {
+    .header-controls { max-width: none; flex-wrap: nowrap; gap: 4px; }
+    .brand-mark { width: 64px; flex-basis: 64px; }
 }
 @media (prefers-reduced-motion: reduce) { .agenda-day { transition: none; } }

@@ -25,10 +25,8 @@ The application utilizes a strictly typed, event-driven ES Module architecture o
 
 ## 3. Core Features
 
-### 3.1. Training Flow Hero and workout view
-The workout-view Hero is a program-adherence surface, not a biometric dashboard. It makes the workout sequence and the user's calendar-week commitment immediately clear. The dated agenda is the home surface under the accepted scheduling contract in section 8; opening the workout retains this existing training flow and its completion rules.
-*   **Flow**: Displays `Last → Today` using the active program order. It shows only the prior completed split and the active split—no weekday, split subtitle, completion fraction, or outcome.
-*   **Weekly rhythm**: Shows a compact Monday–Sunday history beneath the flow. Filled markers indicate days trained; unfilled markers indicate days without a completed session. It intentionally omits a numeric weekly counter.
+### 3.1. Workout view
+The dated agenda owns dates and recent training history. The workout view shows its selected split, session selectors and exercise checklist. Do not repeat a Last → Today panel or weekly strip above the exercises. Preserve completion feedback and its accessible announcement after removing that panel.
 *   **Completion rule**: At least 50% of planned exercises checked automatically marks the workout day complete, including its bottom-navigation highlight. The same-day checklist remains editable; dropping below 50% removes automatic completion. On a new local calendar day, resume the next unfinished split only if the previous workout reached 50%; otherwise retain the unfinished workout. Advance once even after several missed days. Finish remains a manual full-checklist override with Undo. Completed days remain marked through the four-day cycle; automatic completion resets the cycle on the next calendar day after all four qualify. Existing undated checklists are reconciled on reopening; their original training date cannot be recovered.
 *   **Live progress**: Current-workout exercise completion is communicated by the checklist itself; no redundant segmented progress row is shown. The Finish area uses a full-width action without helper text; exact checked counts remain in training history.
 
@@ -55,7 +53,7 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
     *   Scheduling state belongs to this same engine-owned durable record. Calendar edits and their one-step Undo use the workout transaction boundary; a UI module must not maintain an independent authoritative schedule.
 *   **`hv3_completed_workouts`** (IndexedDB): Summaries of automatically completed or explicitly finished workout days; automatic summaries track same-day checklist edits.
 *   **`hv3_logs` / `hv3_archive`** (IndexedDB): Reserved legacy set-log storage; it is not part of checklist completion.
-*   **`hv3_memory`** (localStorage): Last fully completed split (`title`, `subtitle`, and local completion timestamp) for the Training Flow Hero.
+*   **`hv3_memory`** (localStorage): Legacy last-completed-split data (`title`, `subtitle`, and local completion timestamp), retained for compatibility; no separate Training Flow Hero is rendered.
 *   **`hv3_completed_sessions`** (localStorage): Unique local calendar dates of fully completed sessions; used to derive the current Monday–Sunday commitment.
 
 ## 5. Aesthetics & UX
@@ -67,8 +65,7 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
     *   **Heavy Long Vibration**: Rewarding "thud" triggered only after explicitly finishing and durably saving the workout.
 *   **Interaction Patterns**:
     *   **Long-Press Reset**: Holding a day tab (e.g., "D1") in the navigation dock triggers a progress reset for that specific day.
-*   **Training Flow**: The compact Hero presents only the prior and active split as a concise timeline.
-*   **Motion**: The Training Flow Hero enters with a smooth ease-out transition.
+*   **Header status**: History is icon-only with an accessible name. Connection state uses distinct icons and explicit accessible LIVE/CACHED/SYNCING descriptions and tooltips, independent of color. Do not repeat visible state text in the header.
 
 ---
 *Created by Antigravity AI — Pair Programmed with User*
@@ -108,6 +105,7 @@ Accepted contract: 19 October 2026. These are product requirements; this section
 - Home is a dated, vertically scrollable agenda with Today prominent, access to the previous two or three days and the following three or four days near the initial position, and at least seven future days available by scrolling. Small screens need not fit all those rows at once. A Today action restores the current position. Any edit preview shows the complete affected chain even when it extends beyond the visible agenda.
 - Open workout retains the existing exercise/checklist view. Returning to the agenda does not change the active split, completion, logs or exercise order. Completed workout history remains available.
 - Selecting a date updates the day summary and its applicable workout action; Today selects and locates today again. Selection is local UI state and never changes training records. Past dates keep the same vertical date and row geometry, using muted colors. Empty upcoming dates display Rest as calendar copy, without creating a blocking rest entry; empty past dates display Nothing recorded.
+- Each calendar date has one visual group. Multiple genuine items share its surface; office/rest constraints are compact context when shown with a workout/activity, retaining any available Move action and their underlying records. Do not create another apparent date card or erase history to simplify the display.
 - The agenda supports gym sessions, Norwegian 4×4 runs, office dates, explicit rest dates and other activities such as hikes or cycling. Easy-run scheduling is outside this implementation.
 - Default office weekdays are Monday and Thursday. The user can change recurring office weekdays from today or a future effective date, and add, move or remove individual occurrences. This does not change past history.
 - Preserve the current exercises and Push/Pull alternation. Do not automatically swap B sessions, substitute exercises, add recovery days, or compute a recovery score.
@@ -151,6 +149,7 @@ Accepted contract: 19 October 2026. These are product requirements; this section
 ### 8.7. Recorded averages and navigation
 
 - Show gym and run sessions/week over the trailing 14 and 28 calendar days, including today: recorded count divided by two or four. Count each completed stable identity once, including same-day distinct actual sessions. Exclude planned/started sessions, other activities, out-of-window dates and future dates. Update from engine-owned history after completion, retrospective recording and Undo. Label the saved-history limitation; do not treat missing data as verified inactivity.
+- Training averages has one disclosure label and one table. Do not repeat the four-week values above the table. Keep units, period, recorded counts and a concise missing-history note.
 - Home, Workout and Coach remain available in the bottom navigation. Home returns to the agenda, Workout preserves the currently viewed gym session, and Coach opens the existing modal without changing workout progress. Place the four split selectors inside Workout. Preserve accessible labels, selected state, focus return and space above the dock.
 
 ## 9. Phone-accessible AI coaching

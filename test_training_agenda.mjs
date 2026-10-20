@@ -106,6 +106,16 @@ try {
     calendar.engine = { getScheduleView: () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry] }) };
     calendar.render();
     assert.match(calendar.element.innerHTML, /Today ·[^<]+<\/p><h2>Push A/);
+    const office = { id: 'office-1', kind: 'office', title: 'Office', date: '2026-11-03', recurring: true, movable: false, movableReason: 'Past calendar constraints stay in history.' };
+    calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry, office] });
+    calendar.render();
+    assert.match(calendar.element.innerHTML, /agenda-items is-grouped/);
+    assert.equal((calendar.element.innerHTML.match(/<article[^>]*data-entry-id="office-1"/g) || []).length, 1, 'One office occurrence stays under its existing date');
+    const contextOffice = calendar.entryHTML(office, false, true);
+    assert.match(contextOffice, /agenda-entry--context/);
+    assert.doesNotMatch(contextOffice, /Weekly office day|agenda-fixed|<p>/, 'Shared-date context does not repeat the full office card');
+    assert.match(calendar.entryHTML({ ...office, movable: true }, false, true), /aria-label="Move Office/, 'Compact context keeps the tap-based movement action');
+    calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry] });
     const select = { dataset: { agendaAction: 'select', date: '2026-11-04' } };
     await calendar.onClick({ target: { closest: () => select } });
     assert.match(calendar.element.innerHTML, /Selected day ·[^<]+<\/p><h2>Rest/);

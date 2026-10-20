@@ -5,8 +5,8 @@ Keep this matrix synchronized with `PRODUCT_SPEC.md` and the executable checks. 
 | Spec | Requirement | Evidence | Gate |
 |---|---|---|---|
 | §2 | Vanilla ES modules, engine-owned state, protocol-owned exercise data | `test_product_spec.mjs`, `test_protocol.mjs`, code review | Automated + review |
-| §3.1 Flow | Render only `Last → Today` in active program order | `HeroHeader` unit coverage and PWA DOM snapshot | Browser required |
-| §3.1 Weekly rhythm | Monday–Sunday unique local completion dates, without a numeric counter | `test_product_spec.mjs`; PWA DOM snapshot for presentation | Automated + browser |
+| §3.1 Workout header | No redundant Last → Today Hero or weekly strip; completion feedback remains accessible | `test_render.mjs`; browser evidence in `REVIEW_VERIFICATION.md` | Automated + browser |
+| §3.1 Connection status | Icon-only header controls, explicit accessible LIVE/CACHED/SYNCING descriptions, safe unknown-state fallback | `test_render.mjs`; browser evidence in `REVIEW_VERIFICATION.md` | Automated + browser |
 | §3.1 Completion | 50% automatic completion, same-day edits, calendar-day advance, explicit Finish, four-day reset, latest undo | `test_product_spec.mjs`, `test_core.mjs`, `test_schedule.mjs` | Automated |
 | §3.1 Live progress | Checklist is the only current-workout progress surface | PWA DOM snapshot | Browser required |
 | §3.2 Bridge | Frontend bridge defaults to `localhost:8001`; FastAPI accepts durable queue payloads | `test_product_spec.mjs`, `backend/test_api.py` | Automated + backend |

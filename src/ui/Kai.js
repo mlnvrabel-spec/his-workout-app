@@ -7,6 +7,21 @@ import { ExerciseCards } from './ExerciseCards.js';
 import { ExerciseReorder } from './ExerciseReorder.js';
 import { triggerHaptic } from './Haptics.js';
 
+export function renderNetworkStatus(element, requested = 'CACHED') {
+    if (!element) return;
+    const states = {
+        LIVE: ['Garmin bridge connected', 'M5 17a5 5 0 0 1-1-10 7 7 0 0 1 13-1 5 5 0 0 1 2 11H5m4-5 2 2 4-4'],
+        CACHED: ['Saved locally; Garmin bridge not connected', 'M4 17a5 5 0 0 1-1-9m4-3a7 7 0 0 1 10 1 5 5 0 0 1 3 9M8 17h9M3 3l18 18'],
+        SYNCING: ['Saving locally and syncing with the Garmin bridge', 'M4 9a8 8 0 0 1 13-4l3 3m0-5v5h-5M20 15a8 8 0 0 1-13 4l-3-3m0 5v-5h5']
+    };
+    const state = Object.hasOwn(states, requested) ? requested : 'CACHED';
+    const [description, path] = states[state];
+    element.dataset.state = state;
+    element.setAttribute('aria-label', `${state}: ${description}`);
+    element.setAttribute('title', description);
+    element.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${path}"/></svg><span class="sr-only">${state}: ${description}</span>`;
+}
+
 export class Kai {
     constructor(engine, chat) {
         this.engine = engine;
@@ -18,7 +33,6 @@ export class Kai {
             navDock: document.getElementById('nav-dock'),
             themeBtn: document.getElementById('theme-btn'),
             themeScrim: document.getElementById('theme-transition-scrim'),
-            trainingFlow: document.getElementById('training-flow'),
             completionAnnouncement: document.getElementById('flow-completion-announcement')
         };
 
@@ -29,6 +43,7 @@ export class Kai {
         this.exerciseCards = new ExerciseCards(this.els.cards, this.engine, this.memoryFoam);
 
         this.drafts = new Map();
+        renderNetworkStatus(document.getElementById('network-status'));
         this.setupListeners();
         this.setupEventDelegation();
         this.exerciseReorder = new ExerciseReorder(this.els.cards, this.engine, message => this.showFeedback(message));
@@ -70,8 +85,7 @@ export class Kai {
         window.addEventListener('set:logged', (e) => this.onSetLogged(e.detail));
         window.addEventListener('engine:error', event => this.showFeedback(event.detail.message, true));
         window.addEventListener('network:state_change', event => {
-            const status = document.getElementById('network-status');
-            if (status) { status.textContent = event.detail.state; status.dataset.state = event.detail.state; }
+            renderNetworkStatus(document.getElementById('network-status'), event.detail?.state);
         });
         window.addEventListener('workout:finished', (e) => this.sealCompletedWorkout(e.detail?.session));
 
@@ -97,9 +111,6 @@ export class Kai {
      * This is presentation-only; WorkoutEngine remains the completion authority.
      */
     sealCompletedWorkout(session) {
-        const trainingFlow = this.els.trainingFlow;
-        if (!trainingFlow) return;
-
         this.showFeedback(`${session?.title || 'Workout'} saved · Next: ${this.engine.protocolData[this.engine.state.activeDay].title}`);
         this.justCompletedDay = Number.isInteger(session?.day) ? session.day : null;
         const app = document.getElementById('app');
@@ -110,10 +121,6 @@ export class Kai {
             this.els.completionAnnouncement.textContent = `${session?.title || 'Workout'} complete.`;
         }
 
-        trainingFlow.classList.remove('is-sealing');
-        requestAnimationFrame(() => trainingFlow.classList.add('is-sealing'));
-        clearTimeout(this.completionMotionTimer);
-        this.completionMotionTimer = setTimeout(() => trainingFlow.classList.remove('is-sealing'), 760);
     }
 
     /**
@@ -131,7 +138,6 @@ export class Kai {
         if (!workout) return;
 
         this.heroHeader.renderDay(workout);
-        this.heroHeader.renderTrainingFlow(this.engine?.StorageManager, this.engine?.protocolData, state.activeDay ?? state.day);
 
         const doneIds = state.done?.[state.day]
             ? Object.keys(state.done[state.day]).filter(id => state.done[state.day][id])
@@ -255,7 +261,6 @@ export class Kai {
         });
 
         this.updateNavState(state.day);
-        this.heroHeader.renderTrainingFlow(this.engine.StorageManager, this.engine.protocolData, state.activeDay);
 
         // 2. Update Finish Session Button State
         const protocolLen = this.engine?.protocolData?.length || 1;

@@ -23,3 +23,23 @@ for (let day = 0; day < workout.protocolData.length; day++) {
     }
 }
 console.log('All protocol cards render in active and completed states.');
+
+const { Kai, renderNetworkStatus } = await import('./src/ui/Kai.js');
+const indicator = { dataset: {}, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
+for (const state of ['LIVE', 'CACHED', 'SYNCING']) {
+    renderNetworkStatus(indicator, state);
+    assert.equal(indicator.dataset.state, state);
+    assert.ok(indicator.attributes['aria-label'].startsWith(`${state}:`));
+    assert.match(indicator.innerHTML, /<svg/);
+    assert.match(indicator.innerHTML, /sr-only/);
+}
+renderNetworkStatus(indicator, '<script>');
+assert.equal(indicator.dataset.state, 'CACHED');
+assert.doesNotMatch(indicator.innerHTML, /<script>/);
+console.log('Connection state icons retain explicit accessible labels and reject unknown states.');
+const completion = { els: { completionAnnouncement: {} }, engine: { state: { activeDay: 0 }, protocolData: [{ title: 'Pull A' }] }, heroHeader: { expandForCompletion() {} }, showFeedback(message) { this.feedback = message; } };
+document.getElementById = () => null;
+Kai.prototype.sealCompletedWorkout.call(completion, { title: 'Push A', day: 0 });
+assert.equal(completion.els.completionAnnouncement.textContent, 'Push A complete.');
+assert.match(completion.feedback, /Push A saved/);
+assert.equal(completion.justCompletedDay, 0, 'Completion feedback works without the retired Hero');

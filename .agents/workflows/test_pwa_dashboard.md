@@ -17,7 +17,7 @@ When instructed to test the progressive web app dashboard, follow these standard
 - The default home is the dated agenda (PRODUCT_SPEC §8). Check recent days, Today and upcoming dates; use Open workout before checking the exercise view below. Home in the primary bottom navigation returns to the calendar without changing workout progress. Check Workout preserves the selected split and Coach opens from either view. Recent training exposes recorded 14/28-day weekly averages.
 - Inspect `.cards`. If it's missing or empty, explicitly check the `WorkoutEngine` variables or report the exact DOM structure under `<main id="cards">` to the main agent.
 - Verify the navigation dock (`.nav-dock`) exists and the active day matches the header.
-- Ensure the Hero visibly contains only `Last → Today`, and the network indicator exposes only `LIVE`, `CACHED`, or `SYNCING`.
+- Ensure the workout has no redundant Last → Today Hero/weekly strip. Check the icon-only network indicator retains explicit accessible `LIVE`, `CACHED`, or `SYNCING` descriptions; History retains its accessible name.
 
 ## 3. Interaction Scenarios
 ### Scenario A: Basic Interaction & State Updates
