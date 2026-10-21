@@ -1,6 +1,6 @@
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-import { effortLabel } from '../core/SetRecord.js';
+
 
 export class ExerciseCards {
     constructor(cards, engine, motionCurve) {
@@ -78,7 +78,7 @@ export class ExerciseCards {
             <div class="card" data-id="${id}" style="transition: transform 0.3s ${this.motionCurve}, height 0.4s ${this.motionCurve}">
                 <div class="intensity-bar ${intensityClass}"></div>
                 <div class="card-head" ${swapInfo?.options?.length > 1 ? 'data-swappable="true"' : ''}>
-                    ${!finished ? `<button type="button" class="ex-num reorder-handle" aria-label="Actions for ${escapeHTML(exercise.name)}" aria-expanded="false" title="Exercise actions; arrow keys move unfinished exercises"><span class="ex-number">${index + 1}</span><span class="ex-actions-label">Actions</span></button>` : `<div class="ex-num">${index + 1}</div>`}
+                    ${!finished ? `<button type="button" class="ex-num reorder-handle" aria-label="Actions for ${escapeHTML(exercise.name)}" aria-expanded="false" title="Exercise actions; arrow keys move unfinished exercises"><span class="ex-number">${index + 1}</span></button>` : `<div class="ex-num">${index + 1}</div>`}
                     <button type="button" class="ex-info" aria-expanded="${isExpanded}" aria-controls="details-${id}" aria-label="${escapeHTML(exercise.name)} details">
                         <div class="ex-name">${exercise.name}</div>
                         ${customTag}
@@ -123,7 +123,7 @@ export class ExerciseCards {
         const sets = this.engine?.getExerciseLogs?.(exercise._exerciseId) || [];
         const previous = this.engine?.getPreviousLog?.(exercise._exerciseId);
         const last = sets.at(-1) || previous?.sets.at(-1);
-        const logRows = sets.map(set => `<li><span>Set ${set.set_number}<span class="set-effort">${escapeHTML(effortLabel(set))}</span></span><strong>${set.weight_kg} kg × ${set.reps}</strong>${finished ? '' : `<button type="button" class="edit-set-btn" data-edit-set="${set.set_number}" data-exercise="${escapeHTML(exercise._exerciseId)}" aria-label="Edit ${escapeHTML(exercise.name)} set ${set.set_number}">Edit</button>`}</li>`).join('');
+        const logRows = sets.map(set => `<li><span>Set ${set.set_number}</span><strong>${set.weight_kg} kg × ${set.reps}</strong>${finished ? '' : `<button type="button" class="edit-set-btn" data-edit-set="${set.set_number}" data-exercise="${escapeHTML(exercise._exerciseId)}" aria-label="Edit ${escapeHTML(exercise.name)} set ${set.set_number}">Edit</button>`}</li>`).join('');
         const prior = previous?.sets.at(-1);
         return `<section class="set-logging" aria-label="${escapeHTML(exercise.name)} set log">
             <p class="detail-label">${finished ? 'Saved sets' : 'Your sets'}</p>

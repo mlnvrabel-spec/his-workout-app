@@ -359,11 +359,34 @@ export class WorkoutEngine {
                 throw new Error('Your training or calendar changed. Review the move again.');
             }
             const before = structuredClone(workout.schedule);
+            const beforeWorkout = structuredClone(workout);
+            delete beforeWorkout.scheduleUndo;
             // Recompute inside the durable transaction; never trust UI-owned state.
             const result = proposeSchedule(workout.schedule, preview.intent, this._scheduleContext(workout, summaries, logs));
             workout.schedule = result.schedule;
-            workout.scheduleUndo = { before, token: this._scheduleToken(workout, summaries, logs) };
-            return true;
+            let summary;
+            if (result.recordedGym) {
+                const entry = result.recordedGym;
+                summary = { id: entry.id, cycleId: entry.cycleId, day: entry.day,
+                    sessionId: entry.date, completedAt: `${entry.date}T12:00:00`,
+                    title: entry.title, completionType: 'recorded', source: 'manual_backfill',
+                    totalExercises: this.protocolData[entry.day].exercises.length, completedExercises: 0 };
+                summaries.push(summary);
+                workout.completedDays[entry.day] = true;
+                delete workout.autoCompletedDays[entry.day];
+                if (this.protocolData.every((_, day) => workout.completedDays[day])) {
+                    const draft = workout.nextCycleDraft;
+                    workout.cycleId = draft?.cycleId || nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
+                    workout.done = draft?.done || {}; workout.completedDays = {}; workout.autoCompletedDays = {};
+                    workout.swaps = draft?.swaps || workout.swaps || {};
+                    workout.orders = draft?.orders || {}; workout.orderUndo = {};
+                    delete workout.nextCycleDraft;
+                    workout.activeDay = workout.day = 0;
+                } else workout.activeDay = workout.day = this._nextDay(workout, entry.day);
+                this._reconcileSchedule(workout, summaries, logs);
+            }
+            workout.scheduleUndo = { before, ...(summary ? { beforeWorkout, addedSummaryId: summary.id } : {}), token: this._scheduleToken(workout, summaries, logs) };
+            return summary ? { summary, summariesToSave: [summary], automatic: true } : true;
         });
     }
 
@@ -374,9 +397,15 @@ export class WorkoutEngine {
             if (!undo || undo.token !== this._scheduleToken(workout, summaries, logs)) {
                 throw new Error('Training or calendar changes prevent Undo. Move the remaining planned session instead.');
             }
-            workout.schedule = undo.before;
+            if (undo.addedSummaryId) {
+                const index = summaries.findIndex(summary => summary.id === undo.addedSummaryId);
+                if (index < 0) throw new Error('The recorded workout changed. Refresh the calendar.');
+                summaries.splice(index, 1);
+                for (const key of Object.keys(workout)) delete workout[key];
+                Object.assign(workout, structuredClone(undo.beforeWorkout));
+            } else workout.schedule = undo.before;
             delete workout.scheduleUndo;
-            return true;
+            return undo.addedSummaryId ? { deleteSummary: undo.addedSummaryId } : true;
         });
     }
 

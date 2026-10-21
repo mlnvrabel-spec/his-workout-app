@@ -73,7 +73,8 @@ const lateBefore = gymDates(late);
 const backdated = proposeSchedule(late, { type: 'move', id: runId, date: '2026-11-14', performed: true }, actualContext);
 assert.equal(backdated.schedule.entries.find(entry => entry.id === runId).status, 'completed');
 assert.equal(backdated.schedule.entries.find(entry => entry.id === runId).date, '2026-11-14');
-assert.deepEqual(gymDates(backdated.schedule), lateBefore, 'A retrospective run can legitimately cause no gym changes');
+assert.deepEqual(gyms(backdated.schedule).filter(entry => entry.status === 'completed'), gyms(late).filter(entry => entry.status === 'completed'), 'Recalculation preserves completed gym history');
+assert.ok(backdated.changes.some(change => change.kind === 'gym'), 'Retrospective activity recalculates unfinished dates');
 assert.equal(backdated.schedule.entries.filter(entry => entry.id === runId).length, 1);
 const addedPast = proposeSchedule(late, { type: 'add', kind: 'run', date: '2026-11-14', performed: true }, actualContext);
 assert.ok(addedPast.schedule.entries.some(entry => entry.id === runId && entry.date === '2026-11-18'));
@@ -97,7 +98,7 @@ assert.equal(truth.schedule.entries.filter(entry => entry.date === '2026-11-03' 
 assert.ok(truth.warnings.some(warning => warning.includes('Both actual records are preserved')));
 const nowOffice = proposeSchedule(protectedPlan, { type: 'officeDays', days: [2, 3] }, protectedContext);
 assert.equal(nowOffice.schedule.entries.find(entry => entry.id === 'c1:1').date, '2026-11-04');
-assert.ok(nowOffice.warnings.some(warning => warning.includes('now an office day')));
+assert.ok(nowOffice.warnings.some(warning => warning.includes('now a REST day')));
 const setContext = context('2026-11-04', { logs: [{ session_id: 'c1:1', sets: [{ timestamp: '2026-11-04T18:00:00' }] }] });
 assert.equal(reconcileSchedule(base, setContext).entries.find(entry => entry.id === 'c1:1').status, 'started', 'A logged set alone protects its workout');
 const resumed = reconcileSchedule(base, context('2026-11-07', {
@@ -129,3 +130,17 @@ const duplicate = structuredClone(base); duplicate.entries.push({ ...duplicate.e
 assert.throws(() => reconcileSchedule(duplicate, ctx), /duplicate sessions/);
 assert.deepEqual(base, untouched, 'Rejected changes preserve the original schedule');
 console.log('Training schedule: five scenarios, cycles, protected history, backdating, office exceptions, deterministic proposals and bounds OK');
+
+// Backfilled rest is a record, not a request to rearrange current training.
+const restBase = reconcileSchedule(null, ctx);
+const backfilledRest = proposeSchedule(restBase, { type: 'add', kind: 'rest', date: '2026-11-02', performed: true }, ctx);
+assert.deepEqual(gyms(backfilledRest.schedule), gyms(restBase));
+assert.equal(backfilledRest.schedule.entries.find(entry => entry.kind === 'rest').status, 'completed');
+assert.throws(() => proposeSchedule(backfilledRest.schedule, { type: 'add', kind: 'rest', date: '2026-11-02', performed: true }, ctx), /already/);
+const withPastRun = act(restBase, { type: 'add', kind: 'run', date: '2026-11-01', performed: true });
+assert.throws(() => proposeSchedule(withPastRun, { type: 'add', kind: 'rest', date: '2026-11-01', performed: true }, ctx), /already/);
+assert.throws(() => proposeSchedule(restBase, { type: 'add', kind: 'rest', date: '2026-11-04', performed: true }, ctx), /future/);
+const recurringPast = structuredClone(restBase);
+recurringPast.officeRules = [{ from: '2026-10-01', days: [1, 4] }];
+const pastRestOnWeeklyDay = act(recurringPast, { type: 'add', kind: 'rest', date: '2026-11-02', performed: true });
+assert.equal(scheduleEntries(pastRestOnWeeklyDay, ctx).filter(entry => entry.date === '2026-11-02').length, 1, 'Recorded rest does not duplicate the weekly constraint');

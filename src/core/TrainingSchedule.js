@@ -3,7 +3,7 @@ const DAY_MS = 86400000;
 const MAX_FORWARD_DAYS = 730;
 const DEFAULT_OFFICE_DAYS = [1, 4];
 const ACTIVITY_KINDS = new Set(['office', 'rest', 'run', 'activity']);
-const TITLES = { office: 'Office', rest: 'Rest', run: 'Norwegian 4×4', activity: 'Activity' };
+const TITLES = { office: 'REST', rest: 'REST', run: 'Norwegian 4×4', activity: 'Activity' };
 
 export function dateKey(value = new Date()) {
     if (typeof value === 'string') {
@@ -44,7 +44,7 @@ function officeOn(schedule, date) {
 }
 
 function blockedDate(schedule, date, ignoredId = null) {
-    if (officeOn(schedule, date)) return 'Office';
+    if (officeOn(schedule, date)) return 'REST';
     const occupied = schedule.entries.find(entry => entry.id !== ignoredId && entry.date === date && (entry.kind !== 'gym' || isProtected(entry)));
     return occupied?.title || '';
 }
@@ -84,7 +84,7 @@ function earliestDate(schedule, requested, ignoredId, weekCounts = null) {
         if (weekCounts && (weekCounts.get(monday(date)) || 0) >= 4) continue;
         return date;
     }
-    throw new Error('No available date within two years. Change the office or activity dates first.');
+    throw new Error('No available date within two years. Change the rest or activity dates first.');
 }
 
 /** Move only the necessary future chain. A freed date never pulls later sessions backward. */
@@ -200,7 +200,7 @@ export function scheduleEntries(schedule, context) {
     let date = addDays(today, -3);
     const range = Math.min(MAX_FORWARD_DAYS, Math.round((new Date(`${end}T12:00:00Z`) - new Date(`${date}T12:00:00Z`)) / DAY_MS));
     for (let day = 0; day <= range; day++, date = addDays(date, 1)) {
-        if (officeOn(schedule, date)) entries.push({ id: `office:${date}`, kind: 'office', title: 'Office', date, status: 'planned', recurring: true });
+        if (officeOn(schedule, date) && !entries.some(entry => entry.kind === 'rest' && entry.date === date)) entries.push({ id: `office:${date}`, kind: 'office', title: 'REST', date, status: 'planned', recurring: true });
     }
     return entries.map(entry => ({ ...entry, movable: !movableReason(entry, context), movableReason: movableReason(entry, context) }))
         .sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
@@ -225,7 +225,8 @@ function assertDestination(schedule, entry, date, today, performed = false) {
     if (date > addDays(today, MAX_FORWARD_DAYS)) throw new Error('Choose a date within the next two years.');
     if (date < today && !performed) throw new Error('Choose today or a future date, or record an activity that already happened.');
     if (performed) {
-        if (entry.kind === 'gym' || entry.kind === 'office' || entry.kind === 'rest') throw new Error('Use the workout checklist to record gym training.');
+        if (entry.kind === 'gym' || entry.kind === 'office') throw new Error('Use the workout checklist to record gym training.');
+        if (entry.kind === 'rest' && schedule.entries.some(value => value.date === date && (value.kind === 'rest' || isProtected(value)))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
         if (date > today) throw new Error('A future activity cannot be recorded as completed.');
         return; // Actual history can truthfully contain an office day, run and lifting together.
     }
@@ -256,7 +257,7 @@ function warningsFor(schedule, context) {
     const warnings = [];
     const entries = schedule.entries;
     for (const entry of entries.filter(value => isProtected(value) && value.date >= context.today && officeOn(schedule, value.date))) {
-        warnings.push(`${entry.title} is already recorded or started on ${entry.date}, now an office day. Its history stays unchanged.`);
+        warnings.push(`${entry.title} is already recorded or started on ${entry.date}, now a REST day. Its history stays unchanged.`);
     }
     for (const entry of entries.filter(value => value.kind === 'run')) {
         const previous = entries.filter(value => value.kind === 'run' && value.status === 'completed' && value.date < entry.date).sort((a, b) => a.date.localeCompare(b.date)).at(-1);
@@ -278,12 +279,25 @@ export function proposeSchedule(saved, intent, context) {
     const schedule = structuredClone(before);
     const today = dateKey(context.today);
     let exactId = null, exactDate = null;
-    if (intent.type === 'officeDays') {
-        if (!Array.isArray(intent.days) || intent.days.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw new Error('Choose valid office weekdays.');
+    let recordedGym = null;
+    if (intent.type === 'recordGym') {
+        const date = dateKey(intent.date);
+        if (date >= today) throw new Error('Choose a past date. Use the workout checklist for today.');
+        const next = gymEntries(schedule).find(entry => entry.status !== 'completed');
+        if (!next || next.id !== intent.id || next.status !== 'planned' || next.cycleId !== context.cycleId) throw new Error('Record the next unstarted workout in split order. Started workouts keep their saved checks and sets.');
+        const previous = gymEntries(schedule).filter(entry => gymOrder(schedule, entry, next) < 0 && entry.status === 'completed');
+        if (previous.some(entry => entry.date >= date)) throw new Error('Choose a date after the preceding recorded gym session.');
+        if (schedule.entries.some(entry => entry.date === date && ((entry.kind === 'rest' && isProtected(entry)) || (entry.kind === 'gym' && isProtected(entry))))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
+        next.date = date;
+        next.status = 'completed';
+        next.source = 'manual_backfill';
+        recordedGym = structuredClone(next);
+    } else if (intent.type === 'officeDays') {
+        if (!Array.isArray(intent.days) || intent.days.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw new Error('Choose valid rest weekdays.');
         const days = [...new Set(intent.days)].sort();
-        if (days.length === 7) throw new Error('Leave at least one available weekday, or use individual office dates.');
+        if (days.length === 7) throw new Error('Leave at least one available weekday, or use individual rest dates.');
         const from = dateKey(intent.effectiveDate || today);
-        if (from < today) throw new Error('Recurring office changes apply from today or a future date.');
+        if (from < today) throw new Error('Recurring rest changes apply from today or a future date.');
         schedule.officeRules = schedule.officeRules.filter(rule => rule.from < from);
         schedule.officeRules.push({ from, days });
         // A changed availability rule can coexist with actual training; never rewrite history.
@@ -319,8 +333,17 @@ export function proposeSchedule(saved, intent, context) {
         if (entry.date > today) throw new Error('A future activity cannot be recorded as completed.');
         schedule.entries.find(value => value.id === entry.id).status = 'completed';
     } else throw new Error('Unknown calendar action.');
-    placeGyms(schedule, today, { exactId, exactDate, strict: true });
-    return { schedule, changes: entryDiff(before, schedule, context), warnings: warningsFor(schedule, context) };
+    const backfilled = intent.type === 'recordGym' || (['add', 'move'].includes(intent.type) && intent.performed && intent.date < today);
+    if (backfilled) {
+        const pending = gymEntries(schedule).filter(entry => !isProtected(entry));
+        // The user explicitly requested recalculation, including bringing planned
+        // sessions forward. Actual history and non-gym appointments stay fixed.
+        for (const entry of pending) entry.date = today;
+        placeGyms(schedule, today, { newIds: new Set(pending.map(entry => entry.id)), strict: true });
+    } else {
+        placeGyms(schedule, today, { exactId, exactDate, strict: true });
+    }
+    return { schedule, recordedGym, changes: entryDiff(before, schedule, context), warnings: warningsFor(schedule, context) };
 }
 
 /** Suggestions respect gym dates. Selecting a run explicitly is a separate user action. */

@@ -41,6 +41,7 @@ def run():
             assert client.post("/api/ai/session", json={**credentials, "access_code": "wrong"}).status_code == 401
             invalid = client.post("/api/ai/session", json={**credentials, "provider": "test-only-provider-key"})
             assert invalid.status_code == 422 and "test-only-provider-key" not in invalid.text
+            assert invalid.headers['cache-control'] == 'no-store'
             response = client.post("/api/ai/session", json=credentials)
             assert response.status_code == 200, response.text
             cookies = response.headers.get_list("set-cookie")[-1].lower()
@@ -50,6 +51,7 @@ def run():
             assert next(iter(sessions.sessions.values()))["timer"].is_alive(), "Unused sessions must also expire automatically"
             reply = client.post("/api/ai/chat", json={**PAYLOAD, "history": [{"role": "user", "content": "I feel it in my shoulder"}]})
             assert reply.status_code == 200 and reply.json()["source"] == "provider"
+            assert reply.headers['cache-control'] == 'no-store'
             url, request = calls[-1]
             assert url == "https://api.deepseek.com/chat/completions"
             assert request["headers"]["Authorization"] == "Bearer test-only-provider-key"

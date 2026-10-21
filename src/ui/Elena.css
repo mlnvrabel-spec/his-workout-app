@@ -1,6 +1,6 @@
         :root {
             --font: 'Inter', -apple-system, sans-serif;
-            --display: 'DM Serif Display', serif;
+            --display: var(--font);
             --ease: cubic-bezier(0.22, 1, 0.36, 1);
             --dur: 250ms;
             --radius: 32px;
@@ -2903,7 +2903,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 
 /* Recording flow: keep the working controls ahead of optional instruction. */
 .ex-num.reorder-handle { width: 48px; height: 48px; min-width: 48px; display: flex; flex-direction: column; justify-content: center; gap: 3px; border-radius: 12px; }
-.ex-actions-label { font-size: 9px; font-weight: 500; letter-spacing: 0; color: var(--text2); }
+
 .check-wrap { width: 48px; height: 48px; min-width: 48px; }
 .card-head { gap: 10px; }
 .ex-info { min-width: 0; }
@@ -2947,3 +2947,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
     .header .agenda-identity h1 { font-size: 24px; }
     .set-editor { padding: 12px; align-items: flex-start; padding-top: max(24px, env(safe-area-inset-top)); }
 }
+
+/* Compact recording controls; touch targets remain generous without filled circles. */
+.header-controls .ctrl-btn, .header-controls .theme-btn {
+    background: transparent; box-shadow: none; border: 0;
+}
+.header-controls .ctrl-btn::before, .header-controls .theme-btn::before { display: none; }
+.header-controls .network-status { margin-right: 8px; }
+.ex-num.reorder-handle { background: transparent; box-shadow: none; border: 0; border-radius: 0; }
+.logged-sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; max-width: 560px; }
+.logged-sets li { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 12px; border-radius: 12px; background: var(--surface2); }
+.logged-sets li > span { flex: none; font-size: 11px; }
+.logged-sets strong { font-size: 14px; white-space: nowrap; }
+.logged-sets .edit-set-btn { width: 100%; min-height: 44px; padding: 4px 0; text-align: left; background: transparent; box-shadow: none; }
+.logged-sets .edit-set-btn::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
+.logged-sets .edit-set-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

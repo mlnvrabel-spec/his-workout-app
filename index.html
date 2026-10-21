@@ -105,7 +105,7 @@
                     <label>Coach access code<input name="accessCode" type="password" required maxlength="200" autocomplete="off"></label>
                     <label>Provider API key<input name="apiKey" type="password" maxlength="1000" autocomplete="off" placeholder="Leave blank if configured on backend"></label>
                     <p>Use an API key, not your account password. The key stays in backend memory for up to 8 hours. Your questions, exercise prescription and previous sets go to the selected AI provider.</p>
-                    <p>A hosted HTTPS backend and its access code are required on your phone. A backend on the same site avoids third-party cookie restrictions.</p>
+                    <p>Only connect to a backend you trust: this address receives your access code, API key and workout context. A hosted HTTPS backend is required on your phone; one on the same site avoids third-party cookie restrictions.</p>
                     <div class="coach-connect-actions"><button type="submit">Connect</button><button type="button" id="coach-disconnect-btn">Disconnect</button></div>
                     <p id="coach-connect-feedback" role="status"></p>
                 </form>
@@ -141,6 +141,8 @@
                 ? Math.max(0, document.documentElement.clientHeight - viewport.height - viewport.offsetTop)
                 : 0;
             document.documentElement.style.setProperty('--visual-viewport-bottom', `${Math.round(viewportBottom)}px`);
+            document.documentElement.style.setProperty('--visual-viewport-height', `${Math.round(viewport?.height || window.innerHeight)}px`);
+            document.documentElement.style.setProperty('--visual-viewport-top', `${Math.round(viewport?.offsetTop || 0)}px`);
         };
 
         let viewportSyncFrame = 0;

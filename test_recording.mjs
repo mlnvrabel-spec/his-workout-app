@@ -74,3 +74,9 @@ const legacyExport = await a.exportHistory();
 assert.equal(legacyExport.logs[0].sets[0].rpe, 9);
 assert.equal(legacyExport.logs[0].sets[0].rpe_source, 'unknown');
 console.log('Recording: truthful effort, corrections, concurrent edits, rollback, sync acknowledgments and completion labels OK');
+
+// Exports must stay independent of credential, connection and chat storage.
+for (const key of ['ai_key', 'coach_backend_url', 'coach_session', 'chat_history']) localStorage.setItem(key, 'PRIVATE-SENTINEL');
+const privateExport = JSON.stringify(await a.exportHistory());
+assert.equal(privateExport.includes('PRIVATE-SENTINEL'), false);
+assert.equal(privateExport.includes('weight_kg'), true);

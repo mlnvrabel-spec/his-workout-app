@@ -54,3 +54,18 @@ coach.connection.request = async () => { throw new Error('offline'); };
 coach.input.value = 'What about my elbow?'; await coach.send();
 assert.equal(coach.sending, false); assert.equal(coach.sendBtn.disabled, false);
 console.log('Chat exercise context, prior sets, follow-up history and offline send recovery: OK');
+
+// No private workout context is sent until the backend session is confirmed.
+let privateRequests = 0;
+globalThis.fetch = async () => { privateRequests++; throw new Error('must not transmit'); };
+connection.connected = false;
+await assert.rejects(connection.request('chat', { method: 'POST', body: { message: 'private workout' } }), /Connect your coach/);
+await assert.rejects(connection.request('coach', { method: 'POST', body: { readiness_score: 44 } }), /Connect your coach/);
+assert.equal(privateRequests, 0);
+connection.connected = true;
+await assert.rejects(connection.status());
+assert.equal(connection.connected, false, 'A failed session check cannot leave a stale connected state');
+globalThis.fetch = async () => ({ ok: false, status: 422, json: async () => ({ detail: 'echoed-test-api-key' }) });
+await assert.rejects(connection.connect('https://backend.example', 'deepseek', 'code', 'echoed-test-api-key'), error => !error.message.includes('echoed-test-api-key'));
+assert.equal(connection.connected, false);
+await assert.rejects(connection.request('../secrets'), /Unknown coach request/);

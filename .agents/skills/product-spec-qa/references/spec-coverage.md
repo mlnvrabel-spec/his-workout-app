@@ -47,3 +47,14 @@ See `REVIEW_VERIFICATION.md` at the repository root for the September 2026 regre
 | §6 Interaction | Focused logging, guidance disclosure, labelled exercise actions, Back/Forward dismissal and focus restoration | test_modal.mjs, test_reorder.mjs; REVIEW_VERIFICATION.md | Automated + browser; real Android remains separate |
 
 For §6, the canonical Undo requirement is to clear the reopened day's checks while retaining saved sets and later progress, as specified in PRODUCT_SPEC.md. Earlier wording about restoring the prior checklist is superseded.
+
+## Browser feedback and privacy review — 21 October 2026
+
+- §10: REST uses the existing Monday/Thursday recurrence; backfilling rest preserves future gym dates and rejects duplicate/conflicting history. `test_training_schedule.mjs` and browser evidence in `REVIEW_VERIFICATION.md`.
+- §10/§9: Coach context is blocked until session confirmation; failed status clears connection state; raw backend errors cannot echo credentials. `test_coach_connection.mjs`. `backend/test_coach.py` verifies private response cache controls and existing security boundaries.
+- §10: exported history excludes credential/connection/chat storage. `test_recording.mjs`. Readable workout data remains intentionally present; the export UI explains its privacy.
+- §10: compact sets, icon controls, shared typography and shortened Coach viewport verified in-app. Actual phone keyboard/TalkBack remain separate, untested device checks.
+## Retrospective activities - 21 October 2026
+
+- Section 11 supersedes the earlier section 10 rule that past REST leaves future dates unchanged. Past gym, run, REST and other activities rebuild unfinished gym dates from today while preserving protected training and rolling order.
+- `test_backfill.mjs`: atomic history/schedule persistence, no invented sets/checks, chronology, conflicts, cycle rollover, reload, Undo, stale previews and write failure. `test_training_schedule.mjs`: protected history and retrospective reflow. Browser preview/Apply/reload/Undo evidence is in `REVIEW_VERIFICATION.md`.

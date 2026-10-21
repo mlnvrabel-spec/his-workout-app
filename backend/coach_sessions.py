@@ -20,6 +20,14 @@ async def validation_error(request, exc):
     from fastapi.exception_handlers import request_validation_exception_handler
     return await request_validation_exception_handler(request, exc)
 
+
+async def private_coach_responses(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith('/api/ai/'):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+    return response
+
 COOKIE = "coach_session"
 TTL = 8 * 60 * 60
 sessions = OrderedDict()

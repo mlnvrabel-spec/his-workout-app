@@ -48,7 +48,11 @@ export class ChatAssistant {
         this.input.focus();
         this.connection.status().then(() => this.connectionStatus()).catch(() => this.connectionStatus('Backend unavailable · open AI connection'));
     }
-    close() { this.isOpen = false; this.ov.classList.remove('show'); document.getElementById('ai-fab').setAttribute('aria-expanded', 'false'); this.modal.close(); }
+    close() {
+        const form = document.getElementById('coach-connect-form');
+        if (form) { form.elements.accessCode.value = ''; form.elements.apiKey.value = ''; }
+        this.isOpen = false; this.ov.classList.remove('show'); document.getElementById('ai-fab').setAttribute('aria-expanded', 'false'); this.modal.close();
+    }
 
     connectionStatus(message) {
         document.getElementById('coach-connection-status').textContent = message || (this.connection.connected ? `${this.connection.provider} · session ready` : 'Not connected');

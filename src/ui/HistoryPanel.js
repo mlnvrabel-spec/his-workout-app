@@ -7,6 +7,10 @@ export class HistoryPanel {
         this.panel = document.createElement('section');
         this.panel.className = 'history-panel';
         this.panel.innerHTML = `<div class="history-head"><h2>Training history</h2><button aria-label="Close history">×</button></div><p class="history-intro">Sessions counted toward training, saved on this device. Finish confirms every exercise; a counted session may still be editable today.</p><button class="export-history">Export history</button><div class="history-list"></div>`;
+        const privacy = document.createElement('p');
+        privacy.className = 'history-intro';
+        privacy.textContent = 'Export downloads a readable JSON file with workout dates, sets and your schedule. Keep it private. It excludes Coach messages, API keys and connection credentials.';
+        this.panel.querySelector('.export-history').after(privacy);
         document.body.append(this.panel);
         this.modal = new Modal(this.panel, () => this.modal.close(), 'Training history', () => this.open());
         this.panel.querySelector('.history-head button').onclick = () => this.modal.close();
@@ -35,11 +39,11 @@ export class HistoryPanel {
             for (const workout of data.workouts) {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
-                summary.textContent = `${workout.title} · ${new Date(workout.completedAt).toLocaleDateString()} · ${workout.completedExercises}/${workout.totalExercises} checked · ${this.engine.getSessionStatus(workout.day, workout.cycleId)}`;
+                summary.textContent = `${workout.title} · ${new Date(workout.completedAt).toLocaleDateString()} · ${workout.source === 'manual_backfill' ? 'Recorded retrospectively · Sets not supplied' : `${workout.completedExercises}/${workout.totalExercises} checked · ${this.engine.getSessionStatus(workout.day, workout.cycleId)}`}`;
                 details.append(summary);
                 if (!workout.exercises) {
                     const note = document.createElement('p');
-                    note.textContent = 'This older session has a completion count only.';
+                    note.textContent = workout.source === 'manual_backfill' ? 'You recorded this session as performed. No sets or exercise checks were added.' : 'This older session has a completion count only.';
                     details.append(note);
                 }
                 for (const index of (workout.order || (workout.exercises || []).map((_, i) => i))) {

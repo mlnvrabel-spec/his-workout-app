@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test_render.mjs && node test_protocol.mjs && node test_core.mjs && node test_recording.mjs && node test_modal.mjs && node test_schedule.mjs && node test_training_schedule.mjs && node test_scheduler_engine.mjs && node test_training_agenda.mjs && node test_training_stats.mjs && node test_coach_connection.mjs && node test_reorder.mjs && node test_product_spec.mjs && node test_haptics.mjs && node test_sw.mjs",
+    "test": "node test_render.mjs && node test_protocol.mjs && node test_core.mjs && node test_recording.mjs && node test_modal.mjs && node test_schedule.mjs && node test_training_schedule.mjs && node test_scheduler_engine.mjs && node test_backfill.mjs && node test_training_agenda.mjs && node test_training_stats.mjs && node test_coach_connection.mjs && node test_reorder.mjs && node test_product_spec.mjs && node test_haptics.mjs && node test_sw.mjs",
     "verify:agent-setup": "node scripts/verify_agent_setup.mjs",
     "verify": "node scripts/verify_agent_setup.mjs && npm run test"
   },

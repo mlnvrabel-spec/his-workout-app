@@ -236,6 +236,7 @@ export class StorageManager {
                         active.put({ ...result.workout, id: 'current' });
                     }
                     if (result.summary) history.put(result.summary);
+                    for (const summary of result.summariesToSave || []) history.put(summary);
                     if (result.deleteSummary) history.delete(result.deleteSummary);
                     if (result.log) tx.objectStore('hv3_sets').put(result.log);
                 } catch (error) { failure = error; tx.abort(); }

@@ -179,3 +179,42 @@ Implemented the §6 recording-flow refinement in PRODUCT_SPEC.md. Saved sets now
 - NOT RUN: real Android installation, physical touch/haptics, actual phone keyboard behavior, TalkBack, sunlight usability, live Garmin acknowledgment and real AI provider responses. In-app checks are not automated browser or real-device certification. These release gaps require completion or an explicit waiver before publication.
 
 No deployment or GitHub push performed. The unrelated `her-workout-app` deletion remains untouched.
+
+## Production release — 20 October 2026
+
+The user explicitly waived the outstanding physical-phone, TalkBack and live-integration release checks with “yes release it” after the gaps were stated. Those checks remain NOT RUN; the waiver is not a test pass.
+
+- Released exact GitHub commit `8f3375dd139c4ccad01cbb82f1bdf463700b479e` to existing Vercel project `my-split`, production target. Deployment `dpl_BdoBbSwbrbe8P5YZKQZyfksvXafy` reached READY with no alias error. Production URL: https://my-split-five.vercel.app/ . Static ES-module app, framework unset; Vercel build completed successfully. No new framework build was required.
+- PASS: production HTTPS returned 200 and correct content types for the page, service worker, SetEditor, SetRecord, Kai, protocol JSON and manifest. Worker served `hypertrophy-v86`.
+- PASS: live browser initially used the previous cached app; its visible Update app after saving your sets action activated the new Home/Workout/Coach dashboard. Workout displayed labelled Actions, the focused set logger and Technique & guidance disclosure. No captured console warnings/errors. No synthetic workout records were written to production during verification.
+- Screenshot: `C:/Users/mlnvr/.codex/visualizations/2026/10/20/01a15845-935a-7f10-aa17-395520576306/production-release.jpg`.
+- Existing domains, access protection and environment settings were preserved. Hosted AI was not provisioned; the Garmin bridge remains local. The branch's automatic-deployment setting remains unchanged; this was an explicitly requested production release.
+
+## Browser comments and Coach/export security review — 21 October 2026
+
+Implemented PRODUCT_SPEC §10. The user's final label is REST, recurring by default on Mondays and Thursdays. Legacy office IDs/rules remain compatible, but the interface exposes only REST. Saved schedules/history are preserved. This update is local and has not been pushed or deployed; the preceding release record refers to the earlier production version.
+
+Security findings and fixes:
+- FIXED: Coach previously sent workout/readiness/question context to its configured backend without a confirmed browser session. `CoachConnection.request` now blocks chat/coach payloads until connected. Failed status checks clear stale connected state; requests omit referrers and still reject redirects/insecure non-loopback URLs.
+- FIXED: raw backend error detail could echo submitted credentials. Errors now use local safe messages. Secret drafts also clear when the Coach overlay closes. Browser checks used dummy strings only, without submitting credentials.
+- FIXED: session endpoints had no-store, but chat/cue replies and some errors did not. Shared middleware now marks all Coach responses no-store in both backend entry points; mock tests verify provider replies and validation errors.
+- REVIEWED: export reads only workout/session/set stores, not settings, browser credentials, Coach messages or provider keys. A regression seeds unrelated credential/chat storage and confirms it is absent from exported JSON. Export intentionally contains readable workout dates, sets and schedules; added a privacy disclosure beside Export. The file is not encrypted, so sharing it exposes that training history. No evidence of an existing credential leak was found in the reviewed export path.
+- REVIEWED: retained exact-origin checks, HTTPS guard, HttpOnly/Secure cookies on HTTPS, hashed opaque session tokens, bounded expiring in-memory keys, access-code comparison, rate limits, no unauthenticated provider spending, safe text rendering and provider fallback. Live hosting/proxy configuration and real provider behavior were not audited; this is a scoped code/mock review, not a penetration test or production security certification.
+
+Verification:
+- PASS: final `npm.cmd run verify` (15 suites), `python -u backend/test_coach.py`, `python -u backend/test_api.py`, `python -m compileall -q backend`, and `git diff --check`. Backend tests use mocks; no real provider usage. Added past-REST preservation/conflict/duplicate recurrence coverage, connection privacy/error-state coverage and export exclusion coverage.
+- PASS: in-app preview at 552×764, 360×800, 1280×800 and reduced 390×360. Header circles and visible Actions labels removed while preserving targets; compact set tiles retain Edit. Home and Workout both compute Inter. Dark/light views inspected. At 360 px, document width equals scrollWidth.
+- PASS: past REST preview contained only the added rest entry; Apply saved October 19 as Recorded without shifting future workouts. Recurrence dialog displayed Monday and Thursday checked. No Office option remains in Add. Duplicate weekly REST is suppressed when explicit rest is recorded.
+- PASS: Coach header, close and composer fit in 390×360 (panel top 12, bottom 348); connection setup scrolls within that panel. Closing and reopening clears both password fields. Offline questions display local guidance. Actual keyboard opening/panning on a physical phone remains NOT RUN; shortened viewport evidence is not a real-keyboard pass.
+- PASS: History privacy disclosure, retained set edit access and modal Back. No console warnings/errors captured during connected scoped checks. Updated service worker to v90, stopped preview server and reloaded offline; REST history and all three saved sets remained available, including corrected 22×9. Viewport reset; existing cached preview retained.
+- Screenshots: `C:/Users/mlnvr/.codex/visualizations/2026/10/20/01a15845-935a-7f10-aa17-395520576306/compact-workout.jpg` and `coach-short-viewport.jpg` in the same directory.
+- NOT RUN: physical phone keyboard, TalkBack, live Garmin and real hosted Coach/provider connectivity. No integration was provisioned and no credentials were entered. The unrelated `her-workout-app` deletion remains untouched.
+## Retrospective activities - 21 October 2026
+
+Implemented PRODUCT_SPEC section 11, which supersedes the earlier past-REST no-reflow behavior. Add now records the next unstarted gym session on a past date, without inventing sets or checks. Past gym, run, REST and other activity records rebuild unfinished gym dates from today. Started/completed training and rolling order remain protected. Preview lists affected dates; calendar Undo restores the record and schedule together unless later training changes invalidate it.
+
+- PASS: final `npm.cmd run verify` (16 suites), including new `test_backfill.mjs`: chronology, duplicate/conflicting records, atomic writes, failure rollback, stale previews, later started sessions, cycle rollover, reload, export and guarded Undo. Backend is unchanged since the preceding successful backend checks.
+- PASS: isolated local in-app preview at 390x844. Recording Push A for October 20 moved Pull A from October 23 to today, October 21; subsequent gym dates also appeared in preview. Apply and reload retained the plan and retrospective history label. Undo restored Push A to today and removed the past agenda record. Updated to service-worker v92 and repeated preview/Apply on final assets.
+- PASS: stopped the local HTTP server and reloaded offline. Retrospective Push A remained in history and Pull A remained scheduled today. No console warnings/errors captured during the connected final flow.
+- Screenshot: `C:/Users/mlnvr/.codex/visualizations/2026/10/20/01a15845-935a-7f10-aa17-395520576306/backfill-preview.jpg`.
+- Limits: gym backfill follows the next unstarted session in split order; it does not rewrite started workouts or fabricate detailed sets. Browser evidence is a local manual check, not an automated browser or real-device pass. Prior physical keyboard/TalkBack/live-provider gaps remain. Changes are local, not pushed or deployed. Unrelated submodule deletion remains untouched.

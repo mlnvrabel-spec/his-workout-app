@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, sync, workouts, ai
 from auth_manager import is_authorized
-from coach_sessions import allowed_origins, validation_error
+from coach_sessions import allowed_origins, validation_error, private_coach_responses
 from fastapi.exceptions import RequestValidationError
 
 app = FastAPI(title="Garmin Connect Bridge API")
+app.middleware('http')(private_coach_responses)
 
 app.add_middleware(
     CORSMiddleware,
