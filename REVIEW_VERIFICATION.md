@@ -218,3 +218,8 @@ Implemented PRODUCT_SPEC section 11, which supersedes the earlier past-REST no-r
 - PASS: stopped the local HTTP server and reloaded offline. Retrospective Push A remained in history and Pull A remained scheduled today. No console warnings/errors captured during the connected final flow.
 - Screenshot: `C:/Users/mlnvr/.codex/visualizations/2026/10/20/01a15845-935a-7f10-aa17-395520576306/backfill-preview.jpg`.
 - Limits: gym backfill follows the next unstarted session in split order; it does not rewrite started workouts or fabricate detailed sets. Browser evidence is a local manual check, not an automated browser or real-device pass. Prior physical keyboard/TalkBack/live-provider gaps remain. Changes are local, not pushed or deployed. Unrelated submodule deletion remains untouched.
+## Publication waiver - 22 October 2026
+
+The user explicitly waived physical-phone keyboard, TalkBack and live Garmin/Coach integration checks and requested a GitHub push. These checks remain NOT RUN; the waiver is not a test pass. Existing automated and browser verification above remains applicable to unchanged runtime source.
+
+At publication, GitHub branch codex/flexible-training-agenda already contained implementation commit 128b74c95a11596107fb4b7b74dfe22402bcd843. That existing commit includes the earlier submodule deletion; this publication step does not modify it. Earlier statements that changes were local-only describe the state when those checks ran. This follow-up records the waiver; it does not deploy to Vercel.
