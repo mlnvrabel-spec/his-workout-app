@@ -69,5 +69,57 @@ try {
     now = '2026-11-04T18:00:00';
     await a.refresh();
     assert.equal(a.cycleId, autoNext, 'Calendar-day automatic rollover uses the same planned identity');
-    console.log('Scheduler transactions, preview guards, Undo, export and cycle integration: OK');
+    environment(); a = await engine();
+    const deletingCycle = a.cycleId;
+    const undeleted = structuredClone(a.state.schedule);
+    const deleting = { type: 'remove', id: `${deletingCycle}:0` };
+    assert.equal(await a.applySchedule(a.previewSchedule(deleting)), true);
+    assert.equal(a.state.activeDay, 1);
+    assert.equal(a.summaries.length, 0, 'Deleting a plan never records completed training');
+    assert.equal(a.isDayCompleted(0), false);
+    a = await engine();
+    assert.equal(a.state.activeDay, 1);
+    assert.equal(a.getScheduleView().entries.some(entry => entry.id === deleting.id), false);
+    assert.equal(await a.undoSchedule(), true);
+    assert.equal(a.state.activeDay, 0);
+    assert.deepEqual(a.state.schedule, undeleted);
+    const transaction = a.storage.mutateWorkout.bind(a.storage);
+    a.storage.mutateWorkout = reducer => transaction((...args) => { reducer(...args); throw new Error('Injected delete failure'); });
+    assert.equal(await a.applySchedule(a.previewSchedule(deleting)), false);
+    a = await engine();
+    assert.equal(a.state.activeDay, 0);
+    assert.deepEqual(a.state.schedule, undeleted);
+    for (let day = 0; day < 4; day++) await a.applySchedule(a.previewSchedule({ type: 'remove', id: `${deletingCycle}:${day}` }));
+    assert.notEqual(a.cycleId, deletingCycle, 'Skipping a whole cycle advances without phantom completions');
+    assert.equal(a.state.activeDay, 0);
+    assert.equal(a.summaries.length, 0);
+    assert.equal(await a.undoSchedule(), true);
+    assert.equal(a.cycleId, deletingCycle);
+    assert.equal(a.state.activeDay, 3);
+    await a.finishSession();
+    assert.notEqual(a.cycleId, deletingCycle);
+    assert.equal(a.summaries.length, 1);
+
+    environment(); a = await engine();
+    const futureCycle = a.state.schedule.cycleIds[1];
+    await a.applySchedule(a.previewSchedule({ type: 'remove', id: `${futureCycle}:1` }));
+    for (let day = 0; day < 4; day++) { await a.setDay(day); await a.finishSession(); }
+    assert.equal(a.cycleId, futureCycle);
+    await a.continueWorkout(); await a.finishSession();
+    assert.equal(a.state.activeDay, 2, 'A deleted future occurrence stays skipped when that cycle becomes active');
+    await a.continueWorkout(); await a.finishSession();
+    await a.continueWorkout(); await a.finishSession();
+    assert.notEqual(a.cycleId, futureCycle);
+    assert.equal(a.summaries.length, 7);
+    await a.toggleComplete('ex-0-0', 0);
+    assert.throws(() => a.previewSchedule({ type: 'remove', id: `${a.cycleId}:0` }), /started/);
+
+    environment(); a = await engine();
+    const restoredId = `${a.cycleId}:0`;
+    await a.applySchedule(a.previewSchedule({ type: 'remove', id: restoredId }));
+    await a.setDay(0); await a.toggleComplete('ex-0-0', 0);
+    assert.equal(a.state.activeDay, 0);
+    assert.equal(a.getScheduleView().entries.find(entry => entry.id === restoredId).status, 'started', 'Explicit training in Workout restores a previously skipped split');
+    assert.equal(await a.undoSchedule(), false, 'Undo cannot erase progress after a deletion');
+    console.log('Scheduler transactions, deletion/skip persistence, guarded Undo and cycle integration: OK');
 } finally { globalThis.Date = RealDate; }

@@ -14,14 +14,14 @@ When instructed to test the progressive web app dashboard, follow these standard
 - Check the Network tab to ensure `manifest.json` and `service-worker.js` load without errors.
 
 ## 2. Core Render Checks
-- The default home is the dated agenda (PRODUCT_SPEC §8). Check recent days, Today and upcoming dates; use Open workout before checking the exercise view below. Home in the primary bottom navigation returns to the calendar without changing workout progress. Check Workout preserves the selected split and Coach opens from either view. Recent training exposes recorded 14/28-day weekly averages.
+- Workout is the first/default page (PRODUCT_SPEC §12); Calendar is the second navigation destination and preserves the selected split. Check recent days, Today, upcoming dates and per-date Add. Recurring rest days remain accessible; Undo appears when available. Coach opens from its separate circular action on either page and returns focus on close. Calendar exposes recorded 14/28-day weekly averages.
 - Inspect `.cards`. If it's missing or empty, explicitly check the `WorkoutEngine` variables or report the exact DOM structure under `<main id="cards">` to the main agent.
 - Verify the navigation dock (`.nav-dock`) exists and the active day matches the header.
 - Ensure the workout has no redundant Last → Today Hero/weekly strip. Check the icon-only network indicator retains explicit accessible `LIVE`, `CACHED`, or `SYNCING` descriptions; History retains its accessible name.
 
 ## 3. Interaction Scenarios
 ### Scenario A: Basic Interaction & State Updates
-1. Toggle the theme button (`#theme-btn`) - ensure the document body receives the correct `data-theme`.
+1. Open Settings and toggle Dark mode (`#dark-mode-toggle`) by pointer and Space. Ensure the document body receives the correct `data-theme`, the switch reflects it after reopening, and the preference persists after reload.
 2. Tap navigation tabs - ensure the main header and content switch without flickering.
 3. Open a log card, tap a '+' button - ensure the input updates and it visually logs the result.
 4. Check Developer Tools Console to confirm event listeners like `workout:sync_queued` or `workoutLogged` emit without errors.

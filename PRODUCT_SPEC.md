@@ -65,7 +65,8 @@ Data structures are strictly defined via JSDoc in `skill-data-schema.md` to prev
     *   **Heavy Long Vibration**: Rewarding "thud" triggered only after explicitly finishing and durably saving the workout.
 *   **Interaction Patterns**:
     *   **Long-Press Reset**: Holding a day tab (e.g., "D1") in the navigation dock triggers a progress reset for that specific day.
-*   **Header status**: History is icon-only with an accessible name. Connection state uses distinct icons and explicit accessible LIVE/CACHED/SYNCING descriptions and tooltips, independent of color. Do not repeat visible state text in the header.
+*   **Header status**: History is icon-only with an accessible name. Connection state is a small, noninteractive dot: filled for LIVE, hollow for CACHED and dashed for SYNCING, with explicit accessible descriptions and tooltips. Do not repeat visible state text or add a button surface around the dot.
+*   **Shared top bar**: Calendar and Workout use the same compact, fixed-height sticky header, title typography and aligned icon controls. Calendar and Workout show their page titles; the selected split is visible in the compact session selector and included in the Workout heading’s accessible name. Appearance selection lives in Settings. Omit taglines, muscle-focus subtitles and the large decorative logo. Keep 48 px control targets and safe-area spacing. Coach uses the same title style within its existing overlay.
 
 ---
 *Created by Antigravity AI — Pair Programmed with User*
@@ -144,9 +145,10 @@ Accepted contract: 19 October 2026. These are product requirements; this section
 
 ### 8.5. Movement and accessibility
 
-- Movability is visible before a gesture: planned movable items expose a Move control/grip; protected items show their status and a concise reason. Do not require trial-and-error dragging to discover a restriction.
+- Every agenda item is a keyboard-accessible, whole-row button that opens its own details, including future-cycle and protected entries. Keep repeated Planned/Open/Move/Fixed copy off the rows; retain status and restriction descriptions in accessible names and details. A small completed check or in-progress mark may identify actual training. This user-requested refinement supersedes the earlier always-visible Move/grip requirement.
 - Support hold-and-drag with a visible picked-up state, date target, edge scrolling and cancellation. Preserve native scrolling before pickup. A short tap still opens the item's normal action; cancelling, Escape or loss of focus must not commit a move. The existing 350 ms exercise hold is a starting point to test, not an established optimum for calendar movement.
-- Provide an equivalent tap-based Move action and date picker, usable by keyboard and assistive technology. It uses the same rules, conflict feedback, preview, Apply and Undo as drag. Keyboard support alone is not an alternative to dragging for single-pointer users.
+- Details provide a date picker for editable items, Delete and applicable workout/activity actions. Date changes use the same rules, conflict feedback, preview, Apply and Undo as drag. Recorded/started details explain their protected dates; available workout content remains viewable. Future-cycle details must never open or mutate a same-named current-cycle workout.
+- Delete directly removes a planned occurrence with calendar Undo. An explicitly deleted gym occurrence stays skipped on reload and is excluded from advancement/cycle completion requirements, never recorded as completed or included in averages. Later occurrences retain their identities and dates. Undo restores both the plan and the prior active split. Started/completed entries remain protected. Explicitly starting a skipped split in Workout restores that session's identity and preserves its new checks/sets.
 
 ### 8.6. Garmin boundary
 
@@ -158,8 +160,8 @@ Accepted contract: 19 October 2026. These are product requirements; this section
 ### 8.7. Recorded averages and navigation
 
 - Show gym and run sessions/week over the trailing 14 and 28 calendar days, including today: recorded count divided by two or four. Count each completed stable identity once, including same-day distinct actual sessions. Exclude planned/started sessions, other activities, out-of-window dates and future dates. Update from engine-owned history after completion, retrospective recording and Undo. Label the saved-history limitation; do not treat missing data as verified inactivity.
-- Training averages has one disclosure label and one table. Do not repeat the four-week values above the table. Keep units, period, recorded counts and a concise missing-history note.
-- Home, Workout and Coach remain available in the bottom navigation. Home returns to the agenda, Workout preserves the currently viewed gym session, and Coach opens the existing modal without changing workout progress. Place the four split selectors inside Workout. Preserve accessible labels, selected state, focus return and space above the dock.
+- Training averages are always visible as one compact table, with Gym/Runs and trailing 14/28-day per-week values. Keep the units and recorded-only basis visible; expose exact counts in accessible cell labels. Do not repeat values or require disclosure expansion.
+- Workout is the first/default destination; Calendar is second. Workout preserves the currently viewed session, while Calendar exposes past records and future plans. Coach remains a modal action in a separate circular button beside the two navigation tabs. Preserve accessible labels, selected state, focus return and space above the dock. The four split selectors use their workout names without D1–D4 subtitles.
 
 ## 9. Phone-accessible AI coaching
 
@@ -183,7 +185,19 @@ This accepted update supersedes earlier presentation wording where it conflicts:
 ### 11. Backfill and recalculate (21 October 2026)
 
 This user-requested extension supersedes §10's statement that past REST leaves future dates unchanged.
-- Add supports a past gym session, run, REST or other activity. For gym, record the next unstarted session in rolling split order on a date before today and after preceding recorded gym sessions. Existing started/completed sessions and their logs remain protected. Use the normal checklist for today's gym training.
+- Add supports a past gym session, run, REST or other activity. For gym, require an explicit choice of Push A, Pull A, Push B or Pull B from the protocol, on a date before today. Do not silently substitute the next planned workout. Use the normal checklist for today's gym training.
+- The 23 October 2026 selection extension continues future training after the chosen workout, including when it differs from the old plan or is an older/repeated record. Reuse the next unstarted session when the choice matches its order and chronology; otherwise replace only unstarted gym plans with a fresh rolling cycle starting at the chosen workout's successor. Preserve that rotation across subsequent cycles. Replaced plans are never counted as completed. This explicitly supersedes §8's prohibition on calendar-driven cycle changes for this backfill action only.
+- Existing started/completed sessions, checks, sets and non-gym appointments remain protected. Refuse a split restart while a workout or saved next-cycle draft has progress. Do not overwrite recorded history to accommodate a chosen workout. Explain the future starting workout in the Add form.
+- A past gym workout uses one **Save workout** action. Validate and commit the record plus recalculated schedule without a separate review/confirmation screen. Prevent duplicate submits; keep the form and selection on validation or write failure. Announce success with Undo available. Future planned dates remain editable. This user-requested shortcut supersedes the preview requirement below and in §8 for past gym recording only; other calendar edits keep their existing preview.
 - Past gym recording means the session was performed; it does not invent sets or exercise checks. Save a durable summary marked manual_backfill, expose that distinction in History/export, advance the active split and adopt the next cycle when needed. A past gym record may coexist with a recurring REST constraint as actual history, but may not overwrite an explicit recorded REST or another gym session on the date.
-- Adding or moving a performed activity to a past date recalculates unfinished gym sessions from today. Preserve split order, Monday/Thursday REST rules and other non-gym appointments, started/completed records and the four-per-week planning target. Recalculation may bring previously delayed planned gym dates forward; show every date change before Apply. Actual backfills count in recorded training statistics.
+- Adding or moving a performed activity to a past date recalculates unfinished gym sessions from today. Preserve split order, Monday/Thursday REST rules and other non-gym appointments, started/completed records and the four-per-week planning target. Recalculation may bring previously delayed planned gym dates forward; show every date change before Apply except for the direct past-gym save above. Actual backfills count in recorded training statistics.
 - Preview is read-only. Apply recomputes against the latest durable state and atomically commits gym history plus schedule. Failed writes leave both unchanged. Calendar Undo removes the just-added gym summary and restores the previous active split/schedule, including across a cycle boundary; reject Undo after intervening training/calendar changes. Date rollover and another window's edits invalidate stale previews.
+
+
+### 12. Calendar hierarchy and navigation — 23 October 2026
+
+- The user selected Workout first/default, Calendar second and a separate Coach launcher. This supersedes earlier Home/default-agenda wording. Calendar is a destination for dates and planning; Today is its jump action, not a separate page.
+- Keep one Add action per date. Remove the duplicate global Add and selected-day summary/CTA. Calendar keeps a month heading, Today, Undo only when available and an accessible recurring-rest-days control. Preserve the always-visible recorded-averages table and the existing item details, deletion, date editing and backfill flows.
+- Display Rest in title case, with the same title typography as other normal calendar entries. Empty past days leave the activity area visually empty, with accessible “No activity recorded” text and the per-date Add action. Missing records never create confirmed rest, completion records or statistics; future empty dates can suggest Rest without recording it.
+- Use aligned gutters, moderate corner radii, quiet exercise surfaces and a clearly selected workout segment. Keep existing completion marks, keyboard focus, touch targets and safe-area clearance.
+- Settings uses a one-tap Dark mode switch: on is dark, off is light. Keep the saved theme preference and native keyboard interaction. A softly masked blur behind the bottom navigation separates scrolling content without intercepting touch; respect reduced-transparency preferences.

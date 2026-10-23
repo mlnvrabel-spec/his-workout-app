@@ -33,6 +33,13 @@ export class SettingsPanel {
                 <button class="settings-close" id="settings-close" aria-label="Close">✕</button>
             </div>
             <div class="settings-body">
+                <div class="settings-row">
+                    <label class="settings-row-label" for="dark-mode-toggle">Dark mode</label>
+                    <span class="appearance-switch">
+                        <input type="checkbox" role="switch" id="dark-mode-toggle">
+                        <span class="appearance-switch-track" aria-hidden="true"></span>
+                    </span>
+                </div>
                 <div class="settings-section-label">Garmin Sync</div>
                 <div class="settings-row" id="garmin-settings-row">
                     <div class="settings-row-info">
@@ -60,12 +67,15 @@ export class SettingsPanel {
             close: document.getElementById('settings-close'),
             actionBtn: document.getElementById('garmin-action-btn'),
             sub: document.getElementById('garmin-settings-sub'),
+            appearance: document.getElementById('dark-mode-toggle'),
         };
     }
 
     attachListeners() {
         // Gear button opens panel
         document.getElementById('settings-btn').addEventListener('click', () => this.open());
+        this.els.appearance.addEventListener('change', () => window.dispatchEvent(new CustomEvent('theme:change_requested', { detail: { theme: this.els.appearance.checked ? 'dark' : 'light' } })));
+        window.addEventListener('theme:changed', event => { this.els.appearance.checked = event.detail.theme === 'dark'; });
 
         // Close via × or backdrop
         this.els.close.addEventListener('click', () => this.close());
@@ -89,6 +99,7 @@ export class SettingsPanel {
     }
 
     open() {
+        this.els.appearance.checked = document.body.dataset.theme === 'dark';
         this.isOpen = true;
         this.els.backdrop.classList.add('open');
         this.els.panel.classList.add('open');

@@ -7,7 +7,7 @@
 import { StorageManager } from './StorageManager.js';
 import { trainingAverages } from './TrainingStats.js';
 import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
-import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, suggestedRunDate } from './TrainingSchedule.js';
+import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, firstScheduleDay, scheduleDaySkipped, suggestedRunDate } from './TrainingSchedule.js';
 
 export class WorkoutEngine {
     constructor() {
@@ -325,6 +325,21 @@ export class WorkoutEngine {
 
     _reconcileSchedule(workout, summaries, logs) {
         workout.schedule = reconcileSchedule(workout.schedule, this._scheduleContext(workout, summaries, logs));
+        let advanced = false;
+        while (scheduleDaySkipped(workout.schedule, workout.cycleId, workout.activeDay)) {
+            if (this._cycleComplete(workout)) {
+                const draft = workout.nextCycleDraft;
+                workout.cycleId = draft?.cycleId || nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
+                workout.done = draft?.done || {}; workout.completedDays = {}; workout.autoCompletedDays = {};
+                workout.swaps = draft?.swaps || workout.swaps || {};
+                workout.orders = draft?.orders || {}; workout.orderUndo = {};
+                delete workout.nextCycleDraft;
+                workout.activeDay = firstScheduleDay(workout.schedule, workout.cycleId);
+            } else workout.activeDay = this._nextDay(workout, workout.activeDay);
+            workout.day = workout.activeDay;
+            advanced = true;
+        }
+        if (advanced) workout.schedule = reconcileSchedule(workout.schedule, this._scheduleContext(workout, summaries, logs));
     }
 
     // A preview is invalidated by training progress, date rollover or another
@@ -342,6 +357,7 @@ export class WorkoutEngine {
         const rule = schedule.officeRules?.filter(rule => rule.from <= context.today).at(-1);
         const entries = scheduleEntries(schedule, context);
         return { entries, averages: trainingAverages(entries, context.today), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
+            workouts: this.protocolData.map((day, index) => ({ day: index, title: day.title, nextTitle: this.protocolData[(index + 1) % this.protocolData.length].title })),
             officeDays: rule?.days || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
             runSuggestion: suggestedRunDate(schedule, context) };
     }
@@ -372,20 +388,31 @@ export class WorkoutEngine {
                     title: entry.title, completionType: 'recorded', source: 'manual_backfill',
                     totalExercises: this.protocolData[entry.day].exercises.length, completedExercises: 0 };
                 summaries.push(summary);
-                workout.completedDays[entry.day] = true;
-                delete workout.autoCompletedDays[entry.day];
-                if (this.protocolData.every((_, day) => workout.completedDays[day])) {
+                if (result.restartedCycleId) {
+                    workout.cycleId = result.restartedCycleId;
+                    workout.done = {}; workout.completedDays = {}; workout.autoCompletedDays = {};
+                    workout.orders = {}; workout.orderUndo = {};
+                    workout.lastCompletedSummaryId = null;
+                    workout.workoutDate = this.storage.getDateKey();
+                    delete workout.nextCycleDraft;
+                    workout.activeDay = workout.day = firstScheduleDay(workout.schedule, workout.cycleId);
+                } else {
+                    workout.completedDays[entry.day] = true;
+                    delete workout.autoCompletedDays[entry.day];
+                }
+                if (!result.restartedCycleId && this._cycleComplete(workout)) {
                     const draft = workout.nextCycleDraft;
                     workout.cycleId = draft?.cycleId || nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
                     workout.done = draft?.done || {}; workout.completedDays = {}; workout.autoCompletedDays = {};
                     workout.swaps = draft?.swaps || workout.swaps || {};
                     workout.orders = draft?.orders || {}; workout.orderUndo = {};
                     delete workout.nextCycleDraft;
-                    workout.activeDay = workout.day = 0;
-                } else workout.activeDay = workout.day = this._nextDay(workout, entry.day);
+                    workout.activeDay = workout.day = firstScheduleDay(workout.schedule, workout.cycleId);
+                } else if (!result.restartedCycleId) workout.activeDay = workout.day = this._nextDay(workout, entry.day);
                 this._reconcileSchedule(workout, summaries, logs);
             }
-            workout.scheduleUndo = { before, ...(summary ? { beforeWorkout, addedSummaryId: summary.id } : {}), token: this._scheduleToken(workout, summaries, logs) };
+            if (result.removedGym) this._reconcileSchedule(workout, summaries, logs);
+            workout.scheduleUndo = { before, ...(summary || result.removedGym ? { beforeWorkout, addedSummaryId: summary?.id, restoreWorkout: Boolean(result.removedGym) } : {}), token: this._scheduleToken(workout, summaries, logs) };
             return summary ? { summary, summariesToSave: [summary], automatic: true } : true;
         });
     }
@@ -397,10 +424,12 @@ export class WorkoutEngine {
             if (!undo || undo.token !== this._scheduleToken(workout, summaries, logs)) {
                 throw new Error('Training or calendar changes prevent Undo. Move the remaining planned session instead.');
             }
-            if (undo.addedSummaryId) {
-                const index = summaries.findIndex(summary => summary.id === undo.addedSummaryId);
-                if (index < 0) throw new Error('The recorded workout changed. Refresh the calendar.');
-                summaries.splice(index, 1);
+            if (undo.addedSummaryId || undo.restoreWorkout) {
+                if (undo.addedSummaryId) {
+                    const index = summaries.findIndex(summary => summary.id === undo.addedSummaryId);
+                    if (index < 0) throw new Error('The recorded workout changed. Refresh the calendar.');
+                    summaries.splice(index, 1);
+                }
                 for (const key of Object.keys(workout)) delete workout[key];
                 Object.assign(workout, structuredClone(undo.beforeWorkout));
             } else workout.schedule = undo.before;
@@ -478,13 +507,13 @@ export class WorkoutEngine {
         if (workout.workoutDate !== today) {
             const last = summaries.find(s => s.id === workout.lastCompletedSummaryId);
             if (workout.completedDays[day] || (last && last.sessionId !== today)) {
-                if (this.protocolData.every((_, i) => workout.completedDays[i])) {
+                if (this._cycleComplete(workout)) {
                     workout.cycleId = nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
                     workout.done = {};
                     workout.orders = {}; workout.orderUndo = {};
                     workout.completedDays = {};
                     workout.autoCompletedDays = {};
-                    workout.activeDay = 0;
+                    workout.activeDay = firstScheduleDay(workout.schedule, workout.cycleId);
                 } else if (workout.completedDays[day]) workout.activeDay = this._nextDay(workout, day);
                 workout.day = workout.activeDay;
                 changes.changed = true;
@@ -495,10 +524,14 @@ export class WorkoutEngine {
         return changes;
     }
 
+    _cycleComplete(workout) {
+        return this.protocolData.every((_, day) => workout.completedDays[day] || scheduleDaySkipped(workout.schedule, workout.cycleId, day));
+    }
+
     _nextDay(workout, from) {
         for (let offset = 1; offset <= this.protocolData.length; offset++) {
             const day = (from + offset) % this.protocolData.length;
-            if (!workout.completedDays[day]) return day;
+            if (!workout.completedDays[day] && !scheduleDaySkipped(workout.schedule, workout.cycleId, day)) return day;
         }
         return 0;
     }
@@ -677,7 +710,7 @@ export class WorkoutEngine {
                 };
                 delete workout.autoCompletedDays[day];
                 workout.completedDays[day] = true;
-                const cycleCompleted = this.protocolData.every((_, i) => workout.completedDays[i]);
+                const cycleCompleted = this._cycleComplete(workout);
                 if (cycleCompleted) {
                     const draft = workout.nextCycleDraft;
                     summary.nextCycleId = draft?.cycleId || nextScheduleCycleId(workout.schedule, workout.cycleId) || this._newCycleId();
@@ -688,7 +721,7 @@ export class WorkoutEngine {
                     workout.completedDays = {};
                     workout.autoCompletedDays = {};
                     delete workout.nextCycleDraft;
-                    workout.activeDay = workout.day = 0;
+                    workout.activeDay = workout.day = firstScheduleDay(workout.schedule, workout.cycleId);
                 } else {
                     // Keep the saved day visible so its sole bottom action can become Undo.
                     // The next unfinished day remains ready in the background.

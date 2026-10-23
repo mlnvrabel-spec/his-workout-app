@@ -119,7 +119,7 @@ export class ChatAssistant {
             else this.connectionStatus('AI unavailable · check connection, key or balance');
         } catch {
             const response = /next|plan|schedule/i.test(message)
-                ? `Your current workout is ${workout.title}. Next in program order is ${next.title}. Use Home for the actual planned dates.`
+                ? `Your current workout is ${workout.title}. Next in program order is ${next.title}. Use Calendar for the actual planned dates.`
                 : `The AI connection is unavailable, so this is general local guidance. Follow the saved prescription and use a controlled, pain-free range on ${exercise.name}. Open AI connection to check the backend and session.`;
             this.addMsg('Coach · offline guidance', response);
         } finally { this.sending = false; this.sendBtn.disabled = false; }

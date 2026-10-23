@@ -50,7 +50,9 @@ assert.deepEqual(act(base, { type: 'move', id: runId, date: '2026-11-10' }), ins
 assert.throws(() => act(base, { type: 'move', id: 'c1:3', date: '2026-11-04' }), /before an unfinished/);
 assert.throws(() => act(base, { type: 'move', id: 'c1:0', date: '2026-11-08' }), /occupies/);
 assert.throws(() => act(base, { type: 'add', kind: 'rest', date: '2026-11-08' }), /occupies/);
-assert.throws(() => act(base, { type: 'remove', id: 'c1:0' }), /stays in the rolling split/);
+const deletedGym = act(base, { type: 'remove', id: 'c1:0' });
+assert.ok(deletedGym.skippedSessionIds.includes('c1:0'));
+assert.ok(!reconcileSchedule(deletedGym, ctx).entries.some(entry => entry.id === 'c1:0'), 'Deleted plans stay deleted after reconciliation');
 const freed = act(insertedRun.schedule, { type: 'remove', id: runId });
 assert.deepEqual(gymDates(freed), gymDates(insertedRun.schedule), 'Removing a blocker does not silently pull sessions earlier');
 

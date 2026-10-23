@@ -5,9 +5,6 @@ body[data-view="agenda"] .workout-session-nav,
 body[data-view="workout"] #training-agenda,
 body[data-view="workout"] .agenda-identity { display: none !important; }
 
-.agenda-identity h1 { margin-top: 6px; font: 300 clamp(28px, 5vw, 40px)/1.1 var(--font); }
-.agenda-identity .overline { color: var(--text2); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; }
-body[data-view="agenda"] .header { max-width: 832px; margin-inline: auto; }
 body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-bottom)); }
 #app { scrollbar-width: thin; scrollbar-color: var(--text3) transparent; }
 #app::-webkit-scrollbar { width: 7px; }
@@ -16,39 +13,48 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 #app::-webkit-scrollbar-thumb:hover { background-color: var(--accent); }
 #app::-webkit-scrollbar-button { display: none; }
 @media (forced-colors: active) { #app { scrollbar-color: auto; } }
-#training-agenda { max-width: 832px; margin-inline: auto; padding: 16px 24px 20px; }
+#training-agenda { max-width: 832px; margin-inline: auto; padding: 8px 24px 20px; }
 #history-btn { color: var(--text2); }
 #history-btn svg { fill: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .header-controls .network-status { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 18px; width: 18px; height: 24px; letter-spacing: 0; }
-.network-status svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.network-dot { width: 7px; height: 7px; border: 1.5px solid currentColor; border-radius: 50%; }
+.network-status[data-state="LIVE"] .network-dot { background: currentColor; }
+.network-status[data-state="SYNCING"] .network-dot { border-style: dashed; }
 #training-agenda button, .agenda-dialog button { min-height: 44px; border: 0; border-radius: 12px; background: var(--surface3); color: var(--text1); padding: 10px 14px; font: 500 13px var(--font); cursor: pointer; }
 #training-agenda button:disabled, .agenda-dialog button:disabled { opacity: .4; cursor: default; }
 #training-agenda button:focus-visible, .agenda-dialog :focus-visible, #agenda-home-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #training-agenda .agenda-primary, .agenda-dialog .agenda-primary { background: var(--text1); color: var(--bg); }
-.agenda-today { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
-.agenda-next, .agenda-suggestion { margin-top: 8px; color: var(--text2); font-size: 12px; line-height: 1.6; }
+.agenda-suggestion { margin-top: 8px; color: var(--text2); font-size: 12px; line-height: 1.6; }
 #training-agenda .agenda-suggestion button { background: transparent; color: var(--accent); padding: 6px; }
-.agenda-today h2 { font: 400 clamp(24px, 4vw, 32px)/1.2 var(--display); max-width: 390px; }
-.agenda-eyebrow { margin-bottom: 9px; font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: .06em; }
-.agenda-today .agenda-primary { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; flex-shrink: 0; min-height: 48px !important; padding-block: 14px !important; line-height: 1.25 !important; text-align: left; }
-.agenda-today .agenda-primary span { display: block; }
-.agenda-today .agenda-primary svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.agenda-averages { margin: 0 0 24px; }
-.agenda-averages summary { font-size: 13px; font-weight: 500; padding: 10px 0; min-height: 48px; cursor: pointer; }
-.agenda-averages table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.agenda-averages caption { text-align: left; color: var(--text2); font-size: 10px; margin-bottom: 12px; }
-.agenda-averages th { text-align: left; font-weight: 500; color: var(--text2); padding: 7px 0; }
-.agenda-averages td { font-size: 20px; padding: 7px 0; }
-.agenda-averages td span { display: block; font-size: 10px; color: var(--text2); margin-top: 3px; }
-.agenda-averages p { margin-top: 10px; font-size: 10px; line-height: 1.5; color: var(--text2); }
-.app-nav { display: flex; width: min(100%, 440px); padding: 6px; gap: 6px; border-radius: 24px; background: var(--nav-bg); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); box-shadow: var(--shadow3); pointer-events: auto; }
-.app-nav-item { flex: 1; min-width: 0; min-height: 56px; border: 0; border-radius: 18px; background: transparent; color: var(--text2); font: 500 11px var(--font); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
-.app-nav-item[aria-current="page"] { background: var(--surface3); color: var(--accent); }
-.app-nav-item svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
-.app-nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.workout-session-nav.nav-dock { max-width: 800px; width: calc(100% - 36px); margin: 8px auto 12px; padding: 4px; height: 60px; border-radius: 20px; box-shadow: none; }
-.workout-session-nav .nav-item { height: 52px; border-radius: 16px; }
+.agenda-averages { margin: 8px 0 20px; max-width: 380px; }
+.agenda-averages table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.agenda-averages caption { text-align: left; color: var(--text2); font-size: 11px; margin-bottom: 8px; }
+.agenda-averages caption span { margin-left: 12px; color: var(--text3); font-size: 10px; }
+.agenda-averages th { text-align: right; font-weight: 400; color: var(--text2); padding: 3px 0; }
+.agenda-averages th:first-child { text-align: left; width: 40%; }
+.agenda-averages thead th { font-size: 10px; }
+.agenda-averages td { text-align: right; font-size: 18px; padding: 3px 0; }
+.navigation-bar { display: flex; align-items: center; gap: 12px; width: min(100%, 440px); pointer-events: auto; }
+.app-nav, .coach-launcher { background: var(--nav-bg); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: 0 8px 24px rgba(0, 0, 0, .10); }
+.app-nav { display: flex; flex: 1; min-width: 0; padding: 5px; gap: 4px; border-radius: 22px; }
+.app-nav-item { flex: 1; min-width: 0; min-height: 54px; border: 0; border-radius: 17px; background: transparent; color: var(--text2); font: 500 11px var(--font); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.app-nav-item[aria-current="page"] { background: var(--surface3); color: var(--text1); }
+.app-nav-item svg, .coach-launcher svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.app-nav-item:focus-visible, .coach-launcher:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.coach-launcher { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 0 0 64px; width: 64px; height: 64px; border: 0; border-radius: 50%; color: var(--text1); font: 500 10px var(--font); cursor: pointer; }
+.coach-launcher[aria-expanded="true"] { background: var(--surface3); }
+body .workout-session-nav.nav-dock { display: flex; max-width: 784px; width: calc(100% - 48px); margin: 8px auto 12px; padding: 4px; height: 52px; border-radius: 14px; gap: 4px; border: 0; box-shadow: none; background: var(--surface2); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.workout-session-nav.nav-dock::before { display: none; }
+.workout-session-nav .nav-item { flex: 1; min-width: 0; height: 44px; border: 0; border-radius: 10px; box-shadow: none; background: transparent; transition: background 160ms ease, color 160ms ease; }
+body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .06); }
+.workout-session-nav .nav-item .nav-label { font: 500 13px var(--font); text-transform: none; letter-spacing: -.015em; color: var(--text2); }
+.workout-session-nav .nav-item.active .nav-label { color: var(--text1); }
+.workout-session-nav .nav-item.completed::before { width: 4px; height: 4px; left: calc(50% - 2px); right: auto; bottom: 3px; border-radius: 50%; }
+@media (max-width: 480px) { body .workout-session-nav.nav-dock { width: calc(100% - 40px); } }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+    .app-nav, .coach-launcher { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
 .coach-connection { flex-shrink: 0; margin: 0 20px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
 .coach-connection summary { min-height: 32px; cursor: pointer; color: var(--text1); }
 .coach-connection summary span { display: block; color: var(--text2); font-size: 10px; margin: 5px 0; }
@@ -66,13 +72,16 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .coach-connection :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .chat-body { min-height: 80px; }
 @media (max-width: 560px) { .chat-ov { padding: 12px; } .chat-window { width: 100%; height: min(700px, 100%); } }
-.agenda-toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
-#training-agenda .agenda-add { color: var(--accent); background: var(--accent-dim); }
-.agenda-help { margin: 14px 0 0; font-size: 11px; line-height: 1.6; color: var(--text2); }
+.agenda-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.agenda-toolbar h2 { min-width: 0; font-size: 17px; font-weight: 550; letter-spacing: -.025em; }
+.agenda-calendar-actions { display: flex; align-items: center; flex-shrink: 0; }
+#training-agenda .agenda-calendar-actions button { padding: 10px; background: transparent; color: var(--text2); }
+#training-agenda .agenda-options { width: 44px; padding: 12px; }
+.agenda-options svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .agenda-notice { font-size: 12px; line-height: 1.6; color: var(--accent); }
 .agenda-notice:not(:empty) { margin-top: 12px; }
 .agenda-days { margin-top: 6px; }
-.agenda-day { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 7px 0; scroll-margin-top: 120px; border-radius: 18px; }
+.agenda-day { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 7px 0; scroll-margin-top: 84px; border-radius: 18px; }
 #training-agenda .agenda-date { padding: 11px 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; color: var(--text2); font-size: 10px; background: transparent; }
 .agenda-date strong { font-weight: 400; font-size: 25px; line-height: 1.2; color: var(--text1); }
 .agenda-day.is-today .agenda-date { color: var(--accent); font-weight: 700; }
@@ -80,32 +89,31 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .agenda-day.is-selected { background: var(--accent-dim); }
 .agenda-day.is-selected .agenda-date { color: var(--accent); }
 .agenda-day-content { min-width: 0; padding-right: 38px; position: relative; }
-.agenda-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 70px; padding: 12px 14px; margin-bottom: 5px; border-radius: 16px; background: var(--surface2); touch-action: pan-y; -webkit-touch-callout: none; }
-.agenda-entry[data-movable="true"] { cursor: grab; }
+#training-agenda .agenda-entry { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; min-height: 70px; padding: 12px 14px; margin-bottom: 5px; border-radius: 16px; background: var(--surface2); text-align: left; touch-action: pan-y; -webkit-touch-callout: none; }
+.agenda-entry:hover { filter: brightness(.98); }
 .agenda-entry-copy { min-width: 0; }
-.agenda-entry h3 { font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
-.agenda-entry p { font-size: 10px; line-height: 1.5; color: var(--text2); margin-top: 5px; }
-.agenda-entry--run h3 { color: var(--accent); }
-.agenda-entry--office, .agenda-entry--rest { background: transparent; }
-.agenda-entry--office h3, .agenda-entry--rest h3 { font-size: 13px; color: var(--text2); }
-.agenda-entry-actions { display: flex; flex-shrink: 0; align-items: center; gap: 3px; }
-#training-agenda .agenda-entry-actions button { padding: 8px 10px; background: transparent; font-size: 11px; }
-.agenda-fixed { padding: 8px 4px; font-size: 10px; color: var(--text2); }
-.agenda-entry.is-recorded h3 { color: var(--text2); }
-.agenda-entry.is-moving { background: var(--accent-dim); outline: 2px solid var(--accent); outline-offset: 1px; cursor: grabbing; }
+.agenda-entry-title { display: block; font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.agenda-entry-context { display: block; font-size: 10px; line-height: 1.5; color: var(--text2); margin-top: 5px; }
+.agenda-entry--run .agenda-entry-title { color: var(--accent); }
+#training-agenda .agenda-entry--office, #training-agenda .agenda-entry--rest { background: transparent; }
+.agenda-entry--office .agenda-entry-title, .agenda-entry--rest .agenda-entry-title { font-size: 15px; color: var(--text2); }
+.agenda-recorded-mark { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: var(--text2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.agenda-progress-mark { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.agenda-entry.is-recorded .agenda-entry-title { color: var(--text2); }
+#training-agenda .agenda-entry.is-moving { background: var(--accent-dim); outline: 2px solid var(--accent); outline-offset: 1px; cursor: grabbing; }
 .agenda-day.is-drop-target { background: var(--accent-glow); outline: 1px dashed var(--accent); }
 .agenda-day.is-drop-invalid { background: var(--red-dim); outline-color: var(--red); }
 .agenda-empty { padding: 17px 14px 6px; font-size: 12px; line-height: 1.5; color: var(--text2); }
 #training-agenda .agenda-day-add { position: absolute; right: 0; top: 14px; min-width: 36px; min-height: 44px; padding: 6px; background: transparent; color: var(--text2); font-size: 20px; }
-.agenda-day.is-past .agenda-entry { background: var(--surface); }
-.agenda-day.is-past .agenda-entry--office, .agenda-day.is-past .agenda-entry--rest { background: transparent; }
-.agenda-day.is-past .agenda-entry h3, .agenda-day.is-past .agenda-date strong { color: var(--text2); }
+#training-agenda .agenda-day.is-past .agenda-entry { background: var(--surface); }
+#training-agenda .agenda-day.is-past .agenda-entry--office, #training-agenda .agenda-day.is-past .agenda-entry--rest { background: transparent; }
+.agenda-day.is-past .agenda-entry-title, .agenda-day.is-past .agenda-date strong { color: var(--text2); }
 .agenda-items.is-grouped { background: var(--surface2); border-radius: 16px; }
 .agenda-day.is-past .agenda-items.is-grouped { background: var(--surface); }
-.agenda-items.is-grouped .agenda-entry { background: transparent; margin-bottom: 0; }
+#training-agenda .agenda-items.is-grouped .agenda-entry { background: transparent; margin-bottom: 0; }
 #training-agenda .agenda-entry--context { min-height: 32px; padding-block: 0 10px; }
-.agenda-entry--context h3 { font-size: 11px; font-weight: 400; color: var(--text2); }
-#training-agenda .agenda-range { display: block; margin: 16px auto 0; background: transparent; color: var(--text2); font-size: 11px; }
+.agenda-entry--context .agenda-entry-title { font-size: 11px; font-weight: 400; color: var(--text2); }
+#training-agenda .agenda-range { display: block; margin: 4px auto 0; background: transparent; color: var(--text2); font-size: 11px; }
 .agenda-overdue { margin-top: 24px; }
 .agenda-overdue > h3 { font-size: 12px; font-weight: 500; margin-bottom: 8px; color: var(--accent); }
 .agenda-dialog[hidden] { display: none; }
@@ -129,6 +137,8 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .agenda-dialog-footer .agenda-remove { margin-right: auto; color: var(--red); background: transparent; }
 .agenda-dialog-error { color: var(--red); font-size: 12px; line-height: 1.6; margin-top: 12px; }
 .agenda-dialog-error:empty { display: none; }
+.agenda-entry-date { color: var(--text2); font-size: 12px; margin: -6px 0 20px; }
+.agenda-exercises { list-style: none; margin-top: 20px; display: grid; gap: 10px; color: var(--text2); font-size: 12px; line-height: 1.5; }
 .agenda-changes { list-style: none; margin-top: 16px; }
 .agenda-changes li { display: grid; gap: 5px; padding: 11px 0; }
 .agenda-changes strong { font-size: 13px; font-weight: 500; }
@@ -138,20 +148,11 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .agenda-warnings ul { padding-left: 17px; color: var(--text2); font-size: 12px; line-height: 1.6; }
 .agenda-warnings li + li { margin-top: 8px; }
 @media (max-width: 560px) {
-    #training-agenda { padding-inline: 18px; }
-    .agenda-today { flex-direction: column; align-items: flex-start; gap: 16px; }
-    .agenda-today .agenda-primary { width: 100%; display: flex; justify-content: space-between; }
+    #training-agenda { padding-inline: 20px; }
     .agenda-day { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
     .agenda-entry { gap: 4px; padding: 11px 10px; }
-    .agenda-entry h3 { font-size: 14px; }
-    .agenda-entry-actions { gap: 0; flex-wrap: wrap; max-width: 96px; justify-content: flex-end; }
-    #training-agenda .agenda-entry-actions button { padding-inline: 8px; }
     .agenda-dialog { padding: 12px; align-items: flex-end; }
     .agenda-dialog-panel { padding: 20px; max-height: calc(100dvh - 24px); border-radius: 22px; }
-}
-@media (max-width: 430px) {
-    .header-controls { max-width: none; flex-wrap: nowrap; gap: 4px; }
-    .brand-mark { width: 64px; flex-basis: 64px; }
 }
 @media (prefers-reduced-motion: reduce) { .agenda-day { transition: none; } }
 
@@ -166,13 +167,8 @@ body[data-view="agenda"] #app { padding-bottom: calc(94px + env(safe-area-inset-
 .chat-body { min-height: 0; overflow-y: auto; }
 .coach-connection { min-height: 0; overflow-y: auto; flex-shrink: 1; }
 .coach-connection form { max-height: min(260px, calc(var(--visual-viewport-height, 100dvh) * .38)); }
-.header .agenda-identity h1 { font-family: var(--font); font-weight: 300; letter-spacing: -.04em; }
 .chat-ov .chat-window { height: min(620px, 100%); background: var(--bg); }
 .chat-window:has(.coach-connection[open]) .chat-body,
 .chat-window:has(.coach-connection[open]) .chat-foot { display: none; }
 .coach-connection[open] { flex: 1; scrollbar-width: thin; scrollbar-color: var(--text3) transparent; }
 .coach-connection[open] form { max-height: none; overflow: visible; }
-@media (max-width: 380px) {
-    .header-controls { gap: 0; }
-    .header-controls .network-status { margin-right: 0; }
-}

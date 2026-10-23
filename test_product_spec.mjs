@@ -28,7 +28,16 @@ for (const storeName of ['hv3_active_workout', 'hv3_completed_workouts', 'hv3_lo
     assert.ok(storageSource.includes(`createObjectStore('${storeName}'`), `missing IndexedDB store ${storeName}`);
 }
 assert.doesNotMatch(heroSource, /flow-next|flow-week-count|completion fraction/i);
-assert.match(stylesSource, /background: url\('\/public\/brand-mark-cutout\.png'\) center \/ cover no-repeat/, 'header mark must use the original cutout asset');
+// PRODUCT_SPEC §5: the compact header follows the selected protocol session.
+const { HeroHeader } = await import('./src/ui/HeroHeader.js');
+const header = { dayTitle: { textContent: '', setAttribute(name, value) { this[name] = value; } } };
+for (const workout of protocol.workouts) {
+    HeroHeader.prototype.renderDay.call(header, workout);
+    assert.equal(header.dayTitle.textContent, 'Workout');
+    assert.equal(header.dayTitle['aria-label'], `Workout: ${workout.title}`);
+}
+HeroHeader.prototype.renderDay.call(header, {});
+assert.equal(header.dayTitle.textContent, 'Workout');
 assert.doesNotMatch(stylesSource, /\.nav-item\.completed \.nav-label::after/, 'completed days must not add a bottom-nav checkmark');
 
 // PRODUCT_SPEC §3.1: 50% checks auto-complete; Finish completes the checklist and resets after four days.

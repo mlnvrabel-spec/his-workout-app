@@ -30,14 +30,15 @@ for (const state of ['LIVE', 'CACHED', 'SYNCING']) {
     renderNetworkStatus(indicator, state);
     assert.equal(indicator.dataset.state, state);
     assert.ok(indicator.attributes['aria-label'].startsWith(`${state}:`));
-    assert.match(indicator.innerHTML, /<svg/);
+    assert.match(indicator.innerHTML, /class="network-dot" aria-hidden="true"/);
+    assert.doesNotMatch(indicator.innerHTML, /<button|<svg/);
     assert.match(indicator.innerHTML, /sr-only/);
 }
 renderNetworkStatus(indicator, '<script>');
 assert.equal(indicator.dataset.state, 'CACHED');
 assert.doesNotMatch(indicator.innerHTML, /<script>/);
-console.log('Connection state icons retain explicit accessible labels and reject unknown states.');
-const completion = { els: { completionAnnouncement: {} }, engine: { state: { activeDay: 0 }, protocolData: [{ title: 'Pull A' }] }, heroHeader: { expandForCompletion() {} }, showFeedback(message) { this.feedback = message; } };
+console.log('Connection status dots retain explicit accessible labels and reject unknown states.');
+const completion = { els: { completionAnnouncement: {} }, engine: { state: { activeDay: 0 }, protocolData: [{ title: 'Pull A' }] }, showFeedback(message) { this.feedback = message; } };
 document.getElementById = () => null;
 Kai.prototype.sealCompletedWorkout.call(completion, { title: 'Push A', day: 0 });
 assert.equal(completion.els.completionAnnouncement.textContent, 'Push A complete.');

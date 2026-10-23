@@ -165,62 +165,6 @@
             padding-bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom) + var(--visual-viewport-bottom))
         }
 
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            overflow-anchor: none;
-            padding: 24px 24px 16px;
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px);
-            background: color-mix(in srgb, var(--bg) 60%, transparent);
-            border-bottom: 1px solid transparent;
-            /* Spring easing â€” slight overshoot on expand keeps it feeling alive */
-            transition:
-                background   0.38s cubic-bezier(0.34, 1.36, 0.64, 1),
-                border-color 0.38s cubic-bezier(0.34, 1.36, 0.64, 1),
-                padding      0.38s cubic-bezier(0.34, 1.36, 0.64, 1);
-            will-change: transform;
-        }
-
-        .header.scrolled {
-            border-bottom-color: var(--border);
-            background: color-mix(in srgb, var(--bg) 85%, transparent)
-        }
-
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 4px
-        }
-
-        .overline {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--accent);
-            opacity: 0.8;
-            transition: all .3s
-        }
-
-        .header.scrolled .overline {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            overflow: hidden
-        }
-
-        .day-title {
-            font-family: var(--font);
-            font-size: 42px;
-            font-weight: 300;
-            line-height: 1;
-            color: var(--text1);
-            letter-spacing: -1.5px;
-            transition: font-size .3s var(--ease);
-        }
 
         .hero-bento {
             display: grid;
@@ -238,40 +182,8 @@
             will-change: max-height, opacity;
         }
 
-        .header.scrolled .hero-bento {
-            max-height: 0;
-            margin-top: 0;
-            margin-bottom: 0;
-            opacity: 0;
-            transform: scaleY(0.9);
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        .header.scrolled .day-title {
-            font-size: 26px
-        }
-
-        .day-sub {
-            font-size: 13px;
-            color: var(--text2);
-            font-weight: 500;
-            margin-top: 4px;
-            transition: all .3s var(--ease)
-        }
-
-        .header.scrolled .day-sub {
-            font-size: 12px;
-            opacity: 0.5;
-            margin-top: 0
-        }
 
         /* â”€â”€ Header Controls Group â”€â”€ */
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
 
         .ctrl-btn {
             width: 40px;
@@ -1107,9 +1019,10 @@
             font-size: 16px;
             font-weight: 600;
             color: var(--text1);
-            white-space: nowrap;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            line-height: 1.35;
             overflow: hidden;
-            text-overflow: ellipsis;
             transition: transform 0.18s ease;
             will-change: transform;
         }
@@ -1671,8 +1584,8 @@
         }
 
         .chat-head {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            border-bottom: 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -1682,24 +1595,6 @@
             backdrop-filter: blur(10px)
         }
 
-        .chat-title {
-            font-family: var(--display);
-            font-size: 24px;
-            color: var(--text1);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2)
-        }
-
-        .chat-title::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 10px var(--accent)
-        }
 
         .chat-acts {
             display: flex;
@@ -1995,81 +1890,6 @@
             background: radial-gradient(110% 62% at 50% -12%, #ffffff 0%, #f1f0eb 62%);
         }
 
-        .header {
-            padding: calc(30px + env(safe-area-inset-top)) 24px 10px;
-            background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 94%, transparent) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 70%, transparent 100%);
-            border-bottom-color: transparent;
-        }
-
-        .header.scrolled {
-            padding: calc(18px + env(safe-area-inset-top)) 24px 14px;
-            background: color-mix(in srgb, var(--bg) 94%, transparent);
-            border-bottom-color: var(--border);
-        }
-
-        .overline {
-            color: var(--accent);
-            font-size: 9px;
-            letter-spacing: 2.2px;
-        }
-
-        .workout-identity {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-        }
-
-        .workout-copy {
-            min-width: 0;
-        }
-
-        .brand-mark {
-            display: block;
-            width: 96px;
-            height: 60px;
-            flex: 0 0 96px;
-            background: url('/public/brand-mark-cutout.png') center / cover no-repeat;
-        }
-
-        .header.scrolled .brand-mark {
-            width: 36px;
-            height: 26px;
-            flex-basis: 36px;
-        }
-
-        body[data-theme="light"] .brand-mark {
-            filter: invert(1);
-        }
-
-        .day-title {
-            font-size: 44px;
-            font-weight: 350;
-            letter-spacing: -2.2px;
-            white-space: nowrap;
-        }
-
-        .day-sub {
-            color: var(--accent);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.8px;
-            line-height: 1.2;
-            min-height: 24px;
-            max-height: 28px;
-            margin-top: 6px;
-            text-transform: uppercase;
-            transition: opacity 180ms ease, max-height 180ms ease, margin 180ms ease;
-            white-space: normal;
-        }
-
-        .header.scrolled .day-sub {
-            min-height: 0;
-            max-height: 0;
-            margin-top: 0;
-            opacity: 0;
-            overflow: hidden;
-        }
 
         .ctrl-btn,
         .theme-btn {
@@ -2465,54 +2285,13 @@
         }
 
         @media (max-width: 480px) {
-            .workout-identity {
-                gap: 8px;
-            }
 
-            .day-title {
-                font-size: 38px;
-            }
-
-            .brand-mark {
-                width: 78px;
-                height: 54px;
-                flex-basis: 78px;
-            }
-
-            .day-sub {
-                min-width: 0;
-                min-height: 20px;
-                max-height: 20px;
-                overflow: hidden;
-                font-size: 8px;
-                letter-spacing: 1px;
-                text-overflow: clip;
-                white-space: normal;
-            }
 
             .cards {
                 padding: 14px 16px 0;
             }
 
-            .header {
-                padding-left: 20px;
-                padding-right: 20px;
-            }
 
-            .header.scrolled {
-                padding-left: 20px;
-                padding-right: 20px;
-            }
-
-            .header.scrolled .day-title {
-                font-size: 26px;
-            }
-
-            .header.scrolled .brand-mark {
-                width: 42px;
-                height: 26px;
-                flex-basis: 42px;
-            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -2571,10 +2350,10 @@
             right: 0;
             bottom: var(--visual-viewport-bottom);
             left: 0;
-            height: 116px;
+            height: calc(136px + env(safe-area-inset-bottom));
             pointer-events: none;
-            -webkit-backdrop-filter: blur(14px) saturate(112%);
-            backdrop-filter: blur(14px) saturate(112%);
+            -webkit-backdrop-filter: blur(16.8px) saturate(112%);
+            backdrop-filter: blur(16.8px) saturate(112%);
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.14) 24%, rgba(0, 0, 0, 0.58) 54%, #000 100%);
             mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.14) 24%, rgba(0, 0, 0, 0.58) 54%, #000 100%);
         }
@@ -2666,7 +2445,7 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
 
-        @media (prefers-contrast: more), (forced-colors: active) {
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
             .dock-veil {
                 display: none;
             }
@@ -2686,49 +2465,15 @@
             }
         }
 
-        /* The collapsed title sits above a clean, blurred header surface. */
-        .header.scrolled {
-            background: transparent;
-            border-bottom-color: var(--border);
-            -webkit-backdrop-filter: none;
-            backdrop-filter: none;
-            isolation: isolate;
-        }
-
-        .header.scrolled::before {
-            content: '';
-            position: absolute;
-            z-index: 0;
-            inset: 0;
-            background: color-mix(in srgb, var(--bg) 86%, transparent);
-            -webkit-backdrop-filter: blur(18px) saturate(125%);
-            backdrop-filter: blur(18px) saturate(125%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .header.scrolled > * {
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Let the baked black/white source mark blend with the page behind the
-           compact sticky header instead of being trapped in its own backdrop.
-           Blend against the page, not the header's own blurred surface. */
-        .header.scrolled {
-            isolation: auto;
-        }
-
         /* Exercise cards share the Hero's molded, quietly lit surfaceâ€”not its color. */
         body[data-theme="light"] .card {
-            background: linear-gradient(145deg, #faf9f5 0%, #f5f4ef 100%);
-            box-shadow:
-                0 7px 17px rgba(35, 37, 35, 0.05),
-                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            background: var(--surface2);
+            box-shadow: none;
         }
 
         body[data-theme="dark"] .card {
-            background: var(--card-gradient);
-            box-shadow: var(--shadow1);
+            background: var(--surface2);
+            box-shadow: none;
         }
 
         .card::before {
@@ -2736,14 +2481,14 @@
         }
 
         body[data-theme="light"] .card-wrapper.active .card {
-            background: linear-gradient(145deg, #fbfaf7 0%, #f3f3ee 100%);
-            box-shadow: 0 9px 20px rgba(35, 37, 35, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.76);
+            background: var(--surface2);
+            box-shadow: none;
         }
 
         body[data-theme="dark"] .card-wrapper.active .card,
         body[data-theme="dark"] .card-wrapper.custom .card {
-            background: linear-gradient(145deg, var(--surface3) 0%, var(--surface) 100%);
-            box-shadow: var(--shadow2);
+            background: var(--surface2);
+            box-shadow: none;
         }
 
         @media (prefers-reduced-motion: no-preference) {
@@ -2789,9 +2534,6 @@
             transition-duration: 170ms;
         }
 
-        html.theme-swap .header:not(.scrolled) {
-            border-bottom-color: transparent !important;
-        }
 
         html.theme-swap body *,
         html.theme-swap body *::before,
@@ -2839,7 +2581,6 @@
         }
 
 
-
 /* Reliable workout controls and review surfaces. */
 [hidden] { display: none !important; }
 button, input, select { font: inherit; }
@@ -2880,12 +2621,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .history-list summary { cursor: pointer; line-height: 1.6; }
 .history-list p { margin-top: 12px; color: var(--text2); font-size: 13px; line-height: 1.6; }
 #app-update-btn { margin: 0 20px 14px; padding: 12px; border: 0; border-radius: 12px; color: var(--text1); background: var(--surface2); }
-.header-controls { flex-wrap: wrap; justify-content: flex-end; }
-@media (max-width: 430px) {
-    .header-controls { gap: 6px; max-width: 140px; }
-    .network-status { flex-basis: 100%; text-align: right; }
-    .header-controls .ctrl-btn, .header-controls .theme-btn { width: 38px; height: 38px; }
-}
 
 /* Hold the card to reorder; the existing number also offers keyboard controls. */
 .card-wrapper:not(.done) .card { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -2936,24 +2671,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .set-editor-actions button { min-height: 48px; padding: 12px 16px; border: 0; border-radius: 12px; background: var(--surface2); color: var(--text1); font: inherit; cursor: pointer; }
 .set-editor-actions button[type="submit"] { background: var(--text1); color: var(--bg); }
 .set-editor :focus-visible, .edit-set-btn:focus-visible, .technique-disclosure > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.header-controls .ctrl-btn, .header-controls .theme-btn { width: 48px; height: 48px; flex-shrink: 0; }
-.header-controls { gap: 2px; }
 @media (max-width: 380px) {
-    .header-top { gap: 6px; flex-wrap: wrap; }
-    .header-controls { margin-left: auto; gap: 0; }
-    .header .workout-identity { gap: 8px; min-width: 0; }
-    .header .workout-identity .brand-mark { width: 28px; height: 28px; flex-basis: 28px; }
-    .header .workout-identity .day-title { font-size: 28px; }
-    .header .agenda-identity h1 { font-size: 24px; }
     .set-editor { padding: 12px; align-items: flex-start; padding-top: max(24px, env(safe-area-inset-top)); }
 }
 
 /* Compact recording controls; touch targets remain generous without filled circles. */
-.header-controls .ctrl-btn, .header-controls .theme-btn {
-    background: transparent; box-shadow: none; border: 0;
-}
-.header-controls .ctrl-btn::before, .header-controls .theme-btn::before { display: none; }
-.header-controls .network-status { margin-right: 8px; }
 .ex-num.reorder-handle { background: transparent; box-shadow: none; border: 0; border-radius: 0; }
 .logged-sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; max-width: 560px; }
 .logged-sets li { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 12px; border-radius: 12px; background: var(--surface2); }
@@ -2962,3 +2684,113 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .logged-sets .edit-set-btn { width: 100%; min-height: 44px; padding: 4px 0; text-align: left; background: transparent; box-shadow: none; }
 .logged-sets .edit-set-btn::after { content: ''; position: absolute; inset: 0; border-radius: 12px; }
 .logged-sets .edit-set-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        /* Shared app chrome: one steady title row on every view. */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            overflow-anchor: none;
+            padding-top: env(safe-area-inset-top);
+            background: var(--bg);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 72px;
+            max-width: 832px;
+            margin-inline: auto;
+            padding: 12px 24px;
+        }
+
+        .app-title {
+            min-width: 0;
+            margin: 0;
+            font: 550 24px/1.2 var(--font);
+            letter-spacing: -.045em;
+            color: var(--text1);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+            gap: 2px;
+        }
+
+        .header-controls .ctrl-btn,
+        .chat-head .icon-btn {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            border: 0;
+            border-radius: 12px;
+            background: transparent;
+            box-shadow: none;
+            color: var(--text2);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+        }
+
+        .header-controls .ctrl-btn::before { display: none; }
+
+        .header-controls .ctrl-btn svg,
+        .chat-head .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .header-controls .network-status { margin-right: 10px; }
+
+        @supports ((backdrop-filter: blur(18px)) or (-webkit-backdrop-filter: blur(18px))) {
+            .header {
+                background: color-mix(in srgb, var(--bg) 88%, transparent);
+                backdrop-filter: blur(18px) saturate(120%);
+                -webkit-backdrop-filter: blur(18px) saturate(120%);
+            }
+        }
+
+        @media (hover: hover) {
+            .header-controls button:hover,
+            .chat-head .icon-btn:hover { color: var(--text1); background: var(--surface2); }
+        }
+
+        @media (max-width: 480px) {
+            .header-top { min-height: 72px; padding: 12px 20px; gap: 12px; }
+            .app-title { font-size: 24px; }
+            .header-controls { gap: 0; }
+            .header-controls .network-status { margin-right: 6px; }
+        }
+
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
+            .header { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+        }
+
+/* Match content gutters to the shared header and keep settings controls legible. */
+.cards { max-width: 832px; margin-inline: auto; padding: 12px 24px 24px; gap: 10px; }
+.cards .card-wrapper, .cards .card, .cards .swipe-bg { border-radius: 18px; }
+.cards .card-wrapper.custom.active .card { box-shadow: none; }
+.appearance-switch { position: relative; display: inline-flex; align-items: center; flex: 0 0 48px; width: 48px; height: 48px; }
+.appearance-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.appearance-switch-track { width: 48px; height: 28px; border-radius: 14px; background: var(--text2); pointer-events: none; }
+.appearance-switch-track::before { content: ''; display: block; width: 22px; height: 22px; margin: 3px; border-radius: 50%; background: var(--bg); transform: translateX(0); transition: transform 180ms ease; }
+.appearance-switch input:checked + .appearance-switch-track { background: var(--accent); }
+.appearance-switch input:checked + .appearance-switch-track::before { transform: translateX(20px); }
+.appearance-switch input:focus-visible + .appearance-switch-track { outline: 2px solid var(--text1); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .appearance-switch-track::before { transition: none; } }
+@media (forced-colors: active) {
+    .appearance-switch-track { background: Canvas; outline: 1px solid CanvasText; }
+    .appearance-switch-track::before { background: CanvasText; }
+    .appearance-switch input:checked + .appearance-switch-track { background: Highlight; }
+    .appearance-switch input:checked + .appearance-switch-track::before { background: HighlightText; }
+}
+@media (max-width: 480px) { .cards { padding-inline: 20px; } }

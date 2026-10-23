@@ -11,16 +11,16 @@ import { SetEditor } from './SetEditor.js';
 export function renderNetworkStatus(element, requested = 'CACHED') {
     if (!element) return;
     const states = {
-        LIVE: ['Garmin bridge connected', 'M5 17a5 5 0 0 1-1-10 7 7 0 0 1 13-1 5 5 0 0 1 2 11H5m4-5 2 2 4-4'],
-        CACHED: ['Saved locally; Garmin bridge not connected', 'M4 17a5 5 0 0 1-1-9m4-3a7 7 0 0 1 10 1 5 5 0 0 1 3 9M8 17h9M3 3l18 18'],
-        SYNCING: ['Saving locally and syncing with the Garmin bridge', 'M4 9a8 8 0 0 1 13-4l3 3m0-5v5h-5M20 15a8 8 0 0 1-13 4l-3-3m0 5v-5h5']
+        LIVE: 'Garmin bridge connected',
+        CACHED: 'Saved locally; Garmin bridge not connected',
+        SYNCING: 'Saving locally and syncing with the Garmin bridge'
     };
     const state = Object.hasOwn(states, requested) ? requested : 'CACHED';
-    const [description, path] = states[state];
+    const description = states[state];
     element.dataset.state = state;
     element.setAttribute('aria-label', `${state}: ${description}`);
     element.setAttribute('title', description);
-    element.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${path}"/></svg><span class="sr-only">${state}: ${description}</span>`;
+    element.innerHTML = `<span class="network-dot" aria-hidden="true"></span><span class="sr-only">${state}: ${description}</span>`;
 }
 
 export class Kai {
@@ -32,7 +32,6 @@ export class Kai {
             header: document.getElementById('header'),
             cards: document.getElementById('cards'),
             navDock: document.getElementById('nav-dock'),
-            themeBtn: document.getElementById('theme-btn'),
             themeScrim: document.getElementById('theme-transition-scrim'),
             completionAnnouncement: document.getElementById('flow-completion-announcement')
         };
@@ -51,9 +50,9 @@ export class Kai {
         this.exerciseReorder = new ExerciseReorder(this.els.cards, this.engine, message => this.showFeedback(message));
         this.setupNavGestures();
 
-        if (this.els.themeBtn) {
-            this.els.themeBtn.addEventListener('click', () => this.toggleTheme());
-        }
+        window.addEventListener('theme:change_requested', event => {
+            if (['light', 'dark'].includes(event.detail?.theme) && event.detail.theme !== document.body.dataset.theme) this.toggleTheme();
+        });
     }
 
     setupListeners() {
@@ -105,7 +104,6 @@ export class Kai {
         document.addEventListener('visibilitychange', recoverFromBackground);
         window.addEventListener('pageshow', recoverFromBackground);
 
-        this.heroHeader.bindScrollCollapse(document.getElementById('app'));
     }
 
     /**
@@ -117,7 +115,6 @@ export class Kai {
         this.justCompletedDay = Number.isInteger(session?.day) ? session.day : null;
         const app = document.getElementById('app');
         if (app) app.scrollTop = 0;
-        this.heroHeader.expandForCompletion();
 
         if (this.els.completionAnnouncement) {
             this.els.completionAnnouncement.textContent = `${session?.title || 'Workout'} complete.`;
@@ -667,6 +664,7 @@ export class Kai {
             document.body.setAttribute('data-theme', nextTheme);
             document.querySelector('meta[name="theme-color"]')?.setAttribute('content', nextTheme === 'dark' ? '#17191c' : '#f1f0eb');
             localStorage.setItem('hv2_theme', nextTheme);
+            window.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: nextTheme } }));
         };
         const finishThemeSwap = () => {
             root.classList.remove('theme-swap');

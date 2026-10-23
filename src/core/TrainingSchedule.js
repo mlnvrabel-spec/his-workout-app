@@ -60,6 +60,8 @@ function blankSchedule(context) {
 function nextCycle(schedule) {
     let id;
     do { id = `${schedule.baseCycleId}~${schedule.nextCycleNumber++}`; } while (schedule.cycleIds.includes(id));
+    const order = schedule.cycleOrders?.[schedule.cycleIds.at(-1)];
+    if (order) schedule.cycleOrders[id] = [...order];
     schedule.cycleIds.push(id);
     return id;
 }
@@ -69,12 +71,38 @@ export function nextScheduleCycleId(schedule, currentCycleId) {
     return index >= 0 ? schedule.cycleIds[index + 1] || null : null;
 }
 
+export function firstScheduleDay(schedule, cycleId) {
+    return schedule?.cycleOrders?.[cycleId]?.[0] ?? 0;
+}
+
+export function scheduleDaySkipped(schedule, cycleId, day) {
+    return Boolean(schedule?.skippedSessionIds?.includes(sessionId(cycleId, day)));
+}
+
 function gymOrder(schedule, a, b) {
-    return schedule.cycleIds.indexOf(a.cycleId) - schedule.cycleIds.indexOf(b.cycleId) || a.day - b.day;
+    const position = entry => schedule.cycleOrders?.[entry.cycleId]?.indexOf(entry.day) ?? entry.day;
+    return schedule.cycleIds.indexOf(a.cycleId) - schedule.cycleIds.indexOf(b.cycleId) || position(a) - position(b);
 }
 
 function gymEntries(schedule) {
     return schedule.entries.filter(entry => entry.kind === 'gym').sort((a, b) => gymOrder(schedule, a, b));
+}
+
+function addPlannedCycles(schedule, cycleId, protocol) {
+    const current = schedule.cycleIds.indexOf(cycleId);
+    while (schedule.cycleIds.length < current + 4) nextCycle(schedule);
+    const newIds = new Set();
+    for (const id of schedule.cycleIds.slice(current)) {
+        protocol.forEach((day, index) => {
+            const key = sessionId(id, index);
+            if (scheduleDaySkipped(schedule, id, index)) return;
+            if (!schedule.entries.some(entry => entry.id === key)) {
+                schedule.entries.push({ id: key, kind: 'gym', cycleId: id, day: index, title: day.title, status: 'planned', source: 'dashboard' });
+                newIds.add(key);
+            }
+        });
+    }
+    return newIds;
 }
 
 function earliestDate(schedule, requested, ignoredId, weekCounts = null) {
@@ -168,18 +196,12 @@ export function reconcileSchedule(saved, context) {
     schedule.version = 1;
     if (new Set(schedule.entries.map(entry => entry.id)).size !== schedule.entries.length) throw new Error('The calendar contains duplicate sessions. Reload before changing it.');
     if (!schedule.cycleIds.includes(cycleId)) schedule.cycleIds.push(cycleId);
-    const current = schedule.cycleIds.indexOf(cycleId);
-    while (schedule.cycleIds.length < current + 4) nextCycle(schedule);
-    const newIds = new Set();
-    for (const id of schedule.cycleIds.slice(current)) {
-        protocol.forEach((day, index) => {
-            const key = sessionId(id, index);
-            if (!schedule.entries.some(entry => entry.id === key)) {
-                schedule.entries.push({ id: key, kind: 'gym', cycleId: id, day: index, title: day.title, status: 'planned', source: 'dashboard' });
-                newIds.add(key);
-            }
-        });
-    }
+    // Starting a skipped split explicitly in Workout restores its planned identity.
+    if (schedule.skippedSessionIds) schedule.skippedSessionIds = schedule.skippedSessionIds.filter(id =>
+        !(context.summaries || []).some(summary => summary.id === id)
+        && !(context.logs || []).some(log => log.session_id === id && log.sets?.length)
+        && !protocol.some((_, day) => id === sessionId(cycleId, day) && Object.values(context.workout?.done?.[day] || {}).some(Boolean)));
+    const newIds = addPlannedCycles(schedule, cycleId, protocol);
     reconcileActuals(schedule, context);
     placeGyms(schedule, today, { newIds });
     return schedule;
@@ -280,18 +302,43 @@ export function proposeSchedule(saved, intent, context) {
     const today = dateKey(context.today);
     let exactId = null, exactDate = null;
     let recordedGym = null;
+    let restartedCycleId = null;
+    let removedGym = null;
+    const notices = [];
     if (intent.type === 'recordGym') {
         const date = dateKey(intent.date);
         if (date >= today) throw new Error('Choose a past date. Use the workout checklist for today.');
         const next = gymEntries(schedule).find(entry => entry.status !== 'completed');
-        if (!next || next.id !== intent.id || next.status !== 'planned' || next.cycleId !== context.cycleId) throw new Error('Record the next unstarted workout in split order. Started workouts keep their saved checks and sets.');
-        const previous = gymEntries(schedule).filter(entry => gymOrder(schedule, entry, next) < 0 && entry.status === 'completed');
-        if (previous.some(entry => entry.date >= date)) throw new Error('Choose a date after the preceding recorded gym session.');
         if (schedule.entries.some(entry => entry.date === date && ((entry.kind === 'rest' && isProtected(entry)) || (entry.kind === 'gym' && isProtected(entry))))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
-        next.date = date;
-        next.status = 'completed';
-        next.source = 'manual_backfill';
-        recordedGym = structuredClone(next);
+        const { protocol } = contextValues(context);
+        const chosen = Object.hasOwn(intent, 'day');
+        if (chosen && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
+        const completed = gymEntries(schedule).filter(entry => entry.status === 'completed');
+        const followsPlan = next?.status === 'planned' && next.cycleId === context.cycleId && next.day === intent.day
+            && completed.every(entry => entry.date < date && gymOrder(schedule, entry, next) < 0);
+        if (chosen && !followsPlan) {
+            const draftStarted = Object.values(context.workout?.nextCycleDraft?.done || {}).some(checks => Object.values(checks).some(Boolean));
+            if (draftStarted || gymEntries(schedule).some(entry => entry.status === 'started')) throw new Error('A workout has already started. Finish it before changing the future split; its saved checks and sets stay unchanged.');
+            // Retire only unstarted plans. Actual records keep their identities and dates.
+            schedule.entries = schedule.entries.filter(entry => entry.kind !== 'gym' || isProtected(entry));
+            const historyCycleId = nextCycle(schedule);
+            recordedGym = { id: sessionId(historyCycleId, intent.day), kind: 'gym', cycleId: historyCycleId, day: intent.day,
+                title: protocol[intent.day].title, date, originalDate: date, status: 'completed', source: 'manual_backfill' };
+            schedule.entries.push(recordedGym);
+            restartedCycleId = nextCycle(schedule);
+            schedule.cycleOrders ||= {};
+            schedule.cycleOrders[restartedCycleId] = protocol.map((_, index) => (intent.day + 1 + index) % protocol.length);
+            addPlannedCycles(schedule, restartedCycleId, protocol);
+            notices.push(`Future gym training restarts with ${protocol[(intent.day + 1) % protocol.length].title}. Replaced plans are not counted as completed workouts. Recorded history stays unchanged.`);
+        } else {
+            if (!next || (!chosen && next.id !== intent.id) || next.status !== 'planned' || next.cycleId !== context.cycleId) throw new Error('Record the next unstarted workout in split order. Started workouts keep their saved checks and sets.');
+            const previous = completed.filter(entry => gymOrder(schedule, entry, next) < 0);
+            if (previous.some(entry => entry.date >= date)) throw new Error('Choose a date after the preceding recorded gym session.');
+            next.date = date;
+            next.status = 'completed';
+            next.source = 'manual_backfill';
+            recordedGym = structuredClone(next);
+        }
     } else if (intent.type === 'officeDays') {
         if (!Array.isArray(intent.days) || intent.days.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw new Error('Choose valid rest weekdays.');
         const days = [...new Set(intent.days)].sort();
@@ -325,7 +372,11 @@ export function proposeSchedule(saved, intent, context) {
         }
     } else if (intent.type === 'remove') {
         const entry = resolveEntry(schedule, intent.id, context);
-        if (entry.kind === 'gym') throw new Error('An unfinished gym workout stays in the rolling split. Move it to another date.');
+        if (entry.kind === 'gym') {
+            schedule.skippedSessionIds ||= [];
+            schedule.skippedSessionIds.push(entry.id);
+            removedGym = structuredClone(entry);
+        }
         removeEntry(schedule, entry);
     } else if (intent.type === 'complete') {
         const entry = resolveEntry(schedule, intent.id, context);
@@ -343,7 +394,7 @@ export function proposeSchedule(saved, intent, context) {
     } else {
         placeGyms(schedule, today, { exactId, exactDate, strict: true });
     }
-    return { schedule, recordedGym, changes: entryDiff(before, schedule, context), warnings: warningsFor(schedule, context) };
+    return { schedule, recordedGym, restartedCycleId, removedGym, changes: entryDiff(before, schedule, context), warnings: [...notices, ...warningsFor(schedule, context)] };
 }
 
 /** Suggestions respect gym dates. Selecting a run explicitly is a separate user action. */
