@@ -52,14 +52,31 @@
 - Browser, PWA, or release verification: `.agents/skills/pwa-dashboard-verification/SKILL.md`
 - Detailed legacy domain references remain under `skills/` and `.agents/`; link to them instead of copying their contents.
 
+## Efficient execution and delegation
+
+- Keep one capable agent responsible for tightly coupled diagnosis, implementation, and integration. Do not spawn agents by default, or merely because a command is repetitive.
+- Choose deterministic tools first for builds, tests, formatting, static checks, and reproducible browser automation. Script execution itself uses no model tokens; tool selection, input/output processing, and interpretation still do.
+- Delegate only independent, bounded work with explicit acceptance criteria and meaningful expected savings in latency, context, or usage. An optional lower-cost worker may do read-only exploratory or browser checks; it must report observed PASS / FAIL / NOT RUN and evidence, not make speculative fixes.
+- Never let a test worker silently change source, widen the task, install unrelated tools, or claim coverage it did not observe. Unexpected failures return to the owner for diagnosis.
+- Minimize agent handoffs, copied context, duplicate searches, and verbose passing logs. Use the existing project documentation and Git history instead of adding a new orchestration or logging layer without demonstrated need.
+- Model choice and reasoning effort are environment-specific. Do not assume that a configured worker is actually a cheaper model; confirm the effective Codex settings and available models before relying on delegation.
+
 ## Verification
 
-Run the smallest relevant check, then report what ran and what could not run.
+- During development, start with the smallest relevant deterministic test or check. Add a focused regression for changed behavior. Expand after a failure or when changes cross additional boundaries.
+- Before publication or deployment, run the required full release checks on the final candidate, and complete relevant browser, PWA, backend, security, and device gates. Do not silently waive a mandatory gate.
+- Reuse a passing check only when it covers the exact unchanged revision and relevant environment; run it again if the implementation, dependencies, configuration, or evidence validity changed. A prior development run is not automatically a final release pass.
+- Automated test commands need no separate LLM worker. For independent *interactive* browser inspection, a bounded read-only worker may help; a PASS/FAIL claim from an AI-controlled browser still needs reproducible evidence.
+- Keep success output short. On failures report the command, failing assertion, important stderr/console evidence, and what was not run. Distinguish PASS, FAIL, NOT RUN and SPEC CONFLICT. Never infer device/browser coverage from unit tests.
+
+Useful full-suite commands (select by affected boundary and release requirements):
 
 ```powershell
 npm.cmd run verify
 python backend/test_api.py
+python backend/test_coach.py
+python backend/test_security.py
 python -m compileall -q backend
 ```
 
-`npm.cmd run verify` validates this agent setup and runs the frontend tests. The API test requires the dependencies in `backend/requirements.txt`.
+`npm.cmd run verify` validates agent setup and runs frontend tests. Backend tests require the dependencies in `backend/requirements.txt`. See the domain QA and PWA skills for their evidence requirements.
