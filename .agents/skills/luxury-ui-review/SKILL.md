@@ -5,85 +5,9 @@ description: Review or implement dashboard UI changes against the Invisible Luxu
 
 # Luxury UI Review
 
-## Workflow
-
-1. Read `../../../AGENT_GUIDE.md`, `../../../PRODUCT_SPEC.md`, and the applicable role briefs in `../../` before changing UI.
-2. Preserve the vanilla-module architecture and event-driven boundaries; UI modules must not own workout state.
-3. Prefer typographic hierarchy, spacing, depth, and restrained color over decorative containers or borders.
-4. Keep a core user action within two taps. Check keyboard, touch, reduced-motion, and narrow mobile behavior when relevant.
-5. Use transform and opacity for animation where possible. Do not trade responsiveness or accessibility for visual polish.
-
-## Structuring This Skill
-
-[Legacy template note: the workflow above is authoritative.]
-
-**1. Workflow-Based** (best for sequential processes)
-- Works well when there are clear step-by-step procedures
-- Example: DOCX skill with "Workflow Decision Tree" -> "Reading" -> "Creating" -> "Editing"
-- Structure: ## Overview -> ## Workflow Decision Tree -> ## Step 1 -> ## Step 2...
-
-**2. Task-Based** (best for tool collections)
-- Works well when the skill offers different operations/capabilities
-- Example: PDF skill with "Quick Start" -> "Merge PDFs" -> "Split PDFs" -> "Extract Text"
-- Structure: ## Overview -> ## Quick Start -> ## Task Category 1 -> ## Task Category 2...
-
-**3. Reference/Guidelines** (best for standards or specifications)
-- Works well for brand guidelines, coding standards, or requirements
-- Example: Brand styling with "Brand Guidelines" -> "Colors" -> "Typography" -> "Features"
-- Structure: ## Overview -> ## Guidelines -> ## Specifications -> ## Usage...
-
-**4. Capabilities-Based** (best for integrated systems)
-- Works well when the skill provides multiple interrelated features
-- Example: Product Management with "Core Capabilities" -> numbered capability list
-- Structure: ## Overview -> ## Core Capabilities -> ### 1. Feature -> ### 2. Feature...
-
-Patterns can be mixed and matched as needed. Most skills combine patterns (e.g., start with task-based, add workflow for complex operations).
-
-Delete this entire "Structuring This Skill" section when done - it's just guidance.]
-
-## Required evidence
-
-[Use a rendered view, relevant DOM/CSS evidence, and interaction checks as evidence:
-- Code samples for technical skills
-- Decision trees for complex workflows
-- Concrete examples with realistic user requests
-- References to scripts/templates/references as needed]
-
-## Resources (optional)
-
-Create only the resource directories this skill actually needs. Delete this section if no resources are required.
-
-### scripts/
-Executable code (Python/Bash/etc.) that can be run directly to perform specific operations.
-
-**Examples from other skills:**
-- PDF skill: `fill_fillable_fields.py`, `extract_form_field_info.py` - utilities for PDF manipulation
-- DOCX skill: `document.py`, `utilities.py` - Python modules for document processing
-
-**Appropriate for:** Python scripts, shell scripts, or any executable code that performs automation, data processing, or specific operations.
-
-**Note:** Scripts may be executed without loading into context, but can still be read by Codex for patching or environment adjustments.
-
-### references/
-Documentation and reference material intended to be loaded into context to inform Codex's process and thinking.
-
-**Examples from other skills:**
-- Product management: `communication.md`, `context_building.md` - detailed workflow guides
-- BigQuery: API reference documentation and query examples
-- Finance: Schema documentation, company policies
-
-**Appropriate for:** In-depth documentation, API references, database schemas, comprehensive guides, or any detailed information that Codex should reference while working.
-
-### assets/
-Files not intended to be loaded into context, but rather used within the output Codex produces.
-
-**Examples from other skills:**
-- Brand styling: PowerPoint template files (.pptx), logo files
-- Frontend builder: HTML/React boilerplate project directories
-- Typography: Font files (.ttf, .woff2)
-
-**Appropriate for:** Templates, boilerplate code, document templates, images, icons, fonts, or any files meant to be copied or used in the final output.
-
----
-
-**Not every skill requires all three types of resources.**
+1. Read `../../../AGENT_GUIDE.md`, the relevant `../../../PRODUCT_SPEC.md` sections, and only the role briefs needed for the task.
+2. Preserve vanilla ES modules, engine-owned state, and existing event contracts. Do not introduce a second UI state store.
+3. Prefer typography, spacing, depth, and restrained color over decorative surfaces. Keep core interactions within two taps.
+4. Evaluate only applicable keyboard, touch, reduced-motion, responsiveness, and narrow-mobile behavior. Use deterministic checks and existing components where possible.
+5. Prefer transform/opacity for animations; protect usability, performance and accessibility.
+6. For reviews, supply concrete findings with relevant UI evidence. Distinguish verified behavior from proposed changes and device-only checks not run.
