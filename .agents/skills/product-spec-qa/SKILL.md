@@ -14,9 +14,9 @@ Read `../../../AGENT_GUIDE.md` and `../../../PRODUCT_SPEC.md` before designing o
 3. Add the smallest regression that would fail for the broken behavior. Preserve `WorkoutEngine` as the state authority and use the real public method or event boundary where possible.
 4. If the spec conflicts with another source of truth or the implementation, report the conflict explicitly. Do not weaken the assertion or silently redefine the requirement to make the suite pass.
 5. Update the coverage matrix when requirements, tests, or known gaps change.
-6. Run `npm.cmd run verify`. Run `python backend/test_api.py` and `python -m compileall -q backend` when backend dependencies are available and the requirement crosses the FastAPI boundary.
+6. During implementation run focused regressions first; require `npm.cmd run verify` on the final release candidate, with evidence fresh for that unchanged revision. Run relevant backend tests (`test_api.py`, `test_coach.py`, `test_security.py`) and compilation checks when affected or required by release criteria. Do not unnecessarily repeat fresh passing checks.
 
-For rendered UI, PWA, service-worker, offline, accessibility, motion, or narrow-mobile evidence, use `$pwa-dashboard-verification` after deterministic checks pass.
+For rendered UI, PWA, service-worker, offline, accessibility, motion, or narrow-mobile evidence, use `$pwa-dashboard-verification` after relevant deterministic checks pass. Scripts run directly, without a separate LLM; optional independent browser verification must report concrete evidence.
 
 ## Required gates
 
