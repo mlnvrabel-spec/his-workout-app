@@ -1,12 +1,18 @@
 # Garmin Security (CRITICAL - DO NOT UPLOAD)
 # ---------------------------------------------------------
-backend/.garth/      # Contains your persistent Garmin Login Tokens
+backend/.garth/
 backend/.garth/**
-backend/__pycache__/ # Python temporary files
+backend/__pycache__/
 **/__pycache__/**
 *.pyc
-backend/sync_queue.db # Durable local bridge queue
-.env                 # Any custom API keys (OpenAI, Gemini, etc.)
+backend/sync_queue.db
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+.vercel/
 
 # Frontend / PWA
 # ---------------------------------------------------------
@@ -17,10 +23,14 @@ dist/
 
 # Project specific
 # ---------------------------------------------------------
-Hypertrophy Protocol.html.old # Legacy messy file
+Hypertrophy Protocol.html.old
 temp_script.js
 rebuilder.js
-1775223091862.png # Thumbnails/Screenshots
+1775223091862.png
+assets/
+bug*-mobile.*
+tmp_patch*
+tmp_test.js
 
 .venv/
 .npm-cache/

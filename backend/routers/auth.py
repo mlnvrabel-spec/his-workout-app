@@ -42,7 +42,6 @@ def login(req: LoginRequest):
         raise
     except Exception as e:
         error_msg = str(e)
-        print(f"Login failure: {error_msg}")
         
         if "429" in error_msg:
             raise HTTPException(
@@ -52,7 +51,7 @@ def login(req: LoginRequest):
             
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"ERROR: {error_msg}"
+            detail="LOGIN_FAILED: Check your credentials and try again."
         )
 
 @router.post("/mfa")
@@ -75,10 +74,12 @@ def mfa_verify(req: MfaRequest, email: str):
         save_session()
         return {"detail": "MFA_SUCCESS"}
         
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"MFA_FAILED: {str(e)}"
+            detail="MFA_FAILED: Request a new sign-in and try again."
         )
 
 @router.delete("/session")

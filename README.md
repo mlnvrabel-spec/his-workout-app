@@ -6,11 +6,11 @@ Use two terminals from the repository root.
 
 ```powershell
 python -m pip install -r backend/requirements.txt
-python -m uvicorn main:app --app-dir backend --reload --port 8001
+python -m uvicorn main:app --app-dir backend --host 127.0.0.1 --reload --port 8001
 ```
 
 ```powershell
-python -m http.server 3000
+python -m http.server 3000 --bind 127.0.0.1
 ```
 
 Open `http://localhost:3000`. The frontend expects the FastAPI Garmin bridge at `http://localhost:8001`.
@@ -21,6 +21,8 @@ Open `http://localhost:3000`. The frontend expects the FastAPI Garmin bridge at 
 npm.cmd ci
 npm.cmd run verify
 python backend/test_api.py
+python backend/test_coach.py
+python backend/test_security.py
 python -m compileall -q backend
 ```
 
@@ -33,8 +35,8 @@ npm.cmd run verify
 
 ## Workout behavior
 
-The app opens to a dated training agenda. Open the active workout to use the
-existing checklist and set logger; use Agenda to return. Office days, rest,
+The app opens to Workout for the checklist and set logger. Use Calendar for
+dated training and planning. Rest,
 4×4 runs and other activities can be scheduled locally. Review displaced dates
 before applying a calendar change. Calendar Undo is separate from workout Undo
 and will not overwrite intervening training progress.
@@ -60,7 +62,7 @@ See `REVIEW_VERIFICATION.md` for regression coverage and device-only checks.
 
 ## Coach connection from a phone
 
-Home / Workout / Coach are available in the bottom bar. Recent training shows
+Workout and Calendar are the navigation destinations; the separate Coach button opens a dialog. Recent training shows
 recorded gym and run sessions/week over the last 14 and 28 calendar days.
 
 Open Coach → AI connection. Use a provider API key, not a DeepSeek account password.
@@ -96,3 +98,16 @@ The current DeepSeek default, `deepseek-flash`, and endpoint were verified again
 the [official API guide](https://api-docs.deepseek.com/) on 20 October 2026;
 `DEEPSEEK_MODEL` can select another supported model. OpenAI/Gemini model variables
 remain supported. Real-provider and physical-phone tests require the actual setup.
+
+## Publish and update the app
+
+`main` is the production source. Feature branches do not update the production app.
+For a release, verify the changes, merge them into `main`, and confirm the production
+deployment uses that commit. A push to a feature branch alone is not a release.
+Do not delete unmerged branches or force-push history as part of a routine release.
+
+`npm run build` creates `dist` from the service worker's runtime asset list.
+Vercel publishes only `dist`, never the repository root. Source, tests and useful
+development documentation stay in GitHub; credentials, local Vercel metadata,
+temporary patches and reference/debug screenshots stay out of Git tracking.
+See `SECURITY.md` for security boundaries and reporting guidance.

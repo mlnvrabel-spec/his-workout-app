@@ -23,12 +23,12 @@ def test_workout_queue():
         original_path = sync.QUEUE_DB_PATH
         sync.QUEUE_DB_PATH = Path(temp_dir) / "queue.db"
         try:
-            with TestClient(app) as client:
+            with TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
                 response = client.post("/sync/workout", json=payload)
             assert response.status_code == 202, response.text
             assert response.json()["accepted"] == 1
             assert sync.QUEUE_DB_PATH.exists()
-            with TestClient(app) as client:
+            with TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
                 for effort in ({}, {"rpe": None, "rpe_source": "unreported"}, {"rpe": 8, "rpe_source": "reported"}):
                     item = {**payload[0], "sets": [{**{k: v for k, v in payload[0]["sets"][0].items() if k != "rpe"}, **effort}]}
                     response = client.post("/sync/workout", json=[item])
@@ -55,7 +55,7 @@ def test_readiness_component():
         "strength_activity_today": False,
     }
     try:
-        with TestClient(app) as client:
+        with TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
             response = client.get("/sync/readiness")
         assert response.status_code == 200, response.text
         assert response.json()["biometric_score"] == 80
@@ -77,7 +77,7 @@ def test_coach_fallbacks():
     os.environ.pop("GEMINI_API_KEY", None)
     os.environ.pop("OPENAI_API_KEY", None)
     try:
-        with TestClient(app) as client:
+        with TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
             high = client.post("/api/ai/coach", json={
                 "readiness_score": 80,
                 "exercise_name": "Standing Calf Raise",
@@ -123,7 +123,7 @@ def test_chat_contract():
         "message": "What comes next?", "workout_title": "Push A",
         "next_workout": "Pull B", "exercise_names": ["Cable Fly"],
     }
-    with patch.dict(os.environ, {}, clear=True), TestClient(app) as client:
+    with patch.dict(os.environ, {}, clear=True), TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000)) as client:
         response = client.post("/api/ai/chat", json=payload)
         assert response.status_code == 200, response.text
         assert response.json()["source"] == "local"
