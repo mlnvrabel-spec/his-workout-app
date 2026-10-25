@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,4 +25,21 @@ for (const file of files) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(path.join(root, file), target);
 }
+// Hash deployable assets (and worker source) so a changed app forces an updated
+// service worker even when nobody remembers to manually bump a cache counter.
+const fingerprint = createHash('sha256');
+for (const file of [...files].sort()) {
+    if (file === 'service-worker.js') continue;
+    fingerprint.update(file);
+    fingerprint.update('::');
+    fingerprint.update(fs.readFileSync(path.join(root, file)));
+    fingerprint.update('::');
+}
+fingerprint.update(worker);
+const cacheName = `hypertrophy-${fingerprint.digest('hex').slice(0, 12)}`;
+const cacheDeclaration = worker.match(/^const CACHE_NAME = 'hypertrophy-[^']+';/m)?.[0];
+if (!cacheDeclaration) throw new Error('Missing expected service worker cache declaration');
+fs.writeFileSync(path.join(output, 'service-worker.js'),
+    worker.replace(cacheDeclaration, `const CACHE_NAME = '${cacheName}';`));
+
 console.log(`Built ${files.size} runtime files into dist; development files excluded.`);
