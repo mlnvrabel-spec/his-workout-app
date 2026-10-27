@@ -81,7 +81,7 @@ export class TrainingAgenda {
         const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'office' ? (entry.recurring ? 'Repeats weekly' : 'Rest') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
         const title = ['office', 'rest'].includes(entry.kind) ? 'Rest' : entry.title;
         const context = [includeDate ? dateLabel(entry.date) : '', entry.missedDate ? `Carried from ${dateLabel(entry.missedDate)}` : '', entry.demanding ? 'Demanding activity' : ''].filter(Boolean).join(' · ');
-        return `<button type="button" class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-agenda-action="details" data-entry-id="${escape(entry.id)}" data-movable="${movable}" aria-label="${escape(`${title} · ${dateLabel(entry.date)} · ${label}${entry.movableReason ? ` · ${entry.movableReason}` : ''}`)}">
+        return `<button type="button" class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-agenda-action="details" data-entry-id="${escape(entry.id)}" data-movable="${movable}" aria-label="${escape(`${title} · ${dateLabel(entry.date)} · ${label}${entry.correctable ? ' · Edit manual record' : entry.movableReason ? ` · ${entry.movableReason}` : ''}`)}">
             <span class="agenda-entry-copy"><span class="agenda-entry-title">${escape(title)}</span>${context && !compact ? `<span class="agenda-entry-context">${escape(context)}</span>` : ''}</span>
             ${recorded ? '<svg class="agenda-recorded-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>' : entry.status === 'started' ? '<span class="agenda-progress-mark" aria-hidden="true"></span>' : ''}
         </button>`;
@@ -199,6 +199,7 @@ export class TrainingAgenda {
     }
 
     entryDialog(entry, date = entry.date) {
+        if (entry.correctable) return this.recordDialog(entry);
         const title = ['office', 'rest'].includes(entry.kind) ? 'Rest' : entry.title;
         const editable = Boolean(entry.movable);
         const currentGym = entry.kind === 'gym' && entry.cycleId === this.view.currentCycleId;
@@ -215,6 +216,19 @@ export class TrainingAgenda {
         form.addEventListener('change', update);
         update();
         form.addEventListener('submit', event => { event.preventDefault(); this.preview({ type: 'move', id: entry.id, date: form.elements.date.value, performed: ['run', 'activity'].includes(entry.kind) && form.elements.date.value <= this.view.today }); });
+    }
+
+    recordDialog(entry) {
+        this.dialogHTML(entry.title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p><form id="agenda-record-form" class="agenda-form"><label>Workout performed<select name="workoutDay" required>${(this.view.workouts || []).map(workout => `<option value="${workout.day}" ${workout.day === entry.day ? 'selected' : ''}>${escape(workout.title)}</option>`).join('')}</select></label><p class="agenda-form-help">Corrects this manual record only. Future plans stay unchanged.</p></form>`, '<button type="button" class="agenda-remove">Delete</button><button type="button" data-agenda-cancel>Close</button><button type="submit" class="agenda-primary" form="agenda-record-form">Save workout</button>');
+        const form = this.dialog.querySelector('form');
+        const submit = this.dialog.querySelector('[form="agenda-record-form"]');
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const day = form.elements.workoutDay.value === '' ? null : Number(form.elements.workoutDay.value);
+            if (day === entry.day) { this.closeDialog(); return; }
+            this.saveChange({ type: 'correctGym', id: entry.id, day }, submit, 'Workout corrected. Future plans unchanged. Undo is available.');
+        });
+        this.dialog.querySelector('.agenda-remove').addEventListener('click', event => this.saveChange({ type: 'removeGymRecord', id: entry.id }, event.currentTarget, 'Manual workout removed. Future plans unchanged. Undo is available.'));
     }
 
     officeDialog() {

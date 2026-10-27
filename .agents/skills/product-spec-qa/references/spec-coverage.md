@@ -63,3 +63,7 @@ For §6, the canonical Undo requirement is to clear the reopened day's checks wh
 - §11 direct past-gym save: `test_training_agenda.mjs` checks submission without a review screen, duplicate-submit prevention, validation/write errors, retained selection, successful close/refresh and Undo messaging. Other calendar intents retain preview. Existing engine backfill tests cover atomic persistence and guarded Undo.
 
 - §12 calendar/navigation: `test_training_agenda.mjs` covers per-date Add, conditional Undo, selected dates, preserved details and title-case Rest. `test_product_spec.mjs` covers accessible selected-split context. Browser evidence in `REVIEW_VERIFICATION.md` covers Workout-first navigation, separate Coach action, Settings appearance control, matching header geometry and narrow layout.
+
+## Bug Hub #6 — manual history corrections
+
+- PRODUCT_SPEC section 11: test_backfill.mjs covers edit/delete/Undo persistence, recorded averages, unchanged future plans, protection of real completions/checks/sets, transaction failure and concurrent edits. test_training_agenda.mjs covers correction form dispatch. Browser evidence and limitations are in REVIEW_VERIFICATION.md.

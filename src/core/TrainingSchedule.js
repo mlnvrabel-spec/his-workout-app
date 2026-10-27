@@ -214,6 +214,16 @@ export function movableReason(entry, context) {
     return '';
 }
 
+function correctableGymRecord(entry, context) {
+    const summary = context.summaries?.find(value => value.id === entry.id);
+    const checked = record => record?.cycleId === entry.cycleId && Object.values(record.done?.[entry.day] || {}).some(Boolean);
+    return Boolean(entry.kind === 'gym' && entry.status === 'completed'
+        && summary?.source === 'manual_backfill' && summary.completionType === 'recorded'
+        && summary.completedExercises === 0 && !checked(summary) && !checked(context.workout)
+        && !checked(context.workout?.nextCycleDraft)
+        && !(context.logs || []).some(log => log.session_id === entry.id && log.sets?.length));
+}
+
 /** The agenda includes recurring office occurrences without persisting duplicate entries. */
 export function scheduleEntries(schedule, context) {
     const { today } = contextValues(context);
@@ -224,7 +234,7 @@ export function scheduleEntries(schedule, context) {
     for (let day = 0; day <= range; day++, date = addDays(date, 1)) {
         if (officeOn(schedule, date) && !entries.some(entry => entry.kind === 'rest' && entry.date === date)) entries.push({ id: `office:${date}`, kind: 'office', title: 'REST', date, status: 'planned', recurring: true });
     }
-    return entries.map(entry => ({ ...entry, movable: !movableReason(entry, context), movableReason: movableReason(entry, context) }))
+    return entries.map(entry => ({ ...entry, movable: !movableReason(entry, context), movableReason: movableReason(entry, context), correctable: correctableGymRecord(entry, context) }))
         .sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
 }
 
@@ -304,8 +314,30 @@ export function proposeSchedule(saved, intent, context) {
     let recordedGym = null;
     let restartedCycleId = null;
     let removedGym = null;
+    let removedRecord = null;
+    let correctedGym = null;
     const notices = [];
-    if (intent.type === 'recordGym') {
+    if (['correctGym', 'removeGymRecord'].includes(intent.type)) {
+        const entry = schedule.entries.find(value => value.id === intent.id);
+        if (!entry || !correctableGymRecord(entry, context)) throw new Error('Only manually entered workouts without saved checks or sets can be corrected here.');
+        const { protocol } = contextValues(context);
+        if (intent.type === 'correctGym' && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
+        if (intent.type === 'correctGym' && intent.day === entry.day) throw new Error('This is already the recorded workout.');
+        removedRecord = structuredClone(context.summaries.find(value => value.id === entry.id));
+        removeEntry(schedule, entry);
+        // Retire the mistaken identity so reconciliation cannot recreate it as a plan.
+        schedule.skippedSessionIds ||= [];
+        if (!schedule.skippedSessionIds.includes(entry.id)) schedule.skippedSessionIds.push(entry.id);
+        if (intent.type === 'correctGym') {
+            const historyIndex = Math.min(schedule.cycleIds.indexOf(entry.cycleId), schedule.cycleIds.indexOf(context.cycleId));
+            const historyCycleId = nextCycle(schedule);
+            schedule.cycleIds.pop();
+            schedule.cycleIds.splice(historyIndex, 0, historyCycleId);
+            correctedGym = { id: sessionId(historyCycleId, intent.day), kind: 'gym', cycleId: historyCycleId, day: intent.day,
+                title: protocol[intent.day].title, date: entry.date, originalDate: entry.date, status: 'completed', source: 'manual_backfill' };
+            schedule.entries.push(correctedGym);
+        }
+    } else if (intent.type === 'recordGym') {
         const date = dateKey(intent.date);
         if (date >= today) throw new Error('Choose a past date. Use the workout checklist for today.');
         const next = gymEntries(schedule).find(entry => entry.status !== 'completed');
@@ -394,7 +426,7 @@ export function proposeSchedule(saved, intent, context) {
     } else {
         placeGyms(schedule, today, { exactId, exactDate, strict: true });
     }
-    return { schedule, recordedGym, restartedCycleId, removedGym, changes: entryDiff(before, schedule, context), warnings: [...notices, ...warningsFor(schedule, context)] };
+    return { schedule, recordedGym, restartedCycleId, removedGym, removedRecord, correctedGym, changes: entryDiff(before, schedule, context), warnings: [...notices, ...warningsFor(schedule, context)] };
 }
 
 /** Suggestions respect gym dates. Selecting a run explicitly is a separate user action. */

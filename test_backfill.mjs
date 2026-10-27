@@ -197,5 +197,77 @@ try {
     await a.refresh();
     assert.equal(a.state.activeDay, 2, 'Automatic completion also preserves the rotated order at midnight');
 
+    // Bug #6: a mistaken manual entry stays correctable after other calendar edits.
+    {
+    now = '2026-11-25T18:00:00';
+    environment(); a = await engine();
+    await a.applySchedule(a.previewSchedule({ type: 'recordGym', day: 0, date: '2026-11-24' }));
+    const mistaken = structuredClone(a.summaries[0]);
+    await a.applySchedule(a.previewSchedule({ type: 'add', kind: 'activity', title: 'Walk', date: '2026-11-29' }));
+    assert.equal(a.getScheduleView().entries.find(entry => entry.id === mistaken.id).correctable, true,
+        'Manual history without checks or sets must offer correction, independently of the last Undo');
+    const planBeforeCorrection = a.state.schedule.entries.filter(entry => entry.status === 'planned');
+    const correction = a.previewSchedule({ type: 'correctGym', id: mistaken.id, day: 1 });
+    assert.equal(a.summaries[0].day, 0, 'Preview cannot change history');
+    assert.equal(await a.applySchedule(correction), true);
+    a = await engine();
+    const corrected = a.summaries.find(summary => summary.sessionId === '2026-11-24');
+    assert.equal(corrected.day, 1);
+    assert.equal(corrected.id, `${corrected.cycleId}:1`, 'The corrected split retains a valid session identity');
+    assert.deepEqual(a.state.schedule.entries.filter(entry => entry.status === 'planned'), planBeforeCorrection,
+        'Correcting history does not silently reschedule existing plans');
+    assert.equal(a.summaries.length, 1);
+    assert.equal(a.getScheduleView().averages[0].gym.count, 1);
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.summaries, [mistaken]);
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'removeGymRecord', id: mistaken.id })), true);
+    a = await engine();
+    assert.equal(a.summaries.length, 0);
+    assert.equal(a.getScheduleView().entries.some(entry => entry.id === mistaken.id), false);
+    assert.equal(a.getScheduleView().averages[0].gym.count, 0);
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.summaries, [mistaken]);
+
+    // Later real training survives corrections, and cannot itself be corrected as a manual entry.
+    await a.toggleComplete('ex-1-0', 1);
+    await a.logSet(a.protocolData[1].exercises[0]._exerciseId, 20, 10, 8);
+    await a.toggleComplete('ex-1-1', 1);
+    await a.toggleComplete('ex-1-2', 1);
+    const actual = structuredClone(a.summaries.find(summary => summary.id !== mistaken.id));
+    const checks = structuredClone(a.state.done), sets = structuredClone(a.logs), activeDay = a.state.activeDay;
+    const fixed = a.getScheduleView().entries.find(entry => entry.id === actual.id);
+    assert.equal(fixed.correctable, false);
+    for (const type of ['correctGym', 'removeGymRecord']) {
+        assert.throws(() => a.previewSchedule({ type, id: actual.id, day: 3 }), /without saved checks or sets/);
+    }
+    assert.throws(() => a.previewSchedule({ type: 'correctGym', id: mistaken.id, day: null }), /Choose the workout/);
+    const protectedCorrection = a.previewSchedule({ type: 'correctGym', id: mistaken.id, day: 2 });
+    const originalMutate = a.storage.mutateWorkout.bind(a.storage);
+    a.storage.mutateWorkout = reducer => originalMutate((...args) => { reducer(...args); throw new Error('Injected correction failure'); });
+    assert.equal(await a.applySchedule(protectedCorrection), false);
+    a = await engine();
+    assert.deepEqual(a.summaries.find(summary => summary.id === mistaken.id), mistaken, 'Failed writes keep the original record');
+    assert.equal(await a.applySchedule(a.previewSchedule(protectedCorrection.intent)), true);
+    a = await engine();
+    assert.deepEqual(a.summaries.find(summary => summary.id === actual.id), actual);
+    assert.deepEqual(a.logs, sets);
+    assert.deepEqual(a.state.done, checks);
+    assert.equal(a.state.activeDay, activeDay);
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.summaries.find(summary => summary.id === mistaken.id), mistaken);
+    const staleCorrection = a.previewSchedule({ type: 'correctGym', id: mistaken.id, day: 3 });
+    const otherWindow = await engine();
+    await otherWindow.applySchedule(otherWindow.previewSchedule({ type: 'removeGymRecord', id: mistaken.id }));
+    assert.equal(await a.applySchedule(staleCorrection), false, 'Concurrent correction cannot resurrect a deleted entry');
+    a = await engine();
+    assert.deepEqual(a.summaries, [actual]);
+    assert.deepEqual(a.logs, sets);
+    assert.deepEqual(a.state.done, checks);
+    assert.equal(await a.undoSchedule(), true);
+    await a.applySchedule(a.previewSchedule({ type: 'removeGymRecord', id: mistaken.id }));
+    await a.toggleComplete('ex-1-3', 1);
+    assert.equal(await a.undoSchedule(), false, 'Undo cannot erase subsequent exercise checks');
+    }
+
     console.log('Backfill: explicit choices, future split restart, protected history, atomic writes, cycles, reload and Undo OK');
 } finally { globalThis.Date = RealDate; }

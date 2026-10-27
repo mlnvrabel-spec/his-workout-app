@@ -381,6 +381,22 @@ export class WorkoutEngine {
             const result = proposeSchedule(workout.schedule, preview.intent, this._scheduleContext(workout, summaries, logs));
             workout.schedule = result.schedule;
             let summary;
+            if (result.removedRecord) {
+                const removed = result.removedRecord;
+                summaries.splice(summaries.findIndex(value => value.id === removed.id), 1);
+                if (removed.cycleId === workout.cycleId) {
+                    delete workout.completedDays[removed.day];
+                    delete workout.autoCompletedDays[removed.day];
+                }
+                if (workout.lastCompletedSummaryId === removed.id) workout.lastCompletedSummaryId = null;
+                if (result.correctedGym) {
+                    const entry = result.correctedGym;
+                    summary = { ...removed, id: entry.id, cycleId: entry.cycleId, day: entry.day, title: entry.title,
+                        totalExercises: this.protocolData[entry.day].exercises.length };
+                    summaries.push(summary);
+                }
+                this._reconcileSchedule(workout, summaries, logs);
+            }
             if (result.recordedGym) {
                 const entry = result.recordedGym;
                 summary = { id: entry.id, cycleId: entry.cycleId, day: entry.day,
@@ -412,8 +428,8 @@ export class WorkoutEngine {
                 this._reconcileSchedule(workout, summaries, logs);
             }
             if (result.removedGym) this._reconcileSchedule(workout, summaries, logs);
-            workout.scheduleUndo = { before, ...(summary || result.removedGym ? { beforeWorkout, addedSummaryId: summary?.id, restoreWorkout: Boolean(result.removedGym) } : {}), token: this._scheduleToken(workout, summaries, logs) };
-            return summary ? { summary, summariesToSave: [summary], automatic: true } : true;
+            workout.scheduleUndo = { before, ...(summary || result.removedGym || result.removedRecord ? { beforeWorkout, addedSummaryId: summary?.id, restoreWorkout: Boolean(result.removedGym || result.removedRecord), removedSummary: result.removedRecord } : {}), token: this._scheduleToken(workout, summaries, logs) };
+            return summary || result.removedRecord ? { ...(summary ? { summary, summariesToSave: [summary], automatic: true } : {}), ...(result.removedRecord ? { deleteSummary: result.removedRecord.id } : {}) } : true;
         });
     }
 
@@ -430,11 +446,12 @@ export class WorkoutEngine {
                     if (index < 0) throw new Error('The recorded workout changed. Refresh the calendar.');
                     summaries.splice(index, 1);
                 }
+                if (undo.removedSummary) summaries.push(structuredClone(undo.removedSummary));
                 for (const key of Object.keys(workout)) delete workout[key];
                 Object.assign(workout, structuredClone(undo.beforeWorkout));
             } else workout.schedule = undo.before;
             delete workout.scheduleUndo;
-            return undo.addedSummaryId ? { deleteSummary: undo.addedSummaryId } : true;
+            return undo.addedSummaryId || undo.removedSummary ? { ...(undo.addedSummaryId ? { deleteSummary: undo.addedSummaryId } : {}), ...(undo.removedSummary ? { summariesToSave: [undo.removedSummary] } : {}) } : true;
         });
     }
 

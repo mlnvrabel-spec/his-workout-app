@@ -204,5 +204,23 @@ try {
     assert.equal(closeCount, 1);
     assert.equal(renderCount, 1);
     assert.match(announcement, /Workout saved.*Undo/);
+    // Manual past entries expose correction rather than the protected-session dialog.
+    const record = Object.create(TrainingAgenda.prototype);
+    const recordForm = new EventTarget(), removeRecord = new EventTarget(), saveRecord = {};
+    recordForm.elements = { workoutDay: { value: '2' } };
+    record.view = add.view;
+    let recordBody, recordFooter, recordIntent;
+    record.dialogHTML = (title, body, footer) => { recordBody = body; recordFooter = footer; };
+    record.dialog = { querySelector: selector => selector === 'form' ? recordForm : selector === '.agenda-remove' ? removeRecord : saveRecord };
+    record.saveChange = intent => { recordIntent = intent; };
+    record.entryDialog({ ...entry, date: '2026-11-02', status: 'completed', movable: false, correctable: true });
+    assert.match(recordBody, /Workout performed/);
+    assert.match(recordBody, /Future plans stay unchanged/);
+    assert.match(recordFooter, />Delete</);
+    assert.doesNotMatch(recordFooter, /Open workout|Save date/);
+    recordForm.dispatchEvent(new Event('submit', { cancelable: true }));
+    assert.deepEqual(recordIntent, { type: 'correctGym', id: entry.id, day: 2 });
+    removeRecord.dispatchEvent(new Event('click'));
+    assert.deepEqual(recordIntent, { type: 'removeGymRecord', id: entry.id });
     console.log('Agenda pointer lifecycle, pre-drop conflicts, accessible controls, escaping and focus: OK');
 } finally { globalThis.setTimeout = realTimeout; globalThis.clearTimeout = realClear; }
