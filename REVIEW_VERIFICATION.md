@@ -363,3 +363,16 @@ Following the user's clarification, recurring and explicit calendar occurrences 
 - PASS: final `npm.cmd run verify` (all frontend suites), `npm.cmd run build` (28 runtime files) and `git diff --check` after the status/CSS change.
 - NOT RUN: current-version browser flow. The isolated host timed out; `localhost:3000`, `127.0.0.1:3000` and a fresh `127.0.0.1:3001` tab displayed older app markup, so those pages were not treated as evidence for this change. Physical-device and offline-reload checks remain NOT RUN.
 - The project-spec QA coverage matrix update was rejected by automatic approval review because the matrix is in a skill reference file and the project requires explicit approval for skill edits. Its existing content was preserved. No user workout records, hosted app, or deployment were changed.
+
+## Protocol data refactor (28 October 2026)
+
+Extracted protocol-to-exercise conversion and rest formatting into `src/core/ProtocolData.js`. `WorkoutEngine` retains state ownership and uses one snapshot routine for automatic and explicit completion. Preserved the serialized exercise payload, substitution prescriptions, transaction boundaries, events and existing scheduling/UI work. The new module is included in the worker asset manifest; source cache version is v106.
+
+- PASS: `npm.cmd run verify` (agent setup and all 18 frontend test scripts). New characterization/regression checks cover serialized payload compatibility, fallback formatting, source-data preservation, another window's saved substitution in both completion paths, retained prescriptions, independent history snapshots and reload.
+- PASS: `npm.cmd run build` (29 runtime files, including the extracted module) and `git diff --check`.
+- PASS: current production build in the in-app browser at isolated `http://127.0.0.1:54327`. Initial six-card render; substitution from Low Incline DB Press to Incline Machine Press retains 3x6-10, RIR 1-2 and 3m rest; three checks produce Counted toward training and a 3/6 history entry containing the substitution; Finish checks/seals all six. A fresh tab preserves the substituted exercise, Finished state and disabled checks. No captured console warnings/errors.
+- PASS: stopped the preview server and used native browser Ctrl+R. The root page and extracted module loaded offline; substituted exercise, all six finished checks and Undo persisted. Worker and all precache assets returned HTTP 200 during installation. The browser's URL-navigation helper intercepted an earlier offline attempt, so only the subsequent successful native reload is counted as offline evidence.
+- NOT RUN: old-worker update activation, physical-device, Garmin/backend and paid-provider checks; these are not established by this scoped refactor verification. No deployment or publication.
+- Preview used a fresh port to protect existing workout origins. Local networking required an approved sandbox escalation; all preview servers were stopped afterward. Synthetic checks/substitution/completion remain only in the isolated preview origin.
+
+![Offline refactor verification](C:/Users/mlnvr/.codex/visualizations/2026/10/28/01a18406-971e-71c2-a031-b7e8f2f44c79/protocol-refactor-offline.png)

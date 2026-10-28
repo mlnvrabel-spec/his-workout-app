@@ -5,6 +5,7 @@
  * Acts as the State Machine containing no UI rendering logic.
  */
 import { StorageManager } from './StorageManager.js';
+import { buildProtocolData, resolveExercise } from './ProtocolData.js';
 import { trainingAverages } from './TrainingStats.js';
 import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
 import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, firstScheduleDay, scheduleDaySkipped, suggestedRunDate } from './TrainingSchedule.js';
@@ -110,7 +111,7 @@ export class WorkoutEngine {
             });
 
             // Reconstruct the payload Kai.js expects
-            this._buildProtocolData(data);
+            this.protocolData = buildProtocolData(data);
 
             // Restore any persisted exercise swaps
             this._restoreSwaps();
@@ -126,73 +127,12 @@ export class WorkoutEngine {
         }
     }
 
-    /**
-     * Builds protocolData from raw data, resolving exercise library lookups.
-     * @param {Object} data - raw core_protocol.json content
-     */
-    _buildProtocolData(data) {
-        this.protocolData = data.workouts.map(w => {
-            return {
-                id: w.id,
-                title: w.title,
-                subtitle: w.subtitle,
-                exercises: w.exercises.map(ex => {
-                    return this._resolveExercise(ex);
-                })
-            };
+    /** Resolve snapshots from the latest transaction's swaps, not a stale window. */
+    _snapshotExercises(day, workout) {
+        return (this.defaultProtocol || this.protocolData)[day].exercises.map((exercise, slot) => {
+            const id = workout.swaps?.[`${day}_${slot}`];
+            return id ? resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id }, this.exerciseLibrary) : structuredClone(exercise);
         });
-    }
-
-    /**
-     * Resolves a single exercise slot into the full UI-ready object.
-     * @param {Object} ex - exercise slot from workout definition { id, sets, reps, rir, rest_sec, swap_group }
-     * @returns {Object} UI-ready exercise object
-     */
-    _resolveExercise(ex) {
-        const lib = this.exerciseLibrary[ex.id];
-        if (!lib) {
-            console.warn(`[WorkoutEngine] Missing library entry for exercise: ${ex.id}`);
-            return {
-                _exerciseId: ex.id,
-                _swapGroup: ex.swap_group,
-                name: ex.id,
-                sets: ex.sets,
-                reps: ex.reps,
-                rir: ex.rir,
-                rirClass: ex.rir == "0" ? "0" : "1",
-                rest: this._formatRest(ex.rest_sec),
-                technique: [],
-                mistakes: [],
-                visualization: '',
-                vizText: '',
-                proTip: ''
-            };
-        }
-        return {
-            _exerciseId: ex.id,
-            _swapGroup: ex.swap_group,
-            name: lib.name,
-            sets: ex.sets,
-            reps: ex.reps,
-            rir: ex.rir,
-            rirClass: ex.rir == "0" ? "0" : "1",
-            rest: this._formatRest(ex.rest_sec),
-            technique: lib.technique,
-            mistakes: lib.mistakes,
-            visualization: lib.visualization.split(':')[0],
-            vizText: lib.visualization.split(':')[1] ? lib.visualization.split(':')[1].trim() : '',
-            proTip: lib.proTip
-        };
-    }
-
-    /**
-     * Formats protocol-owned rest targets for the exercise-card UI.
-     * @param {number} seconds
-     * @returns {string}
-     */
-    _formatRest(seconds) {
-        const restSeconds = Number.isFinite(seconds) ? seconds : 90;
-        return restSeconds % 60 === 0 ? `${restSeconds / 60}m` : `${restSeconds}s`;
     }
 
     /**
@@ -297,7 +237,7 @@ export class WorkoutEngine {
             if (!this.exerciseLibrary[newExId] || !allowedOptions.includes(newExId)) return;
 
             const newSlot = { ...rawSlot, id: newExId };
-            dayData.exercises[exSlot] = this._resolveExercise(newSlot);
+            dayData.exercises[exSlot] = resolveExercise(newSlot, this.exerciseLibrary);
         });
         console.log(`[WorkoutEngine] Restored ${Object.keys(swaps).length} saved swaps`);
     }
@@ -533,10 +473,7 @@ export class WorkoutEngine {
             const id = `${workout.cycleId}:${day}`;
             const index = summaries.findIndex(s => s.id === id);
             if (total > 0 && checked >= Math.ceil(total / 2)) {
-                const exercises = (this.defaultProtocol || this.protocolData)[day].exercises.map((ex, slot) => {
-                    const swap = workout.swaps?.[`${day}_${slot}`];
-                    return swap ? this._resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id: swap }) : structuredClone(ex);
-                });
+                const exercises = this._snapshotExercises(day, workout);
                 const summary = {
                     ...(summaries[index] || {}), id, cycleId: workout.cycleId, day, completionType: 'counted',
                     sessionId: workout.workoutDate || today, completedAt: summaries[index]?.completedAt || new Date().toISOString(),
@@ -604,7 +541,7 @@ export class WorkoutEngine {
             for (const [key, id] of Object.entries(workout.swaps || {})) {
                 const [day, slot] = key.split('_').map(Number);
                 const raw = this.rawWorkouts?.[day]?.exercises[slot];
-                if (raw && this.swapGroupMap[raw.swap_group]?.includes(id)) this.protocolData[day].exercises[slot] = this._resolveExercise({ ...raw, id });
+                if (raw && this.swapGroupMap[raw.swap_group]?.includes(id)) this.protocolData[day].exercises[slot] = resolveExercise({ ...raw, id }, this.exerciseLibrary);
             }
             for (const summary of summaries) {
                 if (summary.cycleId === workout.cycleId && workout.completedDays[summary.day] && summary.exercises) {
@@ -748,10 +685,7 @@ export class WorkoutEngine {
             return await this._commit('workout_finished', (workout, summaries) => {
                 if (workout.cycleId !== cycle || this.isDaySealed(day, workout)) return false;
                 // Resolve the current persisted substitutions, not this window's stale view.
-                const exercises = (this.defaultProtocol || this.protocolData)[day].exercises.map((ex, slot) => {
-                    const id = workout.swaps?.[`${day}_${slot}`];
-                    return id ? this._resolveExercise({ ...this.rawWorkouts[day].exercises[slot], id }) : structuredClone(ex);
-                });
+                const exercises = this._snapshotExercises(day, workout);
                 // Finishing a day confirms the whole checklist, including any exercises
                 // that were not manually checked during the session.
                 workout.done[day] = Object.fromEntries(exercises.map((_, i) => [`ex-${day}-${i}`, true]));
