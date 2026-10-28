@@ -21,7 +21,7 @@ try {
     assert.equal(await a.applySchedule(a.previewSchedule({ type: 'move', id: restId, date: '2026-11-04' })), true);
     a = await engine();
     assert.ok(a.state.schedule.officeExceptions.includes('2026-11-05'));
-    assert.ok(a.getScheduleView().entries.some(entry => entry.kind === 'office' && entry.date === '2026-11-04'));
+    assert.ok(a.getScheduleView().entries.some(entry => entry.kind === 'rest' && entry.date === '2026-11-04'));
     assert.equal(await a.undoSchedule(), true);
     assert.deepEqual(a.state.schedule, beforeRestEdit);
     assert.equal(await a.applySchedule(a.previewSchedule({ type: 'remove', id: restId })), true);
@@ -31,6 +31,20 @@ try {
     assert.ok(a.getScheduleView().entries.some(entry => entry.kind === 'rest' && entry.date === '2026-11-03'), 'Manual rest is unchanged');
     assert.equal(await a.undoSchedule(), true);
     assert.deepEqual(a.state.schedule, beforeRestEdit);
+    environment(); now = '2026-11-04T18:00:00'; a = await engine();
+    const freeThursday = 'office:2026-11-05';
+    const nextGym = a.getScheduleView().entries.find(value => value.kind === 'gym' && value.status === 'planned' && value.day === 1);
+    assert.equal(nextGym.date, '2026-11-06');
+    const release = a.previewSchedule({ type: 'remove', id: freeThursday });
+    assert.ok(release.changes.some(change => change.id === nextGym.id && change.to === '2026-11-05'),
+        'Removing tomorrow’s recurring REST previews the next workout on the freed date');
+    assert.equal(await a.applySchedule(release), true);
+    a = await engine();
+    assert.ok(!a.getScheduleView().entries.some(value => value.id === freeThursday));
+    assert.equal(a.getScheduleView().entries.find(value => value.id === nextGym.id).date, '2026-11-05');
+    assert.equal(await a.undoSchedule(), true);
+    assert.ok(a.getScheduleView().entries.some(value => value.id === freeThursday));
+    assert.equal(a.getScheduleView().entries.find(value => value.id === nextGym.id).date, '2026-11-06');
     environment(); now = '2026-11-03T18:00:00'; a = await engine();
     const original = structuredClone(a.state.schedule);
     const preview = a.previewSchedule({ type: 'add', kind: 'run', id: 'run-test', date: '2026-11-06' });

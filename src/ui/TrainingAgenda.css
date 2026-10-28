@@ -95,8 +95,8 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-entry-title { display: block; font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
 .agenda-entry-context { display: block; font-size: 10px; line-height: 1.5; color: var(--text2); margin-top: 5px; }
 .agenda-entry--run .agenda-entry-title { color: var(--accent); }
-#training-agenda .agenda-entry--office, #training-agenda .agenda-entry--rest { background: transparent; }
-.agenda-entry--office .agenda-entry-title, .agenda-entry--rest .agenda-entry-title { font-size: 15px; color: var(--text2); }
+#training-agenda .agenda-entry--rest { background: transparent; }
+.agenda-entry--rest .agenda-entry-title { font-size: 15px; color: var(--text2); }
 .agenda-recorded-mark { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: var(--text2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .agenda-progress-mark { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .agenda-entry.is-recorded .agenda-entry-title { color: var(--text2); }
@@ -106,7 +106,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-empty { padding: 17px 14px 6px; font-size: 12px; line-height: 1.5; color: var(--text2); }
 #training-agenda .agenda-day-add { position: absolute; right: 0; top: 14px; min-width: 36px; min-height: 44px; padding: 6px; background: transparent; color: var(--text2); font-size: 20px; }
 #training-agenda .agenda-day.is-past .agenda-entry { background: var(--surface); }
-#training-agenda .agenda-day.is-past .agenda-entry--office, #training-agenda .agenda-day.is-past .agenda-entry--rest { background: transparent; }
+#training-agenda .agenda-day.is-past .agenda-entry--rest { background: transparent; }
 .agenda-day.is-past .agenda-entry-title, .agenda-day.is-past .agenda-date strong { color: var(--text2); }
 .agenda-items.is-grouped { background: var(--surface2); border-radius: 16px; }
 .agenda-day.is-past .agenda-items.is-grouped { background: var(--surface); }
