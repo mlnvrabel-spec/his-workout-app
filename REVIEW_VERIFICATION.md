@@ -316,3 +316,23 @@ Reproduced with an engine clock of 25 November and a manually recorded workout o
 - Earlier preview startup was blocked by an approval-review usage limit; the resumed authorized startup succeeded. Existing user workout origins were not edited or cleared. Temporary preview tabs/server were closed after verification. No commit, deployment, publication, merge or Bug Hub ledger write.
 
 Screenshots are local task artifacts: bug6-manual-correction-mobile.png and bug6-manual-correction-desktop.png.
+
+## Bug Hub #8 — elapsed recurring REST overrides (28 October 2026)
+
+Removed the past-date lock from planned REST constraints and allowed their date edits into the past. Existing occurrence exceptions handle edit/delete without changing weekly rules. Completed/started records retain their protections. No saved user workout storage or Bug Hub ledger was changed.
+
+- PASS: `npm.cmd run verify` (exit 0), including new real-engine regression in `test_scheduler_engine.mjs`: manual Tuesday rest plus elapsed Thursday recurrence; edit/delete, durable reopen, Undo and unchanged following Thursday. `git diff --check` passed.
+- PASS: isolated in-memory calendar UI fixture using actual TrainingAgenda and TrainingSchedule modules: past Thursday exposes Delete/Save date; edit preview and Apply; pointer delete; Enter Undo and row activation; original date becomes empty and next Thursday remains recurring. Inspected themed 390x844 and desktop screenshots; no console errors in exercised flow.
+- NOT RUN: browser persistence (covered by real-engine automated reopen tests), full-app end-to-end browser flow, real-device touch, Garmin/backend or new offline-browser run. The UI fixture deliberately does not access browser workout storage. Existing port-3000/3001 service workers returned older cached app pages; browser checks used a clean port 48723 origin instead. No PWA source changed.
+- Scope: recorded manual rest remains protected by the existing completed-record rule; this repair unlocks planned recurring/manual constraints. No deployment, publication, merge or ledger edits.
+
+Mobile screenshot: local task artifact `bug8-mobile.png`.
+
+## Bug Hub #10 — rolling split after Pull B (28 October 2026)
+
+The user screenshot shows completed Push B on 23 October and Pull B on 24 October, but planned Push B on 28 October. A rotated cycle reused its original starting split after finishing out of order. The engine now aligns an untouched current/future plan with the successor of the latest recorded split, preserving planned dates by position. Started/completed training remains protected. Following the user's clarification, correcting a manual past record recalculates unstarted future splits; deleting the only manual record restarts at Push A. This supersedes the earlier Bug #6 note that corrections preserve future plans.
+
+- PASS: the focused `test_backfill.mjs` regression failed before the repair (Push B instead of Push A) and passed after. It covers reload, correction, deletion, Undo and protected later training.
+- PASS: final `npm.cmd run verify`, `npm.cmd run build` and `git diff --check` on the combined Bug #8/#10 candidate.
+- NOT RUN: browser validation of this candidate. The attempted local preview returned older cached app versions rather than the current files; those pages were not treated as verification. Physical-device, Garmin and provider checks remain NOT RUN.
+- No user workout data, Bug Hub ledger, deployment, publication or merge was changed. Service-worker cache version is v103.

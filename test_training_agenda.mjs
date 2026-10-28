@@ -215,7 +215,7 @@ try {
     record.saveChange = intent => { recordIntent = intent; };
     record.entryDialog({ ...entry, date: '2026-11-02', status: 'completed', movable: false, correctable: true });
     assert.match(recordBody, /Workout performed/);
-    assert.match(recordBody, /Future plans stay unchanged/);
+    assert.match(recordBody, /Unstarted future workouts will follow the corrected record/);
     assert.match(recordFooter, />Delete</);
     assert.doesNotMatch(recordFooter, /Open workout|Save date/);
     recordForm.dispatchEvent(new Event('submit', { cancelable: true }));

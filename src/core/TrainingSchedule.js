@@ -210,7 +210,6 @@ export function reconcileSchedule(saved, context) {
 export function movableReason(entry, context) {
     if (entry.status === 'completed') return 'Completed sessions stay in history.';
     if (entry.status === 'started') return 'This workout has started. Its checks and sets stay on this date.';
-    if ((entry.kind === 'office' || entry.kind === 'rest') && entry.date < context.today) return 'Past calendar constraints stay in history.';
     return '';
 }
 
@@ -255,7 +254,7 @@ function entryDiff(before, after, context) {
 
 function assertDestination(schedule, entry, date, today, performed = false) {
     if (date > addDays(today, MAX_FORWARD_DAYS)) throw new Error('Choose a date within the next two years.');
-    if (date < today && !performed) throw new Error('Choose today or a future date, or record an activity that already happened.');
+    if (date < today && !performed && !['office', 'rest'].includes(entry.kind)) throw new Error('Choose today or a future date, or record an activity that already happened.');
     if (performed) {
         if (entry.kind === 'gym' || entry.kind === 'office') throw new Error('Use the workout checklist to record gym training.');
         if (entry.kind === 'rest' && schedule.entries.some(value => value.date === date && (value.kind === 'rest' || isProtected(value)))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
@@ -336,6 +335,21 @@ export function proposeSchedule(saved, intent, context) {
             correctedGym = { id: sessionId(historyCycleId, intent.day), kind: 'gym', cycleId: historyCycleId, day: intent.day,
                 title: protocol[intent.day].title, date: entry.date, originalDate: entry.date, status: 'completed', source: 'manual_backfill' };
             schedule.entries.push(correctedGym);
+        } else {
+            const hasProgress = Object.values(context.workout?.done || {}).some(checks => Object.values(checks).some(Boolean))
+                || Object.entries(context.workout?.completedDays || {}).some(([day, done]) => done && Number(day) !== entry.day)
+                || Object.values(context.workout?.nextCycleDraft?.done || {}).some(checks => Object.values(checks).some(Boolean))
+                || (context.logs || []).some(log => log.sets?.length && schedule.cycleIds.indexOf(log.session_id?.split(':')[0]) >= schedule.cycleIds.indexOf(context.cycleId));
+            if (!hasProgress && !schedule.entries.some(value => value.kind === 'gym' && value.status === 'started')) {
+                const remaining = schedule.entries.filter(value => value.kind === 'gym' && value.status === 'completed')
+                    .sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+                schedule.entries = schedule.entries.filter(value => value.kind !== 'gym' || isProtected(value));
+                restartedCycleId = nextCycle(schedule);
+                const successor = remaining ? (remaining.day + 1) % protocol.length : 0;
+                schedule.cycleOrders ||= {};
+                schedule.cycleOrders[restartedCycleId] = protocol.map((_, index) => (successor + index) % protocol.length);
+                addPlannedCycles(schedule, restartedCycleId, protocol);
+            }
         }
     } else if (intent.type === 'recordGym') {
         const date = dateKey(intent.date);
