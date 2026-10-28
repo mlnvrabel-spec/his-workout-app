@@ -1880,17 +1880,6 @@
             --readiness-gradient: linear-gradient(145deg, #e3f1ed 0%, #f1f3ef 100%);
         }
 
-        body[data-theme="dark"] {
-            background:
-                radial-gradient(110% 62% at 50% -12%, #283a42 0%, rgba(40, 58, 66, 0.34) 27%, transparent 58%),
-                var(--bg);
-        }
-
-        body[data-theme="light"] {
-            background: radial-gradient(110% 62% at 50% -12%, #ffffff 0%, #f1f0eb 62%);
-        }
-
-
         .ctrl-btn,
         .theme-btn {
             width: 42px;
@@ -2750,14 +2739,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
         }
 
         .header-controls .network-status { margin-right: 10px; }
-
-        @supports ((backdrop-filter: blur(18px)) or (-webkit-backdrop-filter: blur(18px))) {
-            .header {
-                background: color-mix(in srgb, var(--bg) 88%, transparent);
-                backdrop-filter: blur(18px) saturate(120%);
-                -webkit-backdrop-filter: blur(18px) saturate(120%);
-            }
-        }
 
         @media (hover: hover) {
             .header-controls button:hover,

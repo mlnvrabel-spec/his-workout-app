@@ -61,11 +61,22 @@ const officeMoved = act(base, { type: 'move', id: 'office:2026-11-05', date: '20
 assert.ok(officeMoved.officeExceptions.includes('2026-11-05'));
 assert.ok(!scheduleEntries(officeMoved, ctx).some(entry => entry.id === 'office:2026-11-05'));
 assert.ok(scheduleEntries(officeMoved, ctx).some(entry => entry.id === 'office:2026-11-12'));
-assert.ok(officeMoved.entries.some(entry => entry.kind === 'office' && entry.date === '2026-11-06'));
+assert.ok(officeMoved.entries.some(entry => entry.kind === 'rest' && entry.date === '2026-11-06'));
 const officeRemoved = act(base, { type: 'remove', id: 'office:2026-11-05' });
-assert.deepEqual(gymDates(officeRemoved), gymDates(base));
+assert.equal(officeRemoved.entries.find(entry => entry.id === 'c1:2').date, '2026-11-05', 'The next unstarted gym uses the freed REST date');
+assert.ok(!scheduleEntries(officeRemoved, ctx).some(entry => entry.id === 'office:2026-11-05'));
 const changedLater = act(base, { type: 'officeDays', days: [2, 5] }, context('2026-11-06'));
 assert.ok(scheduleEntries(changedLater, context('2026-11-06')).some(entry => entry.id === 'office:2026-11-05'), 'A future office change retains an elapsed Thursday');
+const olderRules = structuredClone(base);
+olderRules.officeRules[0].from = '2026-10-19';
+assert.ok(scheduleEntries(olderRules, { ...ctx, since: '2026-10-19' }).some(entry => entry.kind === 'rest' && entry.date === '2026-10-26'), 'Expanded history includes recurring Rest');
+const legacyRest = structuredClone(base);
+legacyRest.entries.push({ id: 'office:legacy', kind: 'office', title: 'Office', date: '2026-11-09', status: 'planned' });
+const normalizedRest = reconcileSchedule(legacyRest, ctx);
+assert.equal(normalizedRest.entries.find(entry => entry.id === 'office:legacy').kind, 'rest', 'Old saved entries retain identity but become Rest');
+assert.throws(() => act(base, { type: 'add', kind: 'office', date: '2026-11-09' }), /activity type/, 'New Office entries are unavailable');
+const laterRecurring = act(officeMoved, { type: 'officeDays', days: [1, 5], effectiveDate: '2026-11-06' });
+assert.equal(scheduleEntries(laterRecurring, ctx).filter(entry => entry.kind === 'rest' && entry.date === '2026-11-06').length, 1, 'Moved Rest and a new weekly rule never duplicate the same date');
 
 // Backdating either moves the same occurrence or adds a distinct actual record.
 const actualContext = context('2026-11-16', { summaries: [summary(0, '2026-11-03'), summary(1, '2026-11-04'), summary(2, '2026-11-06'), summary(3, '2026-11-07')] });

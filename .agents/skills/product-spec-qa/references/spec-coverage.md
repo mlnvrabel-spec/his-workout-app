@@ -68,3 +68,4 @@ For §6, the canonical Undo requirement is to clear the reopened day's checks wh
 ## Bug Hub #6 — manual history corrections
 
 - PRODUCT_SPEC section 11: test_backfill.mjs covers edit/delete/Undo persistence, recorded averages, recalculated unstarted plans, protection of real completions/checks/sets, transaction failure and concurrent edits. test_training_agenda.mjs covers correction form dispatch. Browser evidence and limitations are in REVIEW_VERIFICATION.md.
+- §8 recurring Rest removal: `test_scheduler_engine.mjs` covers a Wednesday deletion of Thursday Rest, the next gym moving into Thursday, durable reload and Undo. `test_training_schedule.mjs` checks the proposal; `test_training_agenda.mjs` checks that a freed empty date reads Available.

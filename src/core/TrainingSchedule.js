@@ -2,8 +2,8 @@
 const DAY_MS = 86400000;
 const MAX_FORWARD_DAYS = 730;
 const DEFAULT_OFFICE_DAYS = [1, 4];
-const ACTIVITY_KINDS = new Set(['office', 'rest', 'run', 'activity']);
-const TITLES = { office: 'REST', rest: 'REST', run: 'Norwegian 4×4', activity: 'Activity' };
+const ACTIVITY_KINDS = new Set(['rest', 'run', 'activity']);
+const TITLES = { rest: 'REST', run: 'Norwegian 4×4', activity: 'Activity' };
 
 export function dateKey(value = new Date()) {
     if (typeof value === 'string') {
@@ -190,6 +190,8 @@ export function reconcileSchedule(saved, context) {
     schedule.officeRules ||= [{ from: today, days: [...DEFAULT_OFFICE_DAYS] }];
     schedule.officeExceptions ||= [];
     schedule.entries ||= [];
+    // Keep legacy IDs stable for Undo and old calendars, but expose one Rest type.
+    for (const entry of schedule.entries) if (entry.kind === 'office') { entry.kind = 'rest'; entry.title = 'REST'; }
     schedule.cycleIds ||= [cycleId];
     schedule.baseCycleId ||= schedule.cycleIds[0];
     schedule.nextCycleNumber ||= 1;
@@ -223,15 +225,15 @@ function correctableGymRecord(entry, context) {
         && !(context.logs || []).some(log => log.session_id === entry.id && log.sets?.length));
 }
 
-/** The agenda includes recurring office occurrences without persisting duplicate entries. */
+/** The agenda includes recurring Rest occurrences without persisting duplicate entries. */
 export function scheduleEntries(schedule, context) {
     const { today } = contextValues(context);
     const entries = structuredClone(schedule.entries);
     const end = latest(context.until, addDays(today, 14), ...entries.filter(entry => entry.date >= today).map(entry => entry.date));
-    let date = addDays(today, -3);
+    let date = context.since ? dateKey(context.since) : addDays(today, -3);
     const range = Math.min(MAX_FORWARD_DAYS, Math.round((new Date(`${end}T12:00:00Z`) - new Date(`${date}T12:00:00Z`)) / DAY_MS));
     for (let day = 0; day <= range; day++, date = addDays(date, 1)) {
-        if (officeOn(schedule, date) && !entries.some(entry => entry.kind === 'rest' && entry.date === date)) entries.push({ id: `office:${date}`, kind: 'office', title: 'REST', date, status: 'planned', recurring: true });
+        if (officeOn(schedule, date) && !entries.some(entry => ['rest', 'office'].includes(entry.kind) && entry.date === date)) entries.push({ id: `office:${date}`, kind: 'rest', title: 'REST', date, status: 'planned', recurring: true });
     }
     return entries.map(entry => ({ ...entry, movable: !movableReason(entry, context), movableReason: movableReason(entry, context), correctable: correctableGymRecord(entry, context) }))
         .sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
@@ -254,9 +256,9 @@ function entryDiff(before, after, context) {
 
 function assertDestination(schedule, entry, date, today, performed = false) {
     if (date > addDays(today, MAX_FORWARD_DAYS)) throw new Error('Choose a date within the next two years.');
-    if (date < today && !performed && !['office', 'rest'].includes(entry.kind)) throw new Error('Choose today or a future date, or record an activity that already happened.');
+    if (date < today && !performed && entry.kind !== 'rest') throw new Error('Choose today or a future date, or record an activity that already happened.');
     if (performed) {
-        if (entry.kind === 'gym' || entry.kind === 'office') throw new Error('Use the workout checklist to record gym training.');
+        if (entry.kind === 'gym') throw new Error('Use the workout checklist to record gym training.');
         if (entry.kind === 'rest' && schedule.entries.some(value => value.date === date && (value.kind === 'rest' || isProtected(value)))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
         if (date > today) throw new Error('A future activity cannot be recorded as completed.');
         return; // Actual history can truthfully contain an office day, run and lifting together.
@@ -315,6 +317,7 @@ export function proposeSchedule(saved, intent, context) {
     let removedGym = null;
     let removedRecord = null;
     let correctedGym = null;
+    let freedRestDate = null;
     const notices = [];
     if (['correctGym', 'removeGymRecord'].includes(intent.type)) {
         const entry = schedule.entries.find(value => value.id === intent.id);
@@ -411,7 +414,7 @@ export function proposeSchedule(saved, intent, context) {
             const moved = { ...entry, date, source: entry.source || 'manual' };
             delete moved.recurring; delete moved.movable; delete moved.movableReason;
             assertDestination(schedule, moved, date, today, Boolean(intent.performed));
-            if (entry.recurring) moved.id = activityId(schedule, 'office', date);
+            if (entry.recurring) moved.id = activityId(schedule, 'rest', date);
             if (intent.performed) moved.status = 'completed';
             schedule.entries.push(moved);
             if (entry.kind === 'gym') { exactId = moved.id; exactDate = date; }
@@ -424,12 +427,17 @@ export function proposeSchedule(saved, intent, context) {
             removedGym = structuredClone(entry);
         }
         removeEntry(schedule, entry);
+        if (entry.kind === 'rest' && entry.date >= today) freedRestDate = entry.date;
     } else if (intent.type === 'complete') {
         const entry = resolveEntry(schedule, intent.id, context);
         if (entry.kind !== 'run' && entry.kind !== 'activity') throw new Error('Use the workout checklist to complete gym training.');
         if (entry.date > today) throw new Error('A future activity cannot be recorded as completed.');
         schedule.entries.find(value => value.id === entry.id).status = 'completed';
     } else throw new Error('Unknown calendar action.');
+    if (freedRestDate && !blockedDate(schedule, freedRestDate)) {
+        const nextGym = gymEntries(schedule).find(entry => entry.status === 'planned' && entry.date > freedRestDate);
+        if (nextGym) nextGym.date = freedRestDate;
+    }
     const backfilled = intent.type === 'recordGym' || (['add', 'move'].includes(intent.type) && intent.performed && intent.date < today);
     if (backfilled) {
         const pending = gymEntries(schedule).filter(entry => !isProtected(entry));

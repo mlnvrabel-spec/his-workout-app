@@ -381,15 +381,15 @@ export class WorkoutEngine {
             logs.map(log => [log.session_id, log.exercise_id, log.sets]).sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]))]);
     }
 
-    getScheduleView() {
+    getScheduleView(since = null) {
         const context = this._scheduleContext();
         const schedule = this.state.schedule;
         if (!schedule) return { entries: [], today: context.today, officeDays: [1, 4], canUndo: false };
         const rule = schedule.officeRules?.filter(rule => rule.from <= context.today).at(-1);
-        const entries = scheduleEntries(schedule, context);
+        const entries = scheduleEntries(schedule, since ? { ...context, since } : context);
         return { entries, averages: trainingAverages(entries, context.today), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
             workouts: this.protocolData.map((day, index) => ({ day: index, title: day.title, nextTitle: this.protocolData[(index + 1) % this.protocolData.length].title })),
-            officeDays: rule?.days || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
+            officeDays: rule?.days || [], restExceptions: schedule.officeExceptions || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
             runSuggestion: suggestedRunDate(schedule, context) };
     }
 
@@ -403,7 +403,7 @@ export class WorkoutEngine {
         if (!preview || this.pending) return false;
         return this._commit('schedule_changed', (workout, summaries, logs) => {
             if (preview.token !== this._scheduleToken(workout, summaries, logs)) {
-                throw new Error('Your training or calendar changed. Review the move again.');
+                throw new Error('Your training or calendar changed. Try the edit again.');
             }
             const before = structuredClone(workout.schedule);
             const beforeWorkout = structuredClone(workout);

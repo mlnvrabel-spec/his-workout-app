@@ -32,7 +32,7 @@ ui.element = element;
 ui.view = { today: '2026-11-03', currentCycleId: 'c1', entries: [entry] };
 const proposals = [], reviews = [], notices = [];
 ui.engine = { pending: false, previewSchedule(intent) { proposals.push(intent); if (intent.date === '2026-11-05') throw new Error('Office occupies this date.'); return {}; } };
-ui.preview = intent => reviews.push(intent);
+ui.commitChange = intent => reviews.push(intent);
 ui.announce = text => notices.push(text);
 ui.attachDrag();
 function pointer(type, y = 100, x = 20) {
@@ -62,7 +62,7 @@ try {
     assert.equal(ui.dropDate, '2026-11-04');
     assert.equal(days[0].classList.contains('is-drop-target'), true);
     pointer('pointerup', 250);
-    assert.deepEqual(reviews, [{ type: 'move', id: 'c1:0', date: '2026-11-04' }], 'Drop requests a preview, not a direct save');
+    assert.deepEqual(reviews, [{ type: 'move', id: 'c1:0', date: '2026-11-04' }], 'Drop requests one direct calendar save');
     assert.equal(captured, false);
     assert.equal(ui.suppressClick, true);
 
@@ -70,7 +70,7 @@ try {
     assert.match(ui.dropError, /Office/);
     assert.equal(days[1].classList.contains('is-drop-invalid'), true, 'Invalid date is visible before release');
     pointer('pointerup', 350);
-    assert.equal(reviews.length, 1, 'Invalid drop never reaches Apply');
+    assert.equal(reviews.length, 1, 'Invalid drop never reaches the save');
     assert.match(notices.at(-1), /Office/);
     for (const cancel of ['pointercancel', 'lostpointercapture']) {
         pointer('pointerdown'); hold(); pointer(cancel);
@@ -110,7 +110,7 @@ try {
     assert.doesNotMatch(calendar.element.innerHTML, /agenda-today|agenda-add|>Nothing recorded</);
     assert.equal((calendar.element.innerHTML.match(/data-agenda-action="add" data-date="2026-11-03"/g) || []).length, 1, 'The date has one Add action');
     assert.doesNotMatch(calendar.element.innerHTML, /data-agenda-action="undo"/, 'Unavailable Undo does not occupy the toolbar');
-    const office = { id: 'office-1', kind: 'office', title: 'Office', date: '2026-11-03', recurring: true, movable: false, movableReason: 'Past calendar constraints stay in history.' };
+    const office = { id: 'office-1', kind: 'rest', title: 'REST', date: '2026-11-03', recurring: true, movable: false, movableReason: 'Past calendar constraints stay in history.' };
     calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry, office] });
     calendar.render();
     assert.match(calendar.element.innerHTML, /agenda-items is-grouped/);
@@ -128,6 +128,9 @@ try {
     await calendar.onClick({ target: { closest: () => select } });
     assert.equal(calendar.selectedDate, '2026-11-04');
     assert.match(calendar.element.innerHTML, />Rest</);
+    calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry], restExceptions: ['2026-11-04'] });
+    calendar.render();
+    assert.match(calendar.element.innerHTML, /agenda-empty">Available</, 'A deleted recurring REST is visibly free');
     assert.match(calendar.element.innerHTML, /data-agenda-action="add" data-date="2026-11-04"/);
     assert.doesNotMatch(calendar.element.innerHTML, /agenda-primary" data-agenda-action="open"/);
     assert.match(calendar.element.innerHTML, /aria-label="Select [^"]+" aria-pressed="true"/);
@@ -151,7 +154,7 @@ try {
     let dialogBody, selectedIntent;
     add.dialogHTML = (title, body) => { dialogBody = body; };
     add.dialog = { querySelector: selector => selector === 'form' ? form : selector === '.agenda-dialog-error' ? fields.error : fields.submit };
-    add.preview = intent => { selectedIntent = intent; };
+    add.commitChange = intent => { selectedIntent = intent; };
     add.saveWorkout = intent => { selectedIntent = intent; };
     add.addDialog('2026-11-02');
     assert.match(dialogBody, /Workout performed/);
@@ -160,16 +163,16 @@ try {
     assert.equal(fields.submit.textContent, 'Save workout');
     form.elements.workoutDay.value = '3';
     form.dispatchEvent(new Event('change'));
-    assert.match(fields.help.textContent, /Continue the future split with Push A.*Undo/);
-    add.preview = () => { throw new Error('Backfilling must not open a review screen'); };
+    assert.match(fields.help.textContent, /future split recalculates.*Pull B.*Undo/);
+    add.commitChange = () => { throw new Error('Backfilling must not open a second screen'); };
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     assert.deepEqual(selectedIntent, { type: 'recordGym', day: 3, date: '2026-11-02' });
-    add.preview = intent => { selectedIntent = intent; };
+    add.commitChange = intent => { selectedIntent = intent; };
     form.elements.kind.value = 'run';
     form.dispatchEvent(new Event('change'));
     assert.equal(fields.gym.hidden, true);
     assert.equal(form.elements.workoutDay.disabled, true, 'Hidden workout selection cannot block other activities');
-    assert.equal(fields.submit.textContent, 'Review change', 'Planning other activities keeps its existing preview');
+    assert.equal(fields.submit.textContent, 'Save activity', 'Other activities save without another confirmation');
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     assert.equal(selectedIntent.kind, 'run');
 
@@ -204,6 +207,15 @@ try {
     assert.equal(closeCount, 1);
     assert.equal(renderCount, 1);
     assert.match(announcement, /Workout saved.*Undo/);
+    delete add.commitChange;
+    fields.submit.disabled = false;
+    const directEdit = { type: 'remove', id: 'office:2026-11-05' };
+    add.engine = { pending: false, state: {}, previewSchedule(value) { assert.deepEqual(value, directEdit); return { intent: value, changes: [{ kind: 'gym', action: 'moved', title: 'Push A', to: '2026-11-05' }] }; },
+        async applySchedule() { commitCount++; return true; } };
+    await add.commitChange(directEdit);
+    assert.equal(commitCount, 3, 'A calendar edit commits directly from its existing action');
+    assert.equal(closeCount, 2, 'No review dialog replaces the existing edit form');
+    assert.match(announcement, /Push A moved to.*Undo|Undo.*Push A moved to/, 'The saved result describes changed workout dates');
     // Manual past entries expose correction rather than the protected-session dialog.
     const record = Object.create(TrainingAgenda.prototype);
     const recordForm = new EventTarget(), removeRecord = new EventTarget(), saveRecord = {};

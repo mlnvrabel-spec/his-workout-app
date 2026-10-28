@@ -336,3 +336,30 @@ The user screenshot shows completed Push B on 23 October and Pull B on 24 Octobe
 - PASS: final `npm.cmd run verify`, `npm.cmd run build` and `git diff --check` on the combined Bug #8/#10 candidate.
 - NOT RUN: browser validation of this candidate. The attempted local preview returned older cached app versions rather than the current files; those pages were not treated as verification. Physical-device, Garmin and provider checks remain NOT RUN.
 - No user workout data, Bug Hub ledger, deployment, publication or merge was changed. Service-worker cache version is v103.
+
+## Follow-up: visible recurring Rest deletion (28 October 2026)
+
+The user reported that deleting tomorrow's recurring Rest left the row looking unchanged and did not move the plan. A removed future occurrence was rendered using the generic empty-day Rest suggestion, while the scheduler intentionally left later workouts on their dates. For this user-requested case, removing a planned Rest now brings the next eligible unstarted gym session into the freed date. If the date remains empty, it displays Available. Existing recorded/started training and later recurring Rest days remain protected. Service-worker cache version is v104.
+
+- PASS: focused regression failed before the change and passes after: Wednesday deletion of Thursday Rest previews and persists Friday's next gym on Thursday, survives reload, and Undo restores the Thursday Rest and Friday workout. Pure schedule and agenda rendering tests also pass.
+- PASS: `npm.cmd run verify` (all frontend suites and agent setup), `npm.cmd run build` (28 runtime files) and `git diff --check` on the final local candidate.
+- NOT RUN: browser and real-device validation for this follow-up. A fresh loopback preview attempt timed out, and earlier previews returned cached older app files; none was counted as current-version browser evidence.
+- The fix is local to this branch. The currently used hosted app will not change until an authorized publication/deployment updates it.
+
+## Header/background continuity (28 October 2026)
+
+Removed the page-level tinted gradients and translucent header override from `src/ui/Elena.css`. The page and sticky header now share the solid theme background, removing the visible color seam while preserving exercise-card surfaces.
+
+- PASS: `npm.cmd run verify` and `git diff --check`.
+- PASS: fresh in-app browser origin at 127.0.0.1:48724; dark screenshots inspected at 390x844 and 1280x800, light screenshot at 1280x800. Computed page/header backgrounds match (#17191c dark, #f1f0eb light), with no header backdrop filter. Dark mobile/desktop document overflow checks passed; no console errors observed. Appearance changed with Space and pointer; Escape dismissed Preferences.
+- NOT RUN: physical-device, new offline-browser, Garmin/backend/provider checks. Existing port-3000 origins served older cached styles and were not counted as current-version evidence. Saved user workout data was not cleared or edited. No deployment/publication.
+- Preview: `C:/Users/mlnvr/.codex/visualizations/2026/10/28/01a18402-8958-7303-ae72-f7c4f8db3e33/workout-background-mobile.jpg`.
+
+## Direct calendar saves and Rest entry type (28 October 2026)
+
+Following the user's clarification, recurring and explicit calendar occurrences now use the Rest entry type. Legacy stored `office` entries are normalized without changing their IDs or recurrence rules. Moving Rest onto a day that later gains a weekly Rest rule produces one occurrence. Expanding earlier calendar days requests their recurring entries from the engine. Calendar add, move, drag, record and recurring-day edits save from their existing action without a second Review/Apply screen; the refreshed calendar shows the result, the status names moved workouts and reports relevant notices, and guarded Undo remains available. Deleting a planned recurring Rest retains the preceding Thursday replan fix. The Add form no longer promises that an older manual workout alone determines the next split. Service-worker cache version is v105.
+
+- PASS: focused schedule, engine and agenda tests cover legacy normalization, duplicate suppression, earlier recurrence, direct save, changed-workout messaging, Thursday Rest deletion, reload and Undo.
+- PASS: final `npm.cmd run verify` (all frontend suites), `npm.cmd run build` (28 runtime files) and `git diff --check` after the status/CSS change.
+- NOT RUN: current-version browser flow. The isolated host timed out; `localhost:3000`, `127.0.0.1:3000` and a fresh `127.0.0.1:3001` tab displayed older app markup, so those pages were not treated as evidence for this change. Physical-device and offline-reload checks remain NOT RUN.
+- The project-spec QA coverage matrix update was rejected by automatic approval review because the matrix is in a skill reference file and the project requires explicit approval for skill edits. Its existing content was preserved. No user workout records, hosted app, or deployment were changed.
