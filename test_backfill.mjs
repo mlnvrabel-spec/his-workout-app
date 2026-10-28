@@ -183,6 +183,21 @@ try {
     await a.refresh();
     assert.equal(a.state.activeDay, 2);
 
+    // Completing a rotated cycle out of its planned order must continue from
+    // the last workout actually performed, including the existing next plan.
+    now = '2026-11-03T18:00:00';
+    environment(); a = await engine();
+    await a.applySchedule(a.previewSchedule({ type: 'recordGym', day: 1, date: '2026-11-02' }));
+    for (const day of [0, 1, 2, 3]) {
+        await a.setDay(day);
+        assert.equal(await a.finishSession(), true);
+    }
+    assert.equal(a.state.activeDay, 0, 'Pull B must be followed by Push A, even after a rotated cycle');
+    assert.equal(a.getScheduleView().entries.find(entry => entry.kind === 'gym' && entry.status === 'planned').day, 0);
+    a = await engine();
+    assert.equal(a.state.activeDay, 0, 'The repaired successor survives reload');
+    assert.equal(a.getScheduleView().entries.find(entry => entry.kind === 'gym' && entry.status === 'planned').day, 0);
+
     now = '2026-11-03T18:00:00';
     environment(); a = await engine();
     await a.applySchedule(a.previewSchedule({ type: 'recordGym', day: 1, date: '2026-10-26' }));
@@ -206,7 +221,7 @@ try {
     await a.applySchedule(a.previewSchedule({ type: 'add', kind: 'activity', title: 'Walk', date: '2026-11-29' }));
     assert.equal(a.getScheduleView().entries.find(entry => entry.id === mistaken.id).correctable, true,
         'Manual history without checks or sets must offer correction, independently of the last Undo');
-    const planBeforeCorrection = a.state.schedule.entries.filter(entry => entry.status === 'planned');
+    const appointmentsBeforeCorrection = structuredClone(a.state.schedule.entries.filter(entry => entry.kind !== 'gym'));
     const correction = a.previewSchedule({ type: 'correctGym', id: mistaken.id, day: 1 });
     assert.equal(a.summaries[0].day, 0, 'Preview cannot change history');
     assert.equal(await a.applySchedule(correction), true);
@@ -214,8 +229,9 @@ try {
     const corrected = a.summaries.find(summary => summary.sessionId === '2026-11-24');
     assert.equal(corrected.day, 1);
     assert.equal(corrected.id, `${corrected.cycleId}:1`, 'The corrected split retains a valid session identity');
-    assert.deepEqual(a.state.schedule.entries.filter(entry => entry.status === 'planned'), planBeforeCorrection,
-        'Correcting history does not silently reschedule existing plans');
+    assert.equal(a.state.activeDay, 2, 'Corrected Pull A makes Push B the next workout');
+    assert.equal(a.getScheduleView().entries.find(entry => entry.kind === 'gym' && entry.status === 'planned').day, 2);
+    assert.deepEqual(a.state.schedule.entries.filter(entry => entry.kind !== 'gym'), appointmentsBeforeCorrection);
     assert.equal(a.summaries.length, 1);
     assert.equal(a.getScheduleView().averages[0].gym.count, 1);
     assert.equal(await a.undoSchedule(), true);
@@ -223,6 +239,7 @@ try {
     assert.equal(await a.applySchedule(a.previewSchedule({ type: 'removeGymRecord', id: mistaken.id })), true);
     a = await engine();
     assert.equal(a.summaries.length, 0);
+    assert.equal(a.state.activeDay, 0, 'Deleting the only recorded workout restarts at Push A');
     assert.equal(a.getScheduleView().entries.some(entry => entry.id === mistaken.id), false);
     assert.equal(a.getScheduleView().averages[0].gym.count, 0);
     assert.equal(await a.undoSchedule(), true);

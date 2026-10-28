@@ -325,6 +325,37 @@ export class WorkoutEngine {
 
     _reconcileSchedule(workout, summaries, logs) {
         workout.schedule = reconcileSchedule(workout.schedule, this._scheduleContext(workout, summaries, logs));
+        const schedule = workout.schedule;
+        const cycleIndex = schedule.cycleIds.indexOf(workout.cycleId);
+        const pending = schedule.entries.filter(entry => entry.kind === 'gym' && entry.status === 'planned'
+            && schedule.cycleIds.indexOf(entry.cycleId) >= cycleIndex);
+        const hasProgress = Object.values(workout.done || {}).some(checks => Object.values(checks).some(Boolean))
+            || Object.values(workout.completedDays || {}).some(Boolean)
+            || Object.values(workout.nextCycleDraft?.done || {}).some(checks => Object.values(checks).some(Boolean))
+            || logs.some(log => log.session_id?.startsWith(`${workout.cycleId}:`) && log.sets?.length)
+            || schedule.entries.some(entry => entry.kind === 'gym' && entry.status !== 'planned'
+                && schedule.cycleIds.indexOf(entry.cycleId) >= cycleIndex);
+        const previous = summaries.filter(summary => schedule.cycleIds.indexOf(summary.cycleId) >= 0
+            && schedule.cycleIds.indexOf(summary.cycleId) < cycleIndex)
+            .sort((a, b) => String(a.sessionId || a.completedAt).localeCompare(String(b.sessionId || b.completedAt))
+                || String(a.completedAt).localeCompare(String(b.completedAt))).at(-1);
+        if (!hasProgress && pending.length && cycleIndex >= 0) {
+            const successor = previous ? (previous.day + 1) % this.protocolData.length : 0;
+            if (firstScheduleDay(schedule, workout.cycleId) !== successor) {
+                const oldPosition = entry => schedule.cycleOrders?.[entry.cycleId]?.indexOf(entry.day) ?? entry.day;
+                const dates = pending.sort((a, b) => schedule.cycleIds.indexOf(a.cycleId) - schedule.cycleIds.indexOf(b.cycleId)
+                    || oldPosition(a) - oldPosition(b)).map(entry => entry.date);
+                schedule.cycleOrders ||= {};
+                for (const id of schedule.cycleIds.slice(cycleIndex)) {
+                    schedule.cycleOrders[id] = this.protocolData.map((_, index) => (successor + index) % this.protocolData.length);
+                }
+                pending.sort((a, b) => schedule.cycleIds.indexOf(a.cycleId) - schedule.cycleIds.indexOf(b.cycleId)
+                    || schedule.cycleOrders[a.cycleId].indexOf(a.day) - schedule.cycleOrders[b.cycleId].indexOf(b.day));
+                pending.forEach((entry, index) => { entry.date = dates[index]; });
+                workout.activeDay = workout.day = successor;
+                workout.schedule = reconcileSchedule(schedule, this._scheduleContext(workout, summaries, logs));
+            }
+        }
         let advanced = false;
         while (scheduleDaySkipped(workout.schedule, workout.cycleId, workout.activeDay)) {
             if (this._cycleComplete(workout)) {
@@ -394,6 +425,15 @@ export class WorkoutEngine {
                     summary = { ...removed, id: entry.id, cycleId: entry.cycleId, day: entry.day, title: entry.title,
                         totalExercises: this.protocolData[entry.day].exercises.length };
                     summaries.push(summary);
+                }
+                if (result.restartedCycleId) {
+                    workout.cycleId = result.restartedCycleId;
+                    workout.done = {}; workout.completedDays = {}; workout.autoCompletedDays = {};
+                    workout.orders = {}; workout.orderUndo = {};
+                    workout.lastCompletedSummaryId = null;
+                    workout.workoutDate = this.storage.getDateKey();
+                    delete workout.nextCycleDraft;
+                    workout.activeDay = workout.day = firstScheduleDay(workout.schedule, workout.cycleId);
                 }
                 this._reconcileSchedule(workout, summaries, logs);
             }

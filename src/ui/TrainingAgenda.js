@@ -219,7 +219,7 @@ export class TrainingAgenda {
     }
 
     recordDialog(entry) {
-        this.dialogHTML(entry.title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p><form id="agenda-record-form" class="agenda-form"><label>Workout performed<select name="workoutDay" required>${(this.view.workouts || []).map(workout => `<option value="${workout.day}" ${workout.day === entry.day ? 'selected' : ''}>${escape(workout.title)}</option>`).join('')}</select></label><p class="agenda-form-help">Corrects this manual record only. Future plans stay unchanged.</p></form>`, '<button type="button" class="agenda-remove">Delete</button><button type="button" data-agenda-cancel>Close</button><button type="submit" class="agenda-primary" form="agenda-record-form">Save workout</button>');
+        this.dialogHTML(entry.title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p><form id="agenda-record-form" class="agenda-form"><label>Workout performed<select name="workoutDay" required>${(this.view.workouts || []).map(workout => `<option value="${workout.day}" ${workout.day === entry.day ? 'selected' : ''}>${escape(workout.title)}</option>`).join('')}</select></label><p class="agenda-form-help">Unstarted future workouts will follow the corrected record. Completed training stays unchanged.</p></form>`, '<button type="button" class="agenda-remove">Delete</button><button type="button" data-agenda-cancel>Close</button><button type="submit" class="agenda-primary" form="agenda-record-form">Save workout</button>');
         const form = this.dialog.querySelector('form');
         const submit = this.dialog.querySelector('[form="agenda-record-form"]');
         form.addEventListener('submit', event => {

@@ -10,6 +10,28 @@ globalThis.Date = class extends RealDate {
 try {
     environment();
     let a = await engine();
+    // A manual Tuesday rest must not lock an elapsed weekly REST occurrence.
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'officeDays', days: [1, 4], effectiveDate: '2026-11-03' })), true);
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'add', kind: 'rest', date: '2026-11-03', performed: true })), true);
+    now = '2026-11-07T18:00:00';
+    await a.refresh();
+    const beforeRestEdit = structuredClone(a.state.schedule);
+    const restId = 'office:2026-11-05';
+    assert.equal(a.getScheduleView().entries.find(entry => entry.id === restId).movable, true);
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'move', id: restId, date: '2026-11-04' })), true);
+    a = await engine();
+    assert.ok(a.state.schedule.officeExceptions.includes('2026-11-05'));
+    assert.ok(a.getScheduleView().entries.some(entry => entry.kind === 'office' && entry.date === '2026-11-04'));
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.state.schedule, beforeRestEdit);
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'remove', id: restId })), true);
+    a = await engine();
+    assert.ok(!a.getScheduleView().entries.some(entry => entry.id === restId));
+    assert.ok(a.getScheduleView().entries.some(entry => entry.id === 'office:2026-11-12'), 'Next Thursday retains its recurring default');
+    assert.ok(a.getScheduleView().entries.some(entry => entry.kind === 'rest' && entry.date === '2026-11-03'), 'Manual rest is unchanged');
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.state.schedule, beforeRestEdit);
+    environment(); now = '2026-11-03T18:00:00'; a = await engine();
     const original = structuredClone(a.state.schedule);
     const preview = a.previewSchedule({ type: 'add', kind: 'run', id: 'run-test', date: '2026-11-06' });
     assert.deepEqual(a.state.schedule, original, 'Preview must not write or shift the current plan');
