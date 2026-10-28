@@ -101,6 +101,11 @@ try {
     element.querySelectorAll = () => [replacement];
     ui.closeDialog();
     assert.equal(focused, true, 'Focus returns even after the engine replaces the originating row');
+    focused = false;
+    ui.modal.previousFocus.dataset = { agendaAction: 'rest-options', date: '2026-11-02' };
+    element.querySelectorAll = () => [{ dataset: { agendaAction: 'add', date: '2026-11-01' }, focus() { throw new Error('Focus must stay on the saved Rest date'); } }, replacement];
+    ui.closeDialog();
+    assert.equal(focused, true, 'Saving an available-day Rest returns focus to the same date');
     const calendar = Object.create(TrainingAgenda.prototype);
     calendar.element = { contains: () => false, querySelectorAll: () => [], querySelector: () => ({ scrollIntoView() {} }) };
     calendar.daysBefore = 2; calendar.daysAfter = 9;
@@ -144,6 +149,37 @@ try {
     assert.match(calendar.element.innerHTML, /data-agenda-action="undo"/);
     assert.doesNotMatch(calendar.element.innerHTML, /<details|<summary/);
     assert.match(calendar.element.innerHTML, />3.5<.*>1.8</s);
+    // All Rest rows share the entry title, while details distinguish available/manual/recurring days.
+    calendar.view = { today: '2026-11-03', entries: [] };
+    const emptyRest = calendar.emptyDayHTML('2026-11-03', calendar.view.today);
+    assert.match(emptyRest, /class="agenda-entry agenda-entry--rest"/);
+    assert.match(emptyRest, /class="agenda-entry-title">Rest</);
+    assert.match(emptyRest, /data-agenda-action="rest-options"/);
+    assert.match(emptyRest, /Available day, no saved Rest/);
+    assert.doesNotMatch(calendar.emptyDayHTML('2026-11-02', calendar.view.today), /rest-options|agenda-entry-title/);
+    const restUI = Object.create(TrainingAgenda.prototype);
+    const restHandlers = {};
+    let restBody, restIntent, recurringOpened = false;
+    restUI.dialogHTML = (title, body) => { assert.equal(title, 'Rest'); restBody = body; };
+    restUI.dialog = { querySelector: selector => ({ addEventListener(type, callback) { restHandlers[selector] = callback; } }) };
+    restUI.commitChange = intent => { restIntent = intent; };
+    restUI.officeDialog = () => { recurringOpened = true; };
+    restUI.restOptionsDialog('2026-11-03');
+    assert.equal(restIntent, undefined, 'Opening an available day never saves a Rest record');
+    assert.match(restBody, /This day is available/);
+    restHandlers['[data-agenda-save-rest]']();
+    assert.deepEqual(restIntent, { type: 'add', kind: 'rest', date: '2026-11-03' });
+    restHandlers['[data-agenda-recurring]']();
+    assert.equal(recurringOpened, true);
+    restUI.engine = {};
+    restUI.view = { today: '2026-11-03' };
+    restUI.dialog = { querySelector: () => null };
+    restUI.entryDialog({ kind: 'rest', date: '2026-11-03', status: 'planned', recurring: true });
+    assert.match(restBody, /Recurring Rest\. Repeats weekly/);
+    restUI.entryDialog({ kind: 'rest', date: '2026-11-03', status: 'planned' });
+    assert.match(restBody, /Manual Rest\. Reserved for this date only/);
+    assert.doesNotMatch(restBody, /Repeats weekly/);
+
     // The form submits the user's workout selection, never the planned entry ID.
     const form = new EventTarget();
     const fields = { activity: {}, gym: {}, help: {}, submit: {}, error: {} };

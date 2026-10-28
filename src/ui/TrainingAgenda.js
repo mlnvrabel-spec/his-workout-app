@@ -68,17 +68,29 @@ export class TrainingAgenda {
                 const items = entries.filter(entry => entry.date === date);
                 return `<section class="agenda-day ${date === today ? 'is-today' : ''} ${date === selected ? 'is-selected' : ''} ${date < today ? 'is-past' : ''}" data-date="${date}" aria-label="${escape(dateLabel(date))}${date === today ? ', today' : ''}">
                     <button type="button" class="agenda-date" data-agenda-action="select" data-date="${date}" aria-label="Select ${escape(dateLabel(date))}" aria-pressed="${date === selected}"><span>${date === today ? 'Today' : dayDate(date).toLocaleDateString(undefined, { weekday: 'short' })}</span><strong>${dayDate(date).getDate()}</strong><span>${dayDate(date).toLocaleDateString(undefined, { month: 'short' })}</span></button>
-                    <div class="agenda-day-content">${items.length ? `<div class="agenda-items ${items.length > 1 ? 'is-grouped' : ''}">${items.map(entry => this.entryHTML(entry, false, items.length > 1 && entry.kind === 'rest')).join('')}</div>` : `<p class="agenda-empty">${date < today ? '<span class="sr-only">No activity recorded</span>' : this.view.restExceptions?.includes(date) ? 'Available' : 'Rest'}</p>`}<button type="button" class="agenda-day-add" data-agenda-action="add" data-date="${date}" aria-label="Add activity on ${escape(dateLabel(date))}">+</button></div>
+                    <div class="agenda-day-content">${items.length ? `<div class="agenda-items ${items.length > 1 ? 'is-grouped' : ''}">${items.map(entry => this.entryHTML(entry, false, items.length > 1 && entry.kind === 'rest')).join('')}</div>` : this.emptyDayHTML(date, today)}<button type="button" class="agenda-day-add" data-agenda-action="add" data-date="${date}" aria-label="Add activity on ${escape(dateLabel(date))}">+</button></div>
                 </section>`;
             }).join('')}</div>
             <button type="button" class="agenda-range" data-agenda-action="later">Show next 7 days</button>`;
         if (focusAction) [...this.element.querySelectorAll('[data-agenda-action]')].find(button => button.dataset.agendaAction === focusAction && button.dataset.entryId === focusId && button.dataset.date === focusDate)?.focus({ preventScroll: true });
     }
 
+    emptyDayHTML(date, today) {
+        if (date < today) return '<p class="agenda-empty"><span class="sr-only">No activity recorded</span></p>';
+        if (this.view.restExceptions?.includes(date)) return '<p class="agenda-empty">Available</p>';
+        return `<button type="button" class="agenda-entry agenda-entry--rest" data-agenda-action="rest-options" data-date="${date}" aria-label="Rest · ${escape(dateLabel(date))} · Available day, no saved Rest"><span class="agenda-entry-copy"><span class="agenda-entry-title">Rest</span></span></button>`;
+    }
+
+    restOptionsDialog(date) {
+        this.dialogHTML('Rest', `<p class="agenda-entry-date">${escape(dateLabel(date))}</p><p class="agenda-form-help">This day is available: no workout or saved Rest is scheduled. Save Rest for this date only, or set recurring rest days.</p>`, '<button type="button" data-agenda-cancel>Close</button><button type="button" data-agenda-recurring>Recurring rest days</button><button type="button" class="agenda-primary" data-agenda-save-rest>Save Rest</button>');
+        this.dialog.querySelector('[data-agenda-save-rest]').addEventListener('click', () => this.commitChange({ type: 'add', kind: 'rest', date }));
+        this.dialog.querySelector('[data-agenda-recurring]').addEventListener('click', () => this.officeDialog());
+    }
+
     entryHTML(entry, includeDate = false, compact = false) {
         const movable = Boolean(entry.movable);
         const recorded = entry.status === 'completed';
-        const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'rest' ? (entry.recurring ? 'Repeats weekly' : 'Rest') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
+        const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'rest' ? (entry.recurring ? 'Repeats weekly' : 'Manual Rest') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
         const title = entry.kind === 'rest' ? 'Rest' : entry.title;
         const context = [includeDate ? dateLabel(entry.date) : '', entry.missedDate ? `Carried from ${dateLabel(entry.missedDate)}` : '', entry.demanding ? 'Demanding activity' : ''].filter(Boolean).join(' · ');
         return `<button type="button" class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-agenda-action="details" data-entry-id="${escape(entry.id)}" data-movable="${movable}" aria-label="${escape(`${title} · ${dateLabel(entry.date)} · ${label}${entry.correctable ? ' · Edit manual record' : entry.movableReason ? ` · ${entry.movableReason}` : ''}`)}">
@@ -93,6 +105,7 @@ export class TrainingAgenda {
         const entry = this.view.entries.find(item => item.id === button.dataset.entryId);
         switch (button.dataset.agendaAction) {
             case 'details': if (entry) this.entryDialog(entry); break;
+            case 'rest-options': this.restOptionsDialog(button.dataset.date); break;
             case 'add': this.addDialog(button.dataset.date || this.view.today); break;
             case 'move': if (entry) this.moveDialog(entry); break;
             case 'record': if (entry) this.commitChange({ type: 'complete', id: entry.id }); break;
@@ -136,6 +149,7 @@ export class TrainingAgenda {
         if (previous?.agendaAction) {
             const buttons = [...this.element.querySelectorAll('[data-agenda-action]')];
             (buttons.find(button => button.dataset.agendaAction === previous.agendaAction && button.dataset.entryId === previous.entryId && button.dataset.date === previous.date)
+                || buttons.find(button => button.dataset.agendaAction === 'add' && button.dataset.date === previous.date)
                 || buttons.find(button => button.dataset.agendaAction === 'add'))?.focus({ preventScroll: true });
         }
     }
@@ -210,7 +224,9 @@ export class TrainingAgenda {
         const recordable = ['run', 'activity'].includes(entry.kind) && entry.status !== 'completed' && entry.date <= this.view.today;
         const exercises = (this.engine.summaries?.find(summary => summary.id === entry.id)?.exercises || this.engine.protocolData?.[entry.day]?.exercises || []);
         const prescription = entry.kind === 'gym' && exercises.length ? `<ul class="agenda-exercises">${exercises.map(exercise => `<li>${escape(exercise.name)}</li>`).join('')}</ul>` : '';
-        this.dialogHTML(title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p>${editable ? `<form id="agenda-move-form" class="agenda-form"><label>Date<input name="date" type="date" value="${date}" ${entry.kind === 'gym' ? `min="${this.view.today}"` : ''} required></label><p class="agenda-form-help"></p></form>` : `<p class="agenda-form-help">${escape(entry.movableReason || 'Recorded history stays unchanged.')}</p>`}${prescription}`, `${editable ? '<button type="button" class="agenda-remove">Delete</button>' : ''}<button type="button" data-agenda-cancel>Close</button>${currentGym ? '<button type="button" data-agenda-open>Open workout</button>' : ''}${recordable ? '<button type="button" data-agenda-record>Record activity</button>' : ''}${editable ? '<button type="submit" class="agenda-primary" form="agenda-move-form">Save date</button>' : ''}`);
+        const restDescription = entry.kind === 'rest' ? `<p class="agenda-form-help">${entry.recurring ? 'Recurring Rest. Repeats weekly; moving or deleting this date changes only this occurrence.' : entry.status === 'completed' ? 'Rest recorded for this date only.' : 'Manual Rest. Reserved for this date only.'}</p>` : '';
+        this.dialogHTML(title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p>${restDescription}${editable ? `<form id="agenda-move-form" class="agenda-form"><label>Date<input name="date" type="date" value="${date}" ${entry.kind === 'gym' ? `min="${this.view.today}"` : ''} required></label><p class="agenda-form-help"></p></form>` : `<p class="agenda-form-help">${escape(entry.movableReason || 'Recorded history stays unchanged.')}</p>`}${prescription}`, `${editable ? '<button type="button" class="agenda-remove">Delete</button>' : ''}<button type="button" data-agenda-cancel>Close</button>${entry.kind === 'rest' ? '<button type="button" data-agenda-recurring>Recurring rest days</button>' : ''}${currentGym ? '<button type="button" data-agenda-open>Open workout</button>' : ''}${recordable ? '<button type="button" data-agenda-record>Record activity</button>' : ''}${editable ? '<button type="submit" class="agenda-primary" form="agenda-move-form">Save date</button>' : ''}`);
+        this.dialog.querySelector('[data-agenda-recurring]')?.addEventListener('click', () => this.officeDialog());
         this.dialog.querySelector('[data-agenda-open]')?.addEventListener('click', () => { this.closeDialog(); this.openWorkout(entry); });
         this.dialog.querySelector('[data-agenda-record]')?.addEventListener('click', () => this.commitChange({ type: 'complete', id: entry.id }));
         this.dialog.querySelector('.agenda-remove')?.addEventListener('click', event => this.saveChange({ type: 'remove', id: entry.id }, event.currentTarget, entry.kind === 'rest' ? 'Rest removed. Undo is available.' : 'Removed from the plan. Undo is available until affected training changes.'));

@@ -112,7 +112,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-day.is-past .agenda-items.is-grouped { background: var(--surface); }
 #training-agenda .agenda-items.is-grouped .agenda-entry { background: transparent; margin-bottom: 0; }
 #training-agenda .agenda-entry--context { min-height: 32px; padding-block: 0 10px; }
-.agenda-entry--context .agenda-entry-title { font-size: 11px; font-weight: 400; color: var(--text2); }
+.agenda-entry--context .agenda-entry-title { font-size: 15px; font-weight: 500; color: var(--text2); }
 #training-agenda .agenda-range { display: block; margin: 4px auto 0; background: transparent; color: var(--text2); font-size: 11px; }
 .agenda-overdue { margin-top: 24px; }
 .agenda-overdue > h3 { font-size: 12px; font-weight: 500; margin-bottom: 8px; color: var(--accent); }
