@@ -208,7 +208,7 @@ try {
     form.dispatchEvent(new Event('change'));
     assert.equal(fields.gym.hidden, true);
     assert.equal(form.elements.workoutDay.disabled, true, 'Hidden workout selection cannot block other activities');
-    assert.equal(fields.submit.textContent, 'Save activity', 'Other activities save without another confirmation');
+    assert.equal(fields.submit.textContent, 'Record activity', 'Past activities explicitly record without another confirmation');
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     assert.equal(selectedIntent.kind, 'run');
 
@@ -243,6 +243,50 @@ try {
     assert.equal(closeCount, 1);
     assert.equal(renderCount, 1);
     assert.match(announcement, /Workout saved.*Undo/);
+
+    // A date collision asks once; cancellation preserves the Add form and history.
+    const duplicate = Object.create(TrainingAgenda.prototype);
+    duplicate.view = add.view;
+    const duplicateError = {}, duplicateButton = {};
+    duplicate.dialog = { querySelector: () => duplicateError };
+    duplicate.closeDialog = () => {};
+    duplicate.render = () => {};
+    duplicate.announce = value => { announcement = value; };
+    let replacementWrites = 0, prompts = 0, acceptReplacement = false;
+    const collision = Object.assign(new Error('A workout is already recorded on this date.'), {
+        code: 'WORKOUT_EXISTS', replaceable: true, entry: { id: 'old:0', title: 'Push A', date: intent.date }
+    });
+    duplicate.engine = {
+        previewSchedule(value) {
+            if (!value.replaceId) throw collision;
+            assert.deepEqual(value, { ...intent, replaceId: 'old:0' });
+            return { intent: value };
+        },
+        async applySchedule() { replacementWrites++; return true; }
+    };
+    window.confirm = message => {
+        prompts++;
+        assert.match(message, /Push A is already recorded on .*Replace it with Pull B\?/);
+        return acceptReplacement;
+    };
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 1);
+    assert.equal(replacementWrites, 0);
+    assert.equal(duplicateButton.disabled, false);
+    assert.equal(form.elements.workoutDay.value, '3');
+    acceptReplacement = true;
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 2);
+    assert.equal(replacementWrites, 1);
+    assert.match(announcement, /Workout replaced.*Undo/);
+    duplicateButton.disabled = false;
+    collision.replaceable = false;
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 2, 'Saved training cannot be replaced through confirmation');
+    assert.equal(replacementWrites, 1);
+    assert.match(duplicateError.textContent, /already recorded/);
+    delete window.confirm;
+
     delete add.commitChange;
     fields.submit.disabled = false;
     const directEdit = { type: 'remove', id: 'office:2026-11-05' };

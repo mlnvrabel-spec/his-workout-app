@@ -286,5 +286,60 @@ try {
     assert.equal(await a.undoSchedule(), false, 'Undo cannot erase subsequent exercise checks');
     }
 
-    console.log('Backfill: explicit choices, future split restart, protected history, atomic writes, cycles, reload and Undo OK');
+    // Adding a workout to an occupied date requires explicit replacement, never a second summary.
+    {
+    now = '2026-11-25T18:00:00';
+    environment(); a = await engine();
+    await a.applySchedule(a.previewSchedule({ type: 'recordGym', day: 0, date: '2026-11-24' }));
+    const original = structuredClone(a.summaries[0]);
+    const originalSchedule = structuredClone(a.state.schedule);
+    const duplicate = { type: 'recordGym', day: 1, date: '2026-11-24' };
+    assert.throws(() => a.previewSchedule(duplicate), error => error.code === 'WORKOUT_EXISTS'
+        && error.replaceable && error.entry.id === original.id);
+    assert.deepEqual(a.summaries, [original]);
+    assert.throws(() => a.previewSchedule({ ...duplicate, replaceId: 'wrong' }), /existing workout changed/);
+    const replacement = a.previewSchedule({ ...duplicate, replaceId: original.id });
+    assert.deepEqual(a.state.schedule, originalSchedule, 'Replacement preview is read-only');
+    const mutate = a.storage.mutateWorkout.bind(a.storage);
+    a.storage.mutateWorkout = reducer => mutate((...args) => { reducer(...args); throw new Error('Injected replacement failure'); });
+    assert.equal(await a.applySchedule(replacement), false);
+    a = await engine();
+    assert.deepEqual(a.summaries, [original], 'Failed replacement keeps the existing workout');
+    assert.deepEqual(a.state.schedule, originalSchedule);
+    assert.equal(await a.applySchedule(a.previewSchedule(replacement.intent)), true);
+    a = await engine();
+    assert.equal(a.summaries.length, 1);
+    assert.equal(a.summaries[0].day, 1);
+    assert.equal(a.getScheduleView().averages[0].gym.count, 1);
+    assert.equal(a.getScheduleView().entries.filter(entry => entry.kind === 'gym' && entry.date === duplicate.date).length, 1);
+    assert.equal(a.state.activeDay, 2);
+    assert.equal(await a.undoSchedule(), true);
+    assert.deepEqual(a.summaries, [original]);
+    assert.deepEqual(a.state.schedule, originalSchedule);
+
+    // Replacing with the same split is still one workout; stale confirmation cannot overwrite a later edit.
+    const same = { ...duplicate, day: 0, replaceId: original.id };
+    assert.equal(await a.applySchedule(a.previewSchedule(same)), true);
+    assert.equal(a.summaries.length, 1);
+    assert.equal(await a.undoSchedule(), true);
+    const stale = a.previewSchedule({ ...duplicate, replaceId: original.id });
+    const other = await engine();
+    await other.applySchedule(other.previewSchedule({ type: 'correctGym', id: original.id, day: 3 }));
+    assert.equal(await a.applySchedule(stale), false);
+    a = await engine();
+    assert.equal(a.summaries.length, 1);
+    assert.equal(a.summaries[0].day, 3);
+    assert.throws(() => a.previewSchedule(stale.intent), /existing workout changed/);
+
+    // A real session with checks remains protected, including after it becomes a past date.
+    await a.finishSession();
+    now = '2026-11-26T18:00:00';
+    await a.refresh();
+    const protectedRecord = a.summaries.find(summary => summary.sessionId === '2026-11-25');
+    const protectedIntent = { type: 'recordGym', day: 2, date: '2026-11-25' };
+    assert.throws(() => a.previewSchedule(protectedIntent), error => error.code === 'WORKOUT_EXISTS' && !error.replaceable);
+    assert.throws(() => a.previewSchedule({ ...protectedIntent, replaceId: protectedRecord.id }), /existing workout changed/);
+    }
+
+    console.log('Backfill: explicit choices, replacement confirmation, protected history, atomic writes, cycles, reload and Undo OK');
 } finally { globalThis.Date = RealDate; }

@@ -309,18 +309,37 @@ export function proposeSchedule(saved, intent, context) {
     let correctedGym = null;
     let freedRestDate = null;
     const notices = [];
-    if (['correctGym', 'removeGymRecord'].includes(intent.type)) {
-        const entry = schedule.entries.find(value => value.id === intent.id);
+    let replacement = null;
+    if (intent.type === 'recordGym') {
+        const date = dateKey(intent.date);
+        if (date >= today) throw new Error('Choose a past date. Use the workout checklist for today.');
+        const { protocol } = contextValues(context);
+        if (Object.hasOwn(intent, 'day') && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
+        const existing = schedule.entries.filter(entry => entry.kind === 'gym' && entry.date === date && isProtected(entry));
+        if (existing.length) {
+            const entry = existing[0];
+            const replaceable = existing.length === 1 && correctableGymRecord(entry, context);
+            if (!intent.replaceId) {
+                throw Object.assign(new Error(replaceable ? 'A workout is already recorded on this date.' : 'This date already has a workout with saved training. Its checks and sets must be kept.'),
+                    { code: 'WORKOUT_EXISTS', entry: { id: entry.id, title: entry.title, date }, replaceable });
+            }
+            if (!replaceable || intent.replaceId !== entry.id) throw new Error('The existing workout changed. Try adding the workout again.');
+            replacement = entry;
+        } else if (intent.replaceId) throw new Error('The existing workout changed. Try adding the workout again.');
+    }
+    if (['correctGym', 'removeGymRecord'].includes(intent.type) || replacement) {
+        const entry = replacement || schedule.entries.find(value => value.id === intent.id);
+        const correcting = intent.type === 'correctGym' || Boolean(replacement);
         if (!entry || !correctableGymRecord(entry, context)) throw new Error('Only manually entered workouts without saved checks or sets can be corrected here.');
         const { protocol } = contextValues(context);
-        if (intent.type === 'correctGym' && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
-        if (intent.type === 'correctGym' && intent.day === entry.day) throw new Error('This is already the recorded workout.');
+        if (correcting && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
+        if (correcting && !replacement && intent.day === entry.day) throw new Error('This is already the recorded workout.');
         removedRecord = structuredClone(context.summaries.find(value => value.id === entry.id));
         removeEntry(schedule, entry);
         // Retire the mistaken identity so reconciliation cannot recreate it as a plan.
         schedule.skippedSessionIds ||= [];
         if (!schedule.skippedSessionIds.includes(entry.id)) schedule.skippedSessionIds.push(entry.id);
-        if (intent.type === 'correctGym') {
+        if (correcting) {
             const historyIndex = Math.min(schedule.cycleIds.indexOf(entry.cycleId), schedule.cycleIds.indexOf(context.cycleId));
             const historyCycleId = nextCycle(schedule);
             schedule.cycleIds.pop();
@@ -346,12 +365,10 @@ export function proposeSchedule(saved, intent, context) {
         }
     } else if (intent.type === 'recordGym') {
         const date = dateKey(intent.date);
-        if (date >= today) throw new Error('Choose a past date. Use the workout checklist for today.');
         const next = gymEntries(schedule).find(entry => entry.status !== 'completed');
         if (schedule.entries.some(entry => entry.date === date && ((entry.kind === 'rest' && isProtected(entry)) || (entry.kind === 'gym' && isProtected(entry))))) throw new Error('This date already has recorded training or rest. Keep its history unchanged.');
         const { protocol } = contextValues(context);
         const chosen = Object.hasOwn(intent, 'day');
-        if (chosen && (!Number.isInteger(intent.day) || !protocol[intent.day])) throw new Error('Choose the workout you performed.');
         const completed = gymEntries(schedule).filter(entry => entry.status === 'completed');
         const followsPlan = next?.status === 'planned' && next.cycleId === context.cycleId && next.day === intent.day
             && completed.every(entry => entry.date < date && gymOrder(schedule, entry, next) < 0);

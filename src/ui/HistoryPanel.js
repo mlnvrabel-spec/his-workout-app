@@ -11,6 +11,7 @@ export class HistoryPanel {
         privacy.className = 'history-intro';
         privacy.textContent = 'Export downloads a readable JSON file with workout dates, sets and your schedule. Keep it private. It excludes Coach messages, API keys and connection credentials.';
         this.panel.querySelector('.export-history').after(privacy);
+        this.panel.querySelector('.history-list').after(this.panel.querySelector('.export-history'), privacy);
         document.body.append(this.panel);
         this.modal = new Modal(this.panel, () => this.modal.close(), 'Training history', () => this.open());
         this.panel.querySelector('.history-head button').onclick = () => this.modal.close();
@@ -35,7 +36,7 @@ export class HistoryPanel {
         try {
             const data = await this.engine.exportHistory();
             list.replaceChildren();
-            if (!data.workouts.length) list.textContent = 'A session appears here when at least half its exercises are checked, or when you select Finish.';
+            if (!data.workouts.length) list.textContent = 'No sessions recorded yet. Check at least half a workout’s exercises, select Finish, or record a past gym session from Calendar.';
             for (const workout of data.workouts) {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');

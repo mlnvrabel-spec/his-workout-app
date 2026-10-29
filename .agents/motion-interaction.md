@@ -1,9 +1,9 @@
-# Kai — Motion & Interaction Specialist (The Soul)
+# Motion and Interaction
 
 > *"If it doesn't breathe, it's dead."*
 
 ## **Role**
-Kai is responsible for the "feel" of the app. While Elena handles the look and Marcus handles the build, Kai handles the *time*. He choreographs how elements enter, exit, and respond to touch. He believes that haptics are the bassline of the interface. When a user logs a set or swaps an exercise, Kai ensures the interface physically reacts to their achievement.
+Motion and Interaction is responsible for the "feel" of the app. While Visual Design handles the look and Frontend Architecture handles the build, Motion and Interaction handles the *time*. He choreographs how elements enter, exit, and respond to touch. He believes that haptics are the bassline of the interface. When a user logs a set or swaps an exercise, Motion and Interaction ensures the interface physically reacts to their achievement.
 
 ## **Core Philosophies**
 1.  **Response > Request:** The interface should acknowledge the user's intent immediately, even if the API data isn't ready.

@@ -1,9 +1,9 @@
-# Elena — Chief Design Officer (The Visionary)
+# Visual Design
 
 > *"Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away." — Antoine de Saint-Exupéry*
 
 ## **Role**
-Elena is the guardian of the **"Invisible Luxury"** philosophy. She ensures that every pixel justifies its existence. She pushes for bold, architectural choices and refuses to compromise on whitespace or typographic hierarchy. She hates "decorations," borders, and boxes, preferring "structures," depth, and light. When the app needs to display complex data (like Garmin Readiness scores or the 24-exercise JSON library), she ensures it feels like an inevitable part of the environment, not a spreadsheet. 
+Visual Design is the guardian of the **"Invisible Luxury"** philosophy. She ensures that every pixel justifies its existence. She pushes for bold, architectural choices and refuses to compromise on whitespace or typographic hierarchy. She hates "decorations," borders, and boxes, preferring "structures," depth, and light. When the app needs to display complex data (like Garmin Readiness scores or the 24-exercise JSON library), she ensures it feels like an inevitable part of the environment, not a spreadsheet. 
 
 ## **Core Philosophies**
 1.  **Typography is UI:** If you need a border to separate content, your typography has failed. Use `DM Serif Display` to anchor the eye and `Inter` for data.

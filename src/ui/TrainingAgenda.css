@@ -88,7 +88,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-day.is-today .agenda-date strong { color: var(--accent); }
 .agenda-day.is-selected { background: var(--accent-dim); }
 .agenda-day.is-selected .agenda-date { color: var(--accent); }
-.agenda-day-content { min-width: 0; padding-right: 38px; position: relative; }
+.agenda-day-content { min-width: 0; padding-right: 44px; position: relative; }
 #training-agenda .agenda-entry { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px; min-height: 70px; padding: 12px 14px; margin-bottom: 5px; border-radius: 16px; background: var(--surface2); text-align: left; touch-action: pan-y; -webkit-touch-callout: none; }
 .agenda-entry:hover { filter: brightness(.98); }
 .agenda-entry-copy { min-width: 0; }
@@ -104,7 +104,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-day.is-drop-target { background: var(--accent-glow); outline: 1px dashed var(--accent); }
 .agenda-day.is-drop-invalid { background: var(--red-dim); outline-color: var(--red); }
 .agenda-empty { padding: 17px 14px 6px; font-size: 12px; line-height: 1.5; color: var(--text2); }
-#training-agenda .agenda-day-add { position: absolute; right: 0; top: 14px; min-width: 36px; min-height: 44px; padding: 6px; background: transparent; color: var(--text2); font-size: 20px; }
+#training-agenda .agenda-day-add { position: absolute; right: 0; top: 14px; min-width: 44px; min-height: 44px; padding: 6px; background: transparent; color: var(--text2); font-size: 20px; }
 #training-agenda .agenda-day.is-past .agenda-entry { background: var(--surface); }
 #training-agenda .agenda-day.is-past .agenda-entry--rest { background: transparent; }
 .agenda-day.is-past .agenda-entry-title, .agenda-day.is-past .agenda-date strong { color: var(--text2); }

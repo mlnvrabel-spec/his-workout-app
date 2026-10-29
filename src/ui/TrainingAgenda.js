@@ -156,7 +156,7 @@ export class TrainingAgenda {
 
     addDialog(date) {
         const workouts = this.view.workouts || [];
-        this.dialogHTML('Add to your agenda', `<form id="agenda-add-form" class="agenda-form"><label>Activity<select name="kind"><option value="gym">Gym session (past)</option><option value="run">Norwegian 4×4</option><option value="rest">Rest</option><option value="activity">Other activity</option></select></label><div class="agenda-gym-fields" hidden><label>Workout performed<select name="workoutDay" required><option value="">Choose workout</option>${workouts.map(workout => `<option value="${workout.day}">${escape(workout.title)}</option>`).join('')}</select></label><label>Date<input name="date" type="date" value="${date}" required></label><div class="agenda-activity-fields" hidden><label>Name<input name="title" type="text" maxlength="80" placeholder="For example, a hike"></label><label class="agenda-checkbox"><input name="demanding" type="checkbox">Demanding activity</label></div><p class="agenda-form-help" aria-live="polite"></p></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-add-form">Save activity</button>');
+        this.dialogHTML('Add to your agenda', `<form id="agenda-add-form" class="agenda-form"><label>Activity<select name="kind"><option value="gym">Gym session (past)</option><option value="run">Norwegian 4×4</option><option value="rest">Rest</option><option value="activity">Other activity</option></select></label><div class="agenda-gym-fields" hidden><label>Workout performed<select name="workoutDay" required><option value="">Choose workout</option>${workouts.map(workout => `<option value="${workout.day}">${escape(workout.title)}</option>`).join('')}</select></label></div><label>Date<input name="date" type="date" value="${date}" required></label><div class="agenda-activity-fields" hidden><label>Name<input name="title" type="text" maxlength="80" placeholder="For example, a hike"></label><label class="agenda-checkbox"><input name="demanding" type="checkbox">Demanding activity</label></div><p class="agenda-form-help" aria-live="polite"></p></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-add-form">Save activity</button>');
         const form = this.dialog.querySelector('form');
         const submit = this.dialog.querySelector('[form="agenda-add-form"]');
         form.elements.kind.value = date < this.view.today ? 'gym' : 'run';
@@ -167,7 +167,7 @@ export class TrainingAgenda {
             form.elements.title.required = activity;
             form.querySelector('.agenda-gym-fields').hidden = kind !== 'gym';
             form.elements.workoutDay.disabled = kind !== 'gym';
-            submit.textContent = kind === 'gym' ? 'Save workout' : kind === 'rest' ? 'Save Rest' : 'Save activity';
+            submit.textContent = kind === 'gym' ? 'Save workout' : kind === 'rest' ? 'Save Rest' : form.elements.date.value <= this.view.today ? 'Record activity' : 'Plan activity';
             const selected = workouts.find(workout => String(workout.day) === form.elements.workoutDay.value);
             const past = form.elements.date.value < this.view.today;
             form.querySelector('.agenda-form-help').textContent = kind === 'gym'
@@ -206,9 +206,16 @@ export class TrainingAgenda {
             this.announce(`${message}${changedDates ? ` ${changedDates}${moves.length > 3 ? `; ${moves.length - 3} more workout dates changed` : ''}.` : ''}${warnings.length ? ` ${warnings[0]}${warnings.length > 1 ? ` ${warnings.length - 1} more notices.` : ''}` : ''}`);
             this.render();
         } catch (error) {
+            if (button) button.disabled = false;
+            if (error.code === 'WORKOUT_EXISTS' && error.replaceable && intent.type === 'recordGym' && !intent.replaceId) {
+                const title = this.view.workouts.find(workout => workout.day === intent.day)?.title || 'this workout';
+                if (window.confirm(`${error.entry.title} is already recorded on ${dateLabel(error.entry.date)}. Replace it with ${title}?`)) {
+                    return this.saveChange({ ...intent, replaceId: error.entry.id }, button, 'Workout replaced. Future dates updated. Undo is available until affected training changes.');
+                }
+                return;
+            }
             if (errorMessage && !this.dialog.hidden) errorMessage.textContent = error.message;
             else this.announce(error.message);
-            if (button) button.disabled = false;
         }
     }
 
@@ -232,7 +239,13 @@ export class TrainingAgenda {
         this.dialog.querySelector('.agenda-remove')?.addEventListener('click', event => this.saveChange({ type: 'remove', id: entry.id }, event.currentTarget, entry.kind === 'rest' ? 'Rest removed. Undo is available.' : 'Removed from the plan. Undo is available until affected training changes.'));
         if (!editable) return;
         const form = this.dialog.querySelector('form');
-        const update = () => { form.querySelector('.agenda-form-help').textContent = ['run', 'activity'].includes(entry.kind) && form.elements.date.value <= this.view.today ? 'This records the existing activity on that date.' : entry.recurring ? 'Changes apply to this occurrence only.' : 'Other unfinished workouts keep their order.'; };
+        const update = () => {
+            const recording = ['run', 'activity'].includes(entry.kind) && form.elements.date.value <= this.view.today;
+            form.querySelector('.agenda-form-help').textContent = recording ? 'This records the existing activity on that date.' : entry.recurring ? 'Changes apply to this occurrence only.' : 'Other unfinished workouts keep their order.';
+            const save = this.dialog.querySelector('[form="agenda-move-form"]');
+            save.disabled = form.elements.date.value === entry.date;
+            save.textContent = recording ? 'Record on this date' : 'Save date';
+        };
         form.addEventListener('change', update);
         update();
         form.addEventListener('submit', event => { event.preventDefault(); this.commitChange({ type: 'move', id: entry.id, date: form.elements.date.value, performed: ['run', 'activity'].includes(entry.kind) && form.elements.date.value <= this.view.today }); });
