@@ -101,6 +101,11 @@ try {
     element.querySelectorAll = () => [replacement];
     ui.closeDialog();
     assert.equal(focused, true, 'Focus returns even after the engine replaces the originating row');
+    focused = false;
+    ui.modal.previousFocus.dataset = { agendaAction: 'rest-options', date: '2026-11-02' };
+    element.querySelectorAll = () => [{ dataset: { agendaAction: 'add', date: '2026-11-01' }, focus() { throw new Error('Focus must stay on the saved Rest date'); } }, replacement];
+    ui.closeDialog();
+    assert.equal(focused, true, 'Saving an available-day Rest returns focus to the same date');
     const calendar = Object.create(TrainingAgenda.prototype);
     calendar.element = { contains: () => false, querySelectorAll: () => [], querySelector: () => ({ scrollIntoView() {} }) };
     calendar.daysBefore = 2; calendar.daysAfter = 9;
@@ -144,6 +149,37 @@ try {
     assert.match(calendar.element.innerHTML, /data-agenda-action="undo"/);
     assert.doesNotMatch(calendar.element.innerHTML, /<details|<summary/);
     assert.match(calendar.element.innerHTML, />3.5<.*>1.8</s);
+    // All Rest rows share the entry title, while details distinguish available/manual/recurring days.
+    calendar.view = { today: '2026-11-03', entries: [] };
+    const emptyRest = calendar.emptyDayHTML('2026-11-03', calendar.view.today);
+    assert.match(emptyRest, /class="agenda-entry agenda-entry--rest"/);
+    assert.match(emptyRest, /class="agenda-entry-title">Rest</);
+    assert.match(emptyRest, /data-agenda-action="rest-options"/);
+    assert.match(emptyRest, /Available day, no saved Rest/);
+    assert.doesNotMatch(calendar.emptyDayHTML('2026-11-02', calendar.view.today), /rest-options|agenda-entry-title/);
+    const restUI = Object.create(TrainingAgenda.prototype);
+    const restHandlers = {};
+    let restBody, restIntent, recurringOpened = false;
+    restUI.dialogHTML = (title, body) => { assert.equal(title, 'Rest'); restBody = body; };
+    restUI.dialog = { querySelector: selector => ({ addEventListener(type, callback) { restHandlers[selector] = callback; } }) };
+    restUI.commitChange = intent => { restIntent = intent; };
+    restUI.officeDialog = () => { recurringOpened = true; };
+    restUI.restOptionsDialog('2026-11-03');
+    assert.equal(restIntent, undefined, 'Opening an available day never saves a Rest record');
+    assert.match(restBody, /This day is available/);
+    restHandlers['[data-agenda-save-rest]']();
+    assert.deepEqual(restIntent, { type: 'add', kind: 'rest', date: '2026-11-03' });
+    restHandlers['[data-agenda-recurring]']();
+    assert.equal(recurringOpened, true);
+    restUI.engine = {};
+    restUI.view = { today: '2026-11-03' };
+    restUI.dialog = { querySelector: () => null };
+    restUI.entryDialog({ kind: 'rest', date: '2026-11-03', status: 'planned', recurring: true });
+    assert.match(restBody, /Recurring Rest\. Repeats weekly/);
+    restUI.entryDialog({ kind: 'rest', date: '2026-11-03', status: 'planned' });
+    assert.match(restBody, /Manual Rest\. Reserved for this date only/);
+    assert.doesNotMatch(restBody, /Repeats weekly/);
+
     // The form submits the user's workout selection, never the planned entry ID.
     const form = new EventTarget();
     const fields = { activity: {}, gym: {}, help: {}, submit: {}, error: {} };
@@ -172,7 +208,7 @@ try {
     form.dispatchEvent(new Event('change'));
     assert.equal(fields.gym.hidden, true);
     assert.equal(form.elements.workoutDay.disabled, true, 'Hidden workout selection cannot block other activities');
-    assert.equal(fields.submit.textContent, 'Save activity', 'Other activities save without another confirmation');
+    assert.equal(fields.submit.textContent, 'Record activity', 'Past activities explicitly record without another confirmation');
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     assert.equal(selectedIntent.kind, 'run');
 
@@ -207,6 +243,50 @@ try {
     assert.equal(closeCount, 1);
     assert.equal(renderCount, 1);
     assert.match(announcement, /Workout saved.*Undo/);
+
+    // A date collision asks once; cancellation preserves the Add form and history.
+    const duplicate = Object.create(TrainingAgenda.prototype);
+    duplicate.view = add.view;
+    const duplicateError = {}, duplicateButton = {};
+    duplicate.dialog = { querySelector: () => duplicateError };
+    duplicate.closeDialog = () => {};
+    duplicate.render = () => {};
+    duplicate.announce = value => { announcement = value; };
+    let replacementWrites = 0, prompts = 0, acceptReplacement = false;
+    const collision = Object.assign(new Error('A workout is already recorded on this date.'), {
+        code: 'WORKOUT_EXISTS', replaceable: true, entry: { id: 'old:0', title: 'Push A', date: intent.date }
+    });
+    duplicate.engine = {
+        previewSchedule(value) {
+            if (!value.replaceId) throw collision;
+            assert.deepEqual(value, { ...intent, replaceId: 'old:0' });
+            return { intent: value };
+        },
+        async applySchedule() { replacementWrites++; return true; }
+    };
+    window.confirm = message => {
+        prompts++;
+        assert.match(message, /Push A is already recorded on .*Replace it with Pull B\?/);
+        return acceptReplacement;
+    };
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 1);
+    assert.equal(replacementWrites, 0);
+    assert.equal(duplicateButton.disabled, false);
+    assert.equal(form.elements.workoutDay.value, '3');
+    acceptReplacement = true;
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 2);
+    assert.equal(replacementWrites, 1);
+    assert.match(announcement, /Workout replaced.*Undo/);
+    duplicateButton.disabled = false;
+    collision.replaceable = false;
+    await duplicate.saveWorkout(intent, duplicateButton);
+    assert.equal(prompts, 2, 'Saved training cannot be replaced through confirmation');
+    assert.equal(replacementWrites, 1);
+    assert.match(duplicateError.textContent, /already recorded/);
+    delete window.confirm;
+
     delete add.commitChange;
     fields.submit.disabled = false;
     const directEdit = { type: 'remove', id: 'office:2026-11-05' };

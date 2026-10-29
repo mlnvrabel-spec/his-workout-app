@@ -45,6 +45,23 @@ export class Kai {
         this.drafts = new Map();
         this.setEditor = new SetEditor(engine, message => this.showFeedback(message));
         renderNetworkStatus(document.getElementById('network-status'));
+        const networkButton = document.getElementById('network-status');
+        const networkDescription = document.getElementById('network-description');
+        const closeNetworkDescription = () => {
+            networkDescription.hidden = true;
+            networkButton.setAttribute('aria-expanded', 'false');
+        };
+        networkButton?.addEventListener('click', () => {
+            networkDescription.hidden = !networkDescription.hidden;
+            networkDescription.textContent = networkButton.getAttribute('aria-label');
+            networkButton.setAttribute('aria-expanded', String(!networkDescription.hidden));
+        });
+        document.addEventListener('click', event => {
+            if (networkDescription && !networkDescription.hidden && !networkButton.contains(event.target) && event.target !== networkDescription) closeNetworkDescription();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && networkDescription && !networkDescription.hidden) { closeNetworkDescription(); networkButton.focus(); }
+        });
         this.setupListeners();
         this.setupEventDelegation();
         this.exerciseReorder = new ExerciseReorder(this.els.cards, this.engine, message => this.showFeedback(message));
@@ -87,6 +104,8 @@ export class Kai {
         window.addEventListener('engine:error', event => this.showFeedback(event.detail.message, true));
         window.addEventListener('network:state_change', event => {
             renderNetworkStatus(document.getElementById('network-status'), event.detail?.state);
+            const description = document.getElementById('network-description');
+            if (description && !description.hidden) description.textContent = document.getElementById('network-status').getAttribute('aria-label');
         });
         window.addEventListener('workout:finished', (e) => this.sealCompletedWorkout(e.detail?.session));
 
@@ -130,6 +149,11 @@ export class Kai {
     render(state) {
         if (!state) return;
 
+        const focused = document.activeElement;
+        const focusedForm = focused?.closest?.('.set-form');
+        const focusName = focusedForm && this.renderedCycle === this.engine.cycleId && this.renderedDay === state.day
+            ? { exercise: focusedForm.dataset.exercise, name: focused.name || 'submit' } : null;
+
         const guidance = new Map();
         if (this.renderedCycle === this.engine.cycleId && this.renderedDay === state.day) {
             for (const card of this.els.cards?.querySelectorAll('.card-wrapper') || []) {
@@ -171,6 +195,10 @@ export class Kai {
             if (draft) { form.elements.weight.value = draft.weight; form.elements.reps.value = draft.reps; }
         }
         this.updateNavState(state.day);
+        if (focusName) {
+            const form = [...this.els.cards.querySelectorAll('.set-form')].find(item => item.dataset.exercise === focusName.exercise);
+            (focusName.name === 'submit' ? form?.querySelector('button[type="submit"]') : form?.elements[focusName.name])?.focus({ preventScroll: true });
+        }
     }
 
     toggleCard(card) {
@@ -292,6 +320,12 @@ export class Kai {
      */
     setupEventDelegation() {
         if (!this.els.cards) return;
+        this.els.cards.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && event.target.matches('.set-form input[name="weight"]')) {
+                event.preventDefault();
+                event.target.form.elements.reps.focus();
+            }
+        });
 
         // Pointer state for swipes
         let isDragging = false;
@@ -349,12 +383,34 @@ export class Kai {
             if (!form) return;
             event.preventDefault();
             if (form.dataset.saving) return;
+            const inputs = [form.elements.weight, form.elements.reps];
+            inputs.forEach(input => { input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby'); });
+            const invalid = inputs.find(input => !input.checkValidity());
+            const feedback = form.querySelector('.set-feedback');
+            if (invalid) {
+                const message = invalid.name === 'weight' ? 'Enter a load from 0 to 2000 kg, in steps of 0.25 kg.' : 'Enter a whole number of reps from 1 to 1000.';
+                invalid.setAttribute('aria-invalid', 'true');
+                feedback.id = `set-feedback-${form.dataset.exercise}`;
+                invalid.setAttribute('aria-describedby', feedback.id);
+                feedback.hidden = false;
+                feedback.textContent = message;
+                feedback.classList.add('is-error');
+                invalid.focus();
+                return;
+            }
             form.dataset.saving = 'true';
             const button = form.querySelector('button[type="submit"]');
             button.disabled = true;
             const exercise = this.engine.protocolData[this.engine.state.day].exercises.find(ex => ex._exerciseId === form.dataset.exercise);
             const saved = await this.engine.logExercise(exercise.name, form.elements.weight.value, form.elements.reps.value);
-            if (saved) { triggerHaptic('setSaved'); this.showFeedback('Set saved on this device'); }
+            const currentForm = [...this.els.cards.querySelectorAll('.set-form')].find(item => item.dataset.exercise === form.dataset.exercise);
+            const currentFeedback = currentForm?.querySelector('.set-feedback');
+            if (currentFeedback) {
+                currentFeedback.hidden = false;
+                currentFeedback.classList.toggle('is-error', !saved);
+                currentFeedback.textContent = saved ? 'Set saved on this device' : (document.getElementById('session-feedback')?.textContent || 'Set not saved. Your previous sets are preserved. Try again.');
+            }
+            if (saved) triggerHaptic('setSaved');
             button.disabled = false;
             delete form.dataset.saving;
         });
@@ -558,7 +614,7 @@ export class Kai {
             if (innerCard) {
                 const originalShadow = innerCard.style.boxShadow;
                 innerCard.style.transition = `box-shadow 0.3s ${this.memoryFoam}`;
-                innerCard.style.boxShadow = '0 0 15px rgba(74, 222, 128, 0.6)';
+                innerCard.style.boxShadow = '0 0 0 2px var(--teal-dim)';
                 setTimeout(() => innerCard.style.boxShadow = originalShadow, 800);
             }
         }

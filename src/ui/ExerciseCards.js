@@ -1,4 +1,6 @@
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const swapInfoHint = (exercise, engine) => (engine?.getSwapOptions?.(exercise._exerciseId)?.length > 0)
+    ? '<p class="exercise-hint">Swipe the exercise name for alternatives, or tap its number.</p>' : '';
 
 
 
@@ -75,7 +77,7 @@ export class ExerciseCards {
             <div class="swipe-bg" style="transition: opacity 0.3s ${this.motionCurve}">
                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
             </div>
-            <div class="card" data-id="${id}" style="transition: transform 0.3s ${this.motionCurve}, height 0.4s ${this.motionCurve}">
+            <div class="card" data-id="${id}" style="transition: transform 0.25s ${this.motionCurve}, opacity 0.25s ${this.motionCurve}">
                 <div class="intensity-bar ${intensityClass}"></div>
                 <div class="card-head" ${swapInfo?.options?.length > 1 ? 'data-swappable="true"' : ''}>
                     ${!finished ? `<button type="button" class="ex-num reorder-handle" aria-label="Actions for ${escapeHTML(exercise.name)}" aria-expanded="false" title="Exercise actions; arrow keys move unfinished exercises"><span class="ex-number">${index + 1}</span></button>` : `<div class="ex-num">${index + 1}</div>`}
@@ -125,15 +127,20 @@ export class ExerciseCards {
         const last = sets.at(-1) || previous?.sets.at(-1);
         const logRows = sets.map(set => `<li><span>Set ${set.set_number}</span><strong>${set.weight_kg} kg × ${set.reps}</strong>${finished ? '' : `<button type="button" class="edit-set-btn" data-edit-set="${set.set_number}" data-exercise="${escapeHTML(exercise._exerciseId)}" aria-label="Edit ${escapeHTML(exercise.name)} set ${set.set_number}">Edit</button>`}</li>`).join('');
         const prior = previous?.sets.at(-1);
+        const dumbbells = /\b(?:DB|dumbbell)\b/i.test(exercise.name);
+        const priorDate = prior?.timestamp && !Number.isNaN(Date.parse(prior.timestamp))
+            ? new Date(prior.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
         return `<section class="set-logging" aria-label="${escapeHTML(exercise.name)} set log">
             <p class="detail-label">${finished ? 'Saved sets' : 'Your sets'}</p>
-            ${prior ? `<p class="previous-set">Last session · ${prior.weight_kg} kg × ${prior.reps}</p>` : ''}
+            ${prior ? `<p class="previous-set">Last set in previous session${priorDate ? ` · ${escapeHTML(priorDate)}` : ''} · ${prior.weight_kg} kg × ${prior.reps}</p>` : ''}
             <ol class="logged-sets">${logRows || '<li>No sets logged</li>'}</ol>
-            ${finished ? '' : `<form class="set-form" data-exercise="${exercise._exerciseId}">
-                <label>Load · kg<input name="weight" type="number" inputmode="decimal" min="0" max="2000" step="0.25" required value="${last?.weight_kg ?? ''}" aria-label="${escapeHTML(exercise.name)} load in kilograms"></label>
-                <label>Reps<input name="reps" type="number" inputmode="numeric" min="1" max="1000" step="1" required value="${last?.reps ?? ''}" aria-label="${escapeHTML(exercise.name)} repetitions"></label>
-                <button type="submit" class="save-set-btn">Log set</button>
-            </form><p class="progression-cue">${prior ? `Aim within ${escapeHTML(exercise.reps)} at ${escapeHTML(exercise.rir)} RIR; reach the top of the range on all sets before adding load.` : 'Establish a comfortable baseline within the prescribed range.'}</p>`}
+            ${finished ? '' : `<form class="set-form" data-exercise="${exercise._exerciseId}" novalidate>
+                <label>${dumbbells ? 'Pair · kg' : 'Load · kg'}<input name="weight" type="number" inputmode="decimal" enterkeyhint="next" min="0" max="2000" step="0.25" required value="${last?.weight_kg ?? ''}" aria-label="${escapeHTML(exercise.name)} ${dumbbells ? 'combined pair' : 'load'} in kilograms"></label>
+                <label>Reps<input name="reps" type="number" inputmode="numeric" enterkeyhint="done" min="1" max="1000" step="1" required value="${last?.reps ?? ''}" aria-label="${escapeHTML(exercise.name)} repetitions"></label>
+                <button type="submit" class="save-set-btn">Log set ${sets.length + 1}</button>
+                <p class="set-feedback" role="status" aria-live="polite" hidden></p>
+            </form><p class="progression-cue">${prior ? `Aim within ${escapeHTML(exercise.reps)} at ${escapeHTML(exercise.rir)} RIR; reach the top of the range on all sets before adding load.` : 'Establish a comfortable baseline within the prescribed range.'}</p>
+            ${dumbbells ? '<p class="load-convention">Dumbbells: enter the combined weight of the pair.</p>' : ''}${swapInfoHint(exercise, this.engine)}`}
         </section>`;
     }
 

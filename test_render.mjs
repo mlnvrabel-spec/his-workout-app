@@ -24,6 +24,21 @@ for (let day = 0; day < workout.protocolData.length; day++) {
 }
 console.log('All protocol cards render in active and completed states.');
 
+const logging = new ExerciseCards(null, {
+    getExerciseLogs: () => [{ set_number: 1, weight_kg: 20, reps: 8 }],
+    getPreviousLog: () => ({ sets: [{ weight_kg: 18, reps: 10, timestamp: '2026-10-20T12:00:00Z' }] }),
+    getSwapOptions: () => [{ id: 'a' }, { id: 'b' }]
+}, 'ease');
+const loggingHTML = logging.renderLogForm({ _exerciseId: 'press', name: 'Press', reps: '6–10', rir: '1–2' }, false);
+assert.match(loggingHTML, /Last set in previous session/);
+assert.match(loggingHTML, /18 kg × 10/);
+assert.match(loggingHTML, /Log set 2/);
+assert.match(loggingHTML, /enterkeyhint="next"/);
+assert.match(loggingHTML, /class="set-feedback" role="status"/);
+assert.match(loggingHTML, /Swipe the exercise name for alternatives/);
+assert.doesNotMatch(logging.renderLogForm({ _exerciseId: 'press', name: 'Press' }, true), /set-form|exercise-hint/);
+assert.match(logging.renderLogForm({ _exerciseId: 'press', name: 'DB Press' }, false), /combined weight of the pair/);
+
 const { Kai, renderNetworkStatus } = await import('./src/ui/Kai.js');
 const indicator = { dataset: {}, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
 for (const state of ['LIVE', 'CACHED', 'SYNCING']) {

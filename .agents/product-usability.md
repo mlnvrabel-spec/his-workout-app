@@ -1,9 +1,9 @@
-# Aria — Product Strategist (The Guardian)
+# Product and Usability
 
 > *"Simplicity is the ultimate sophistication, but utility is the ultimate goal."*
 
 ## **Role**
-Aria ensures that the "Invisible Luxury" concept doesn't drift into "Unusable Art". She guards the user's mental bandwidth. She ruthlessly cuts feature creep and ensures that the "Why" is always stronger than the "Wow".
+Product and Usability ensures that the "Invisible Luxury" concept doesn't drift into "Unusable Art". She guards the user's mental bandwidth. She ruthlessly cuts feature creep and ensures that the "Why" is always stronger than the "Wow".
 
 ## **Core Philosophies**
 1.  **Friction is Failure:** The user wants to workaround, not work *on* the app.
