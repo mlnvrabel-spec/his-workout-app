@@ -9,7 +9,21 @@ globalThis.Date = class extends RealDate {
 };
 try {
     environment();
+    now = '2026-11-02T18:00:00';
     let a = await engine();
+    // A fifth free day is planned and survives local persistence/Undo, without a weekly quota.
+    now = '2026-11-02T18:00:00';
+    const datesThisWeek = instance => instance.getScheduleView().entries.filter(entry => entry.kind === 'gym' && entry.date >= '2026-11-02' && entry.date <= '2026-11-08').map(entry => entry.date);
+    assert.deepEqual(datesThisWeek(a), ['2026-11-03', '2026-11-04', '2026-11-06', '2026-11-07', '2026-11-08']);
+    a = await engine();
+    assert.equal(datesThisWeek(a).length, 5);
+    assert.equal(await a.applySchedule(a.previewSchedule({ type: 'add', kind: 'rest', date: '2026-11-06' })), true);
+    a = await engine();
+    assert.deepEqual(datesThisWeek(a), ['2026-11-03', '2026-11-04', '2026-11-07', '2026-11-08']);
+    assert.equal(await a.undoSchedule(), true);
+    a = await engine();
+    assert.equal(datesThisWeek(a).length, 5);
+    environment(); now = '2026-11-03T18:00:00'; a = await engine();
     // A manual Tuesday rest must not lock an elapsed weekly REST occurrence.
     assert.equal(await a.applySchedule(a.previewSchedule({ type: 'officeDays', days: [1, 4], effectiveDate: '2026-11-03' })), true);
     assert.equal(await a.applySchedule(a.previewSchedule({ type: 'add', kind: 'rest', date: '2026-11-03', performed: true })), true);

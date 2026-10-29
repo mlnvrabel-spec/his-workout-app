@@ -1,10 +1,10 @@
 # Training and scheduling decisions
 
-Accepted context updated **19 October 2026**. Research searched **18 October 2026**. This is the rationale brief; [PRODUCT_SPEC.md §8](PRODUCT_SPEC.md#8-flexible-training-agenda) owns the behavior contract and [REVIEW_VERIFICATION.md](REVIEW_VERIFICATION.md) owns implementation evidence. Preferences and reasonable inferences below are not physiological facts.
+Accepted context updated **29 October 2026**. Research searched **18 October 2026**. This is the rationale brief; [PRODUCT_SPEC.md §8](PRODUCT_SPEC.md#8-flexible-training-agenda) owns the behavior contract and [REVIEW_VERIFICATION.md](REVIEW_VERIFICATION.md) owns implementation evidence. Preferences and reasonable inferences below are not physiological facts.
 
 ## Accepted user context and boundaries
 
-- Muscle growth comes first. Target: **four gym sessions/week**. Reported long-term average: **3.5/week**, also acceptable. Four sessions average a seven-day cycle at the target, or eight days at the historical average. Neither implies a Monday reset or a catch-up quota.
+- Muscle growth comes first. The previously reported target of **four gym sessions/week** and long-term average of **3.5/week** are context, not scheduling limits. On 29 October the user explicitly chose availability-based planning: use free dates for the rolling split, allowing a fifth session when space permits. No weekly minimum, maximum, Monday reset or catch-up quota; recurring/manual Rest and other dated activities constrain the plan.
 - Preserve the rolling **Push A → Pull A → Push B → Pull B** and current exercises. Leg work occurs in every session. No automatic substitutions, B-session swaps, recovery scores or mandatory recovery intervals.
 - Current Norwegian 4×4 frequency is roughly once per two weeks; desired frequency is once per **7–10 days**, subordinate to gym scheduling. No planned gym workout on that day. Runs can normally be in the evening. Saturday evening lifting followed by Sunday evening running is about 24 hours start-to-start, not the previously assumed 16 hours; neither guarantees recovery.
 - Reported VO₂max is approximately 51, from a Garmin Fēnix 8 using a Garmin Pro chest strap. The user expects improvement potential but does not want to prioritize it over lifting. This is a wearable estimate, not a laboratory measurement.
