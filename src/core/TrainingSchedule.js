@@ -23,7 +23,6 @@ export function addDays(value, days) {
 }
 
 const weekday = date => new Date(`${date}T12:00:00Z`).getUTCDay();
-const monday = date => addDays(date, -((weekday(date) + 6) % 7));
 const latest = (...dates) => dates.filter(Boolean).sort().at(-1);
 const sessionId = (cycleId, day) => `${cycleId}:${day}`;
 const isProtected = entry => entry.status === 'started' || entry.status === 'completed';
@@ -91,36 +90,28 @@ function gymEntries(schedule) {
 function addPlannedCycles(schedule, cycleId, protocol) {
     const current = schedule.cycleIds.indexOf(cycleId);
     while (schedule.cycleIds.length < current + 4) nextCycle(schedule);
-    const newIds = new Set();
     for (const id of schedule.cycleIds.slice(current)) {
         protocol.forEach((day, index) => {
             const key = sessionId(id, index);
             if (scheduleDaySkipped(schedule, id, index)) return;
             if (!schedule.entries.some(entry => entry.id === key)) {
                 schedule.entries.push({ id: key, kind: 'gym', cycleId: id, day: index, title: day.title, status: 'planned', source: 'dashboard' });
-                newIds.add(key);
             }
         });
     }
-    return newIds;
 }
 
-function earliestDate(schedule, requested, ignoredId, weekCounts = null) {
+function earliestDate(schedule, requested, ignoredId) {
     let date = dateKey(requested);
     for (let offset = 0; offset <= MAX_FORWARD_DAYS; offset++, date = addDays(date, 1)) {
         if (blockedDate(schedule, date, ignoredId)) continue;
-        if (weekCounts && (weekCounts.get(monday(date)) || 0) >= 4) continue;
         return date;
     }
     throw new Error('No available date within two years. Change the rest or activity dates first.');
 }
 
 /** Move only the necessary future chain. A freed date never pulls later sessions backward. */
-function placeGyms(schedule, today, { newIds = new Set(), exactId = null, exactDate = null, strict = false } = {}) {
-    const counts = new Map();
-    for (const entry of schedule.entries.filter(entry => entry.kind === 'gym' && (!newIds.has(entry.id) || isProtected(entry)) && entry.date)) {
-        counts.set(monday(entry.date), (counts.get(monday(entry.date)) || 0) + 1);
-    }
+function placeGyms(schedule, today, { exactId = null, exactDate = null, strict = false } = {}) {
     let previous = null;
     for (const entry of gymEntries(schedule)) {
         if (isProtected(entry)) {
@@ -134,7 +125,7 @@ function placeGyms(schedule, today, { newIds = new Set(), exactId = null, exactD
         const requested = entry.id === exactId ? exactDate : latest(entry.date, today);
         const floor = latest(requested, previous && addDays(previous, 1), today);
         if (entry.id === exactId && floor !== exactDate) throw new Error('This date would put the workout before an unfinished earlier session.');
-        const date = earliestDate(schedule, floor, entry.id, newIds.has(entry.id) ? counts : null);
+        const date = earliestDate(schedule, floor, entry.id);
         if (date > addDays(today, MAX_FORWARD_DAYS)) throw new Error('This change moves training more than two years ahead. Change the blocking dates first.');
         if (entry.id === exactId && date !== exactDate) throw new Error(`${blockedDate(schedule, exactDate, entry.id) || 'Another session'} occupies this date. Move it first.`);
         // A started session later in the sequence is a fixed boundary for a requested move.
@@ -144,7 +135,6 @@ function placeGyms(schedule, today, { newIds = new Set(), exactId = null, exactD
         }
         entry.date = date;
         entry.originalDate ||= date;
-        if (newIds.has(entry.id)) counts.set(monday(date), (counts.get(monday(date)) || 0) + 1);
         previous = date;
     }
 }
@@ -203,9 +193,9 @@ export function reconcileSchedule(saved, context) {
         !(context.summaries || []).some(summary => summary.id === id)
         && !(context.logs || []).some(log => log.session_id === id && log.sets?.length)
         && !protocol.some((_, day) => id === sessionId(cycleId, day) && Object.values(context.workout?.done?.[day] || {}).some(Boolean)));
-    const newIds = addPlannedCycles(schedule, cycleId, protocol);
+    addPlannedCycles(schedule, cycleId, protocol);
     reconcileActuals(schedule, context);
-    placeGyms(schedule, today, { newIds });
+    placeGyms(schedule, today);
     return schedule;
 }
 
@@ -444,7 +434,7 @@ export function proposeSchedule(saved, intent, context) {
         // The user explicitly requested recalculation, including bringing planned
         // sessions forward. Actual history and non-gym appointments stay fixed.
         for (const entry of pending) entry.date = today;
-        placeGyms(schedule, today, { newIds: new Set(pending.map(entry => entry.id)), strict: true });
+        placeGyms(schedule, today, { strict: true });
     } else {
         placeGyms(schedule, today, { exactId, exactDate, strict: true });
     }

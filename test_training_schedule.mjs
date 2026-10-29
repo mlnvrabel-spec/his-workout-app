@@ -8,13 +8,25 @@ const gyms = schedule => schedule.entries.filter(entry => entry.kind === 'gym').
 const gymDates = schedule => gyms(schedule).map(entry => entry.date);
 const act = (schedule, intent, current = ctx) => proposeSchedule(schedule, intent, current).schedule;
 const summary = (day, date, cycleId = 'c1') => ({ id: `${cycleId}:${day}`, cycleId, day, sessionId: date, completedAt: `${date}T18:00:00Z`, title: protocolData[day].title });
+// Availability controls frequency: five free dates, four with Rest, three with a run.
+const flexibleContext = context('2026-11-02');
+const flexible = reconcileSchedule(null, flexibleContext);
+const weekDates = schedule => gymDates(schedule).filter(date => date >= '2026-11-02' && date <= '2026-11-08');
+assert.deepEqual(weekDates(flexible), ['2026-11-03', '2026-11-04', '2026-11-06', '2026-11-07', '2026-11-08'], 'A free Sunday permits the fifth gym session; a calendar week never forces Rest');
+assert.deepEqual(gyms(flexible).slice(0, 5).map(entry => entry.day), [0, 1, 2, 3, 0], 'The rolling split crosses its cycle without a weekly reset');
+const manualRest = act(flexible, { type: 'add', kind: 'rest', date: '2026-11-06' }, flexibleContext);
+assert.deepEqual(weekDates(manualRest), ['2026-11-03', '2026-11-04', '2026-11-07', '2026-11-08']);
+const manualRun = act(manualRest, { type: 'add', kind: 'run', date: '2026-11-07' }, flexibleContext);
+assert.deepEqual(weekDates(manualRun), ['2026-11-03', '2026-11-04', '2026-11-08'], 'Extra constraints reduce gym frequency without a minimum or catch-up quota');
+assert.deepEqual(reconcileSchedule(manualRun, flexibleContext), manualRun, 'Saved explicit dates and constraints stay stable');
+
 let base = reconcileSchedule(null, ctx);
-assert.deepEqual(gymDates(base).slice(0, 12), ['2026-11-03', '2026-11-04', '2026-11-06', '2026-11-07', '2026-11-10', '2026-11-11', '2026-11-13', '2026-11-14', '2026-11-17', '2026-11-18', '2026-11-20', '2026-11-21']);
-assert.deepEqual(reconcileSchedule(base, ctx), base, 'Reconciliation is idempotent and does not turn the weekly target into extra workouts');
+assert.deepEqual(gymDates(base).slice(0, 12), ['2026-11-03', '2026-11-04', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-10', '2026-11-11', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-17', '2026-11-18']);
+assert.deepEqual(reconcileSchedule(base, ctx), base, 'Reconciliation is idempotent and preserves the rolling plan');
 assert.equal(nextScheduleCycleId(base, 'c1'), 'c1~1');
 base = act(base, { type: 'add', kind: 'run', date: '2026-11-01', performed: true });
 const recordedRun = base.entries.find(entry => entry.kind === 'run');
-assert.equal(suggestedRunDate(base, ctx), '2026-11-08', 'Run suggestion leaves gym appointments in place');
+assert.equal(suggestedRunDate(base, ctx), '2026-11-25', 'Run suggestion leaves gym appointments in place');
 base = act(base, { type: 'add', kind: 'run', date: '2026-11-08' });
 const runId = base.entries.find(entry => entry.kind === 'run' && entry.status === 'planned').id;
 assert.equal(suggestedRunDate(base, ctx), null, 'An existing run appointment does not generate another suggestion');
@@ -22,12 +34,15 @@ const untouched = structuredClone(base);
 
 // Same five product cases for either UI concept: office change, run insertion, cycle move, hike, missed gym.
 const offices = act(base, { type: 'officeDays', days: [2, 5] });
-assert.deepEqual(gymDates(offices).slice(0, 12), ['2026-11-04', '2026-11-05', '2026-11-07', '2026-11-09', '2026-11-11', '2026-11-12', '2026-11-14', '2026-11-15', '2026-11-18', '2026-11-19', '2026-11-21', '2026-11-22']);
+assert.deepEqual(gymDates(offices).slice(0, 12), ['2026-11-04', '2026-11-05', '2026-11-07', '2026-11-09', '2026-11-11', '2026-11-12', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-18', '2026-11-19', '2026-11-21']);
 assert.deepEqual(offices.entries.find(entry => entry.id === recordedRun.id), recordedRun, 'Office changes preserve the previously completed run');
 const insertedRun = proposeSchedule(base, { type: 'move', id: runId, date: '2026-11-10' }, ctx);
 assert.deepEqual(gymDates(insertedRun.schedule).slice(4, 12), ['2026-11-11', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-17', '2026-11-18', '2026-11-20', '2026-11-21']);
-assert.equal(insertedRun.changes.filter(change => change.kind === 'gym').length, 4, 'Only the necessary chain shifts');
-assert.ok(!insertedRun.changes.some(change => change.id === 'c1~2:0'), 'Propagation stops when an existing gap absorbs it');
+assert.equal(insertedRun.changes.filter(change => change.kind === 'gym').length, 12, 'A full schedule shifts the entire necessary chain without inventing a weekly gap');
+const savedGap = act(base, { type: 'move', id: 'c1~2:0', date: '2026-11-22' });
+const absorbed = proposeSchedule(savedGap, { type: 'move', id: runId, date: '2026-11-10' }, ctx);
+assert.equal(absorbed.changes.filter(change => change.kind === 'gym').length, 4, 'An explicitly saved gap still absorbs a cascade');
+assert.ok(!absorbed.changes.some(change => change.id === 'c1~2:0'), 'Saved later dates are preserved once the cascade fits');
 const crossed = act(base, { type: 'move', id: 'c1:3', date: '2026-11-10' });
 assert.equal(crossed.entries.find(entry => entry.id === 'c1:3').date, '2026-11-10');
 assert.deepEqual(gymDates(crossed).slice(4, 8), ['2026-11-11', '2026-11-13', '2026-11-14', '2026-11-15']);
