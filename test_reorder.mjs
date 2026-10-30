@@ -57,6 +57,47 @@ a.storage.mutateWorkout = reducer => mutate((...args) => { reducer(...args); thr
 assert.equal(await a.reorderExercise(0, 2, 0), false);
 assert.deepEqual(a.getExerciseOrder(0), original, 'Failed save leaves order intact');
 assert.equal(await a.reorderExercise(0, 2, NaN), false);
+// Bug Hub #14 / PRODUCT_SPEC §§3.1, 7: partial and counted sessions remain reorderable today.
+environment(); a = await engine();
+await a.logSet(a.protocolData[0].exercises[0]._exerciseId, 20, 8);
+await a.finishSession();
+const priorHistory = structuredClone(a.getDaySummary(0));
+await a.setDay(1);
+const pullOrder = a.getExerciseOrder(1);
+await a.logSet(a.protocolData[1].exercises[0]._exerciseId, 40, 8);
+await a.logSet(a.protocolData[1].exercises[5]._exerciseId, 12, 10);
+const sortedLogs = () => structuredClone(a.logs).sort((left, right) => `${left.session_id}:${left.exercise_id}`.localeCompare(`${right.session_id}:${right.exercise_id}`));
+const savedSets = sortedLogs();
+for (const slot of [0, 1, 2]) {
+    await a.toggleComplete(`ex-1-${slot}`, 1);
+    assert.equal(a.isDayCompleted(1), slot === 2, 'Only the third of six checks counts Pull A');
+    assert.equal(a.isDaySealed(1), false, 'Counting is not sealing');
+    const checks = structuredClone(a.state.done);
+    assert.equal(await a.reorderExercise(1, 5, 3), true, `Unfinished move after ${slot + 1} checks`);
+    assert.deepEqual(a.getExerciseOrder(1).slice(0, slot + 1), pullOrder.slice(0, slot + 1), 'Checked positions stay fixed');
+    assert.deepEqual(a.state.done, checks, 'Reordering retains every check');
+    assert.deepEqual(sortedLogs(), savedSets, 'Reordering retains checked and unfinished exercise sets');
+    assert.deepEqual(a.getDaySummary(0), priorHistory, 'Earlier history stays unchanged');
+    if (slot === 2) {
+        assert.equal(a.getDaySummary(1).completedExercises, 3);
+        assert.deepEqual(a.getDaySummary(1).order, a.getExerciseOrder(1), 'Counted history tracks the new order');
+        const reordered = a.getExerciseOrder(1);
+        a = await engine();
+        assert.deepEqual(a.getExerciseOrder(1), reordered, 'Counted session order survives reload');
+        assert.deepEqual(a.state.done, checks);
+        assert.deepEqual(sortedLogs(), savedSets);
+        assert.equal(a.isDaySealed(1), false);
+    }
+    assert.equal(await a.undoExerciseOrder(1), true);
+    assert.deepEqual(a.getExerciseOrder(1), pullOrder);
+}
+assert.equal(await a.reorderExercise(1, 0, 4), false, 'A checked exercise remains fixed');
+assert.equal(await a.reorderExercise(1, 5, 1), false, 'A checked destination remains protected');
+await a.toggleComplete('ex-1-2', 1);
+assert.equal(a.isDayCompleted(1), false);
+assert.equal(await a.reorderExercise(1, 5, 3), true, 'Dropping below 50% retains ordering access');
+assert.deepEqual(sortedLogs(), savedSets);
+assert.deepEqual(a.getDaySummary(0), priorHistory);
 // Exercise the actual pointer boundary, including hold, drop and cancellation.
 const realTimer = globalThis.setTimeout;
 let held;
@@ -68,7 +109,8 @@ surface.querySelectorAll = () => [];
 surface.querySelector = () => null;
 let captured = false;
 let checked = false;
-const card = { dataset: { idx: '2' }, classList: { add() {}, contains: () => checked } };
+const card = { dataset: { idx: '2' }, classList: { add() {}, contains: () => checked }, getBoundingClientRect: () => ({ bottom: 200 }) };
+surface.querySelectorAll = selector => selector === '.card-wrapper' ? [card] : [];
 const cardSurface = { style: {}, closest: () => card, setPointerCapture() { captured = true; }, hasPointerCapture() { return captured; }, releasePointerCapture() { captured = false; } };
 let control = null;
 const target = { closest: selector => selector === '.card' ? cardSurface : selector === '.reorder-handle' ? null : control };
@@ -141,8 +183,8 @@ assert.equal(click.defaultPrevented, true, 'Post-drag click cannot open details 
 assert.equal(calls.length, 2, 'Only completed drags save');
 // Run the actual swipe and reorder listeners together, in their application order.
 const combined = new EventTarget();
-combined.querySelectorAll = () => [];
 combined.querySelector = () => null;
+combined.querySelectorAll = selector => selector === '.card-wrapper' ? [card] : [];
 card.id = 'ex-0-2';
 card.classList.remove = () => {};
 card.querySelector = () => null;
@@ -172,5 +214,66 @@ assert.equal(combinedGestures.drag, null, 'Quick horizontal movement still belon
 assert.equal(captured, true, 'Horizontal swipe captures only after movement');
 combinedPointer('pointerup', 120);
 assert.equal(completionCalls, 1, 'Quick completion swipe still works');
+// A phone can deliver the final move and release before the next animation frame.
+// Dropping must use the release position, not the last painted target (initially itself).
+const dropSurface = new EventTarget();
+const dropCards = [0, 1, 2, 3, 4, 5].map(slot => ({
+    dataset: { idx: String(slot) },
+    classList: { add() {}, remove() {}, toggle() {}, contains: () => slot < 3 },
+    getBoundingClientRect: () => ({ bottom: (slot + 1) * 100 })
+}));
+dropSurface.querySelectorAll = selector => selector === '.card-wrapper' ? dropCards : [];
+dropSurface.querySelector = () => null;
+const dropCardSurface = {
+    style: {}, closest: () => dropCards[5],
+    setPointerCapture() {}, hasPointerCapture: () => false
+};
+const dropTarget = { closest: selector => selector === '.card' ? dropCardSurface : null };
+const dropCalls = [];
+await a.undoExerciseOrder(1);
+await a.toggleComplete('ex-1-2', 1);
+assert.equal(a.isDayCompleted(1), true);
+const dropChecks = structuredClone(a.state.done);
+let dropSave;
+const dropEngine = {
+    get state() { return a.state; }, get cycleId() { return a.cycleId; },
+    isDaySealed: day => a.isDaySealed(day),
+    reorderExercise(...args) { dropCalls.push(args); return dropSave = a.reorderExercise(...args); }
+};
+new ExerciseReorder(dropSurface, dropEngine, () => {});
+function dropPointer(type, y) {
+    const event = new Event(type, { cancelable: true });
+    Object.assign(event, { button: 0, pointerId: 2, clientX: 20, clientY: y });
+    Object.defineProperty(event, 'target', { value: dropTarget });
+    dropSurface.dispatchEvent(event);
+}
+dropPointer('pointerdown', 550); held();
+dropPointer('pointermove', 450);
+dropPointer('pointerup', 450);
+assert.deepEqual(dropCalls, [[1, 5, 4]], 'Release before the next frame must still move to the unfinished target');
+assert.equal(await dropSave, true);
+assert.equal(a.getExerciseOrder(1)[4], 5);
+assert.deepEqual(a.getExerciseOrder(1).slice(0, 3), [0, 1, 2]);
+assert.deepEqual(a.state.done, dropChecks);
+assert.deepEqual(sortedLogs(), savedSets);
+assert.deepEqual(a.getDaySummary(0), priorHistory);
+assert.deepEqual(a.getDaySummary(1).order, a.getExerciseOrder(1));
+const droppedOrder = a.getExerciseOrder(1);
+a = await engine();
+assert.deepEqual(a.getExerciseOrder(1), droppedOrder, 'Held drop persists after reload');
+await a.undoExerciseOrder(1);
+assert.deepEqual(a.getExerciseOrder(1), pullOrder, 'Held drop retains one-step Undo');
+dropPointer('pointerdown', 550); held();
+dropPointer('pointermove', 450);
+dropPointer('pointerup', 350);
+assert.deepEqual(dropCalls.at(-1), [1, 5, 3], 'The release coordinate takes precedence over the last move coordinate');
+assert.equal(await dropSave, true);
+const beforeInvalidDrop = a.getExerciseOrder(1);
+dropPointer('pointerdown', 550); held();
+dropPointer('pointerup', 150);
+assert.equal(await dropSave, false, 'A drop onto a checked position is still rejected');
+assert.deepEqual(a.getExerciseOrder(1), beforeInvalidDrop);
+assert.deepEqual(a.state.done, dropChecks);
+assert.deepEqual(sortedLogs(), savedSets);
 globalThis.setTimeout = realTimer;
 console.log('Exercise ordering tests passed');

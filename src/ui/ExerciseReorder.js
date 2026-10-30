@@ -76,7 +76,7 @@ export class ExerciseReorder {
         cards.addEventListener('pointerup', async event => {
             const drag = this.drag;
             if (!drag || drag.pointer !== event.pointerId) return;
-            const destination = this.destination;
+            const destination = drag.active ? this.getDestination(event.clientY) : this.destination;
             this.cancel();
             if (!drag.active) return;
             this.suppressClick = true;
@@ -90,13 +90,18 @@ export class ExerciseReorder {
         window.addEventListener('blur', () => this.cancel());
     }
 
+    getDestination(y, cards = [...this.cards.querySelectorAll('.card-wrapper')]) {
+        const index = cards.findIndex(card => y < card.getBoundingClientRect().bottom);
+        return index < 0 ? cards.length - 1 : index;
+    }
+
     tick() {
         const drag = this.drag;
         if (!drag?.active) return;
         const cards = [...this.cards.querySelectorAll('.card-wrapper')];
         drag.surface.style.transform = `translateY(${drag.y - drag.start}px)`;
-        let target = cards.find(card => drag.y < card.getBoundingClientRect().bottom) || cards.at(-1);
-        this.destination = cards.indexOf(target);
+        this.destination = this.getDestination(drag.y, cards);
+        const target = cards[this.destination];
         cards.forEach(card => card.classList.toggle('reorder-target', card === target));
         const app = document.getElementById('app');
         const bounds = app.getBoundingClientRect();

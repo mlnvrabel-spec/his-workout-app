@@ -63,8 +63,11 @@ export class TrainingAgenda {
             ${this.view.runSuggestion ? `<p class="agenda-suggestion">Next free 4×4 date, keeping gym plans: <button type="button" data-agenda-action="add" data-date="${this.view.runSuggestion}">${escape(dateLabel(this.view.runSuggestion))}</button></p>` : ''}
             <p class="agenda-notice" role="status" aria-live="polite">${escape(this.notice || '')}</p>
             ${overdue.length ? `<section class="agenda-overdue" aria-label="Earlier unfinished sessions"><h3>Still to account for</h3>${overdue.map(entry => this.entryHTML(entry, true)).join('')}</section>` : ''}
-            <button type="button" class="agenda-range" data-agenda-action="earlier">Show earlier days</button>
-            <div class="agenda-days">${dates.map(date => {
+            <div class="agenda-range-actions">
+                <button type="button" class="agenda-range" data-agenda-action="earlier" aria-expanded="${this.daysBefore > 2}" aria-controls="agenda-days">Show earlier days</button>
+                ${this.daysBefore > 2 ? '<button type="button" class="agenda-range" data-agenda-action="hide-earlier" aria-controls="agenda-days">Hide earlier days</button>' : ''}
+            </div>
+            <div class="agenda-days" id="agenda-days">${dates.map(date => {
                 const items = entries.filter(entry => entry.date === date);
                 return `<section class="agenda-day ${date === today ? 'is-today' : ''} ${date === selected ? 'is-selected' : ''} ${date < today ? 'is-past' : ''}" data-date="${date}" aria-label="${escape(dateLabel(date))}${date === today ? ', today' : ''}">
                     <button type="button" class="agenda-date" data-agenda-action="select" data-date="${date}" aria-label="Select ${escape(dateLabel(date))}" aria-pressed="${date === selected}"><span>${date === today ? 'Today' : dayDate(date).toLocaleDateString(undefined, { weekday: 'short' })}</span><strong>${dayDate(date).getDate()}</strong><span>${dayDate(date).toLocaleDateString(undefined, { month: 'short' })}</span></button>
@@ -113,6 +116,12 @@ export class TrainingAgenda {
             case 'select': this.selectedDate = button.dataset.date; this.render(); break;
             case 'today': this.selectedDate = this.view.today; this.render(); this.element.querySelector(`.agenda-day[data-date="${this.view.today}"]`)?.scrollIntoView({ behavior: this.scrollBehavior(), block: 'start' }); break;
             case 'earlier': this.daysBefore += 7; this.render(); break;
+            case 'hide-earlier':
+                this.daysBefore = 2;
+                if (this.selectedDate < shiftDate(this.view.today, -this.daysBefore)) this.selectedDate = this.view.today;
+                this.render();
+                this.element.querySelector('[data-agenda-action="earlier"]')?.focus({ preventScroll: true });
+                break;
             case 'later': this.daysAfter += 7; this.render(); break;
             case 'open': this.openWorkout(entry); break;
             case 'undo':

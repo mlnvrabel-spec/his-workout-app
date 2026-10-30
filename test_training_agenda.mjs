@@ -149,6 +149,54 @@ try {
     assert.match(calendar.element.innerHTML, /data-agenda-action="undo"/);
     assert.doesNotMatch(calendar.element.innerHTML, /<details|<summary/);
     assert.match(calendar.element.innerHTML, />3.5<.*>1.8</s);
+    // PRODUCT_SPEC §8.1: earlier dates can expand repeatedly and return to the recent range.
+    const range = Object.create(TrainingAgenda.prototype);
+    const rangeButtons = Object.fromEntries(['earlier', 'hide-earlier'].map(action => [action, {
+        dataset: { agendaAction: action }, focus() { document.activeElement = this; }
+    }]));
+    range.element = {
+        contains: button => Object.values(rangeButtons).includes(button),
+        querySelectorAll: () => Object.values(rangeButtons).filter(button => range.element.innerHTML.includes(`data-agenda-action="${button.dataset.agendaAction}"`)),
+        querySelector: () => rangeButtons.earlier
+    };
+    range.daysBefore = 2; range.daysAfter = 9;
+    const requestedRanges = [];
+    const savedSchedule = { today: '2026-11-03', entries: [entry], currentCycleId: 'c1' };
+    range.engine = { getScheduleView: since => { requestedRanges.push(since); return structuredClone(savedSchedule); } };
+    const rangeClick = action => range.onClick({ target: { closest: () => rangeButtons[action] } });
+    const visibleDays = () => (range.element.innerHTML.match(/<section class="agenda-day /g) || []).length;
+    range.render();
+    assert.equal(visibleDays(), 12);
+    assert.match(range.element.innerHTML, /data-agenda-action="earlier"[^>]*aria-expanded="false"/);
+    assert.doesNotMatch(range.element.innerHTML, /data-agenda-action="hide-earlier"/);
+    document.activeElement = rangeButtons.earlier;
+    await rangeClick('earlier');
+    assert.equal(visibleDays(), 19);
+    assert.equal(requestedRanges.at(-1), '2026-10-25', 'Earlier recurrence is requested from the engine');
+    assert.match(range.element.innerHTML, /data-agenda-action="hide-earlier"[^>]*>Hide earlier days</);
+    assert.match(range.element.innerHTML, /data-agenda-action="earlier"[^>]*aria-expanded="true"/);
+    assert.equal(document.activeElement, rangeButtons.earlier, 'Expansion retains keyboard focus');
+    await rangeClick('earlier');
+    assert.equal(visibleDays(), 26, 'Existing incremental access to older weeks is preserved');
+    range.selectedDate = '2026-10-20';
+    range.daysAfter = 16;
+    range.show();
+    assert.equal(range.daysBefore, 16, 'Navigation and state rerenders preserve the expanded range');
+    document.activeElement = rangeButtons['hide-earlier'];
+    await rangeClick('hide-earlier');
+    assert.equal(visibleDays(), 19);
+    assert.equal(range.daysBefore, 2);
+    assert.equal(range.daysAfter, 16, 'Collapsing history preserves future expansion');
+    assert.equal(range.selectedDate, savedSchedule.today, 'A hidden selection returns to today');
+    assert.equal(requestedRanges.at(-1), '2026-11-01');
+    assert.equal(document.activeElement, rangeButtons.earlier, 'Focus returns to the remaining range control');
+    assert.doesNotMatch(range.element.innerHTML, /data-agenda-action="hide-earlier"/);
+    await rangeClick('earlier');
+    range.selectedDate = '2026-11-02';
+    await rangeClick('hide-earlier');
+    assert.equal(range.selectedDate, '2026-11-02', 'A still-visible selected date is preserved');
+    assert.deepEqual(savedSchedule, { today: '2026-11-03', entries: [entry], currentCycleId: 'c1' }, 'Range controls only project the saved schedule');
+    delete document.activeElement;
     // All Rest rows share the entry title, while details distinguish available/manual/recurring days.
     calendar.view = { today: '2026-11-03', entries: [] };
     const emptyRest = calendar.emptyDayHTML('2026-11-03', calendar.view.today);

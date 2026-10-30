@@ -114,6 +114,8 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 #training-agenda .agenda-entry--context { min-height: 32px; padding-block: 0 10px; }
 .agenda-entry--context .agenda-entry-title { font-size: 15px; font-weight: 500; color: var(--text2); }
 #training-agenda .agenda-range { display: block; margin: 4px auto 0; background: transparent; color: var(--text2); font-size: 11px; }
+.agenda-range-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 12px; }
+#training-agenda .agenda-range-actions .agenda-range { margin-inline: 0; }
 .agenda-overdue { margin-top: 24px; }
 .agenda-overdue > h3 { font-size: 12px; font-weight: 500; margin-bottom: 8px; color: var(--accent); }
 .agenda-dialog[hidden] { display: none; }
