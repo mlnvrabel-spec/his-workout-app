@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar alignment regression</title>
+<body>
+<script type="module">
+import { TrainingAgenda } from './src/ui/TrainingAgenda.js';
+
+// Synthetic projection only: no WorkoutEngine, storage, network or user records.
+const widths = [320, 390, 1280];
+if (!new URLSearchParams(location.search).has('width')) {
+    const fixtureRevision = Date.now();
+    document.body.style.cssText = 'font:16px sans-serif;margin:16px';
+    document.body.innerHTML = '<h1>Calendar alignment regression</h1><p>Actual renderer and styles; synthetic data only. Each frame checks alignment, density, wrapping, overflow and accessible controls.</p>';
+    for (const width of widths) {
+        const heading = document.createElement('h2');
+        heading.textContent = `${width}px: checking…`;
+        const frame = document.createElement('iframe');
+        frame.title = `Calendar at ${width}px`;
+        frame.style.cssText = `display:block;width:${width}px;height:720px;border:1px solid #888`;
+        frame.src = `?width=${width}&revision=${fixtureRevision}`;
+        document.body.append(heading, frame);
+        window.addEventListener('message', event => {
+            if (event.source === frame.contentWindow && event.origin === location.origin) heading.textContent = `${width}px: ${event.data}`;
+        });
+    }
+} else {
+    // Always inspect current workspace styles, including after a local CSS fix.
+    const revision = Date.now();
+    document.head.insertAdjacentHTML('beforeend', `<link rel="stylesheet" href="/src/ui/Elena.css?layout=${revision}"><link rel="stylesheet" href="/src/ui/TrainingAgenda.css?layout=${revision}">`);
+    document.body.dataset.theme = 'light';
+    document.body.dataset.view = 'agenda';
+    document.body.innerHTML = '<main id="app"><section id="training-agenda" aria-label="Training agenda"></section></main>';
+    const entries = [
+        { id: 'short', date: '2026-11-01', kind: 'gym', title: 'Push B', status: 'planned' },
+        { id: 'wrapped', date: '2026-11-02', kind: 'activity', title: 'Long activity label for a hike through the mountains and back along the river path', status: 'planned' },
+        { id: 'group', date: '2026-11-03', kind: 'gym', title: 'Pull A', status: 'started' },
+        { id: 'rest', date: '2026-11-03', kind: 'rest', title: 'Rest', status: 'planned', recurring: true },
+        { id: 'recorded', date: '2026-10-31', kind: 'gym', title: 'Push A', status: 'completed' }
+    ];
+    const engine = { getScheduleView: () => ({ today: '2026-11-01', currentCycleId: 'fixture', currentDay: 0, entries }) };
+    const agenda = new TrainingAgenda(document.querySelector('#training-agenda'), engine);
+    await Promise.all([...document.querySelectorAll('link')].map(link => link.sheet ? null : new Promise(resolve => link.onload = resolve)));
+    await document.fonts.ready;
+    const failures = [];
+    const assert = (condition, message) => { if (!condition) failures.push(message); };
+    const rect = element => element.getBoundingClientRect();
+    const center = box => (box.top + box.bottom) / 2;
+    const offsets = [];
+    for (const day of document.querySelectorAll('.agenda-day')) {
+        const date = day.querySelector('.agenda-date');
+        const dateParts = [...date.children].map(rect);
+        const dateCenter = (dateParts[0].top + dateParts.at(-1).bottom) / 2;
+        const surface = day.querySelector('.agenda-items, .agenda-entry, .agenda-empty');
+        // Ignore a single entry's trailing spacing; compare its visible surface.
+        const activity = surface.matches('.agenda-items') && surface.children.length === 1 ? surface.firstElementChild : surface;
+        if (!activity.matches('.agenda-empty')) {
+            const offset = Math.abs(dateCenter - center(rect(activity)));
+            offsets.push(offset.toFixed(2));
+            assert(offset <= 1, `${day.dataset.date}: date center differs by ${offset.toFixed(2)}px`);
+        }
+        for (const control of day.querySelectorAll('button')) {
+            const box = rect(control);
+            assert(box.height >= 44 && box.width >= 44, 'Touch target below 44px');
+            assert(control.getAttribute('aria-label'), 'Missing accessible name');
+            assert(box.right <= innerWidth && box.left >= 0, 'Control overflows viewport');
+        }
+        const add = day.querySelector('.agenda-day-add');
+        for (const entry of day.querySelectorAll('.agenda-entry')) {
+            const title = entry.querySelector('.agenda-entry-title');
+            assert(rect(title).right <= rect(add).left, 'Activity overlaps Add');
+            assert(title.scrollWidth <= title.clientWidth + 1, 'Activity text overflows');
+        }
+    }
+    const shortDay = document.querySelector('[data-entry-id="short"]').closest('.agenda-day');
+    const pitch = rect(shortDay.nextElementSibling).top - rect(shortDay).top;
+    assert(Math.abs(pitch - 92) <= 1, `Expected 78px date row plus 14px spacing: ${pitch}px`);
+    assert(document.querySelector('#app').scrollWidth <= innerWidth, 'Horizontal page overflow');
+    const wrapped = document.querySelector('[data-entry-id="wrapped"] .agenda-entry-title');
+    if (innerWidth <= 390) assert(rect(wrapped).height > 30, 'Long label did not exercise wrapping');
+    window.layoutResult = `${failures.length ? 'FAIL' : 'PASS'} | centers ${offsets.join(', ')}px | short row ${pitch}px${failures.length ? ' | ' + failures.join('; ') : ''}`;
+    document.title = window.layoutResult;
+    parent.postMessage(window.layoutResult, location.origin);
+    window.fixtureAgenda = agenda;
+}
+</script>
+</body>
+</html>

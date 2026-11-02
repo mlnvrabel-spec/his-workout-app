@@ -35,7 +35,12 @@ export class TrainingAgenda {
         this.render();
     }
 
-    show() { this.render(); }
+    show() {
+        this.daysBefore = 2;
+        this.daysAfter = 9;
+        this.selectedDate = null;
+        this.render();
+    }
 
     render() {
         const focused = document.activeElement;
@@ -65,7 +70,7 @@ export class TrainingAgenda {
             ${overdue.length ? `<section class="agenda-overdue" aria-label="Earlier unfinished sessions"><h3>Still to account for</h3>${overdue.map(entry => this.entryHTML(entry, true)).join('')}</section>` : ''}
             <div class="agenda-range-actions">
                 <button type="button" class="agenda-range" data-agenda-action="earlier" aria-expanded="${this.daysBefore > 2}" aria-controls="agenda-days">Show earlier days</button>
-                ${this.daysBefore > 2 ? '<button type="button" class="agenda-range" data-agenda-action="hide-earlier" aria-controls="agenda-days">Hide earlier days</button>' : ''}
+                ${this.daysBefore > 2 ? '<button type="button" class="agenda-range" data-agenda-action="hide-earlier" aria-controls="agenda-days">Collapse earlier days</button>' : ''}
             </div>
             <div class="agenda-days" id="agenda-days">${dates.map(date => {
                 const items = entries.filter(entry => entry.date === date);
@@ -74,7 +79,10 @@ export class TrainingAgenda {
                     <div class="agenda-day-content">${items.length ? `<div class="agenda-items ${items.length > 1 ? 'is-grouped' : ''}">${items.map(entry => this.entryHTML(entry, false, items.length > 1 && entry.kind === 'rest')).join('')}</div>` : this.emptyDayHTML(date, today)}<button type="button" class="agenda-day-add" data-agenda-action="add" data-date="${date}" aria-label="Add activity on ${escape(dateLabel(date))}">+</button></div>
                 </section>`;
             }).join('')}</div>
-            <button type="button" class="agenda-range" data-agenda-action="later">Show next 7 days</button>`;
+            <div class="agenda-range-actions">
+                <button type="button" class="agenda-range" data-agenda-action="later" aria-expanded="${this.daysAfter > 9}" aria-controls="agenda-days">Show next 7 days</button>
+                ${this.daysAfter > 9 ? '<button type="button" class="agenda-range" data-agenda-action="hide-later" aria-controls="agenda-days">Collapse later days</button>' : ''}
+            </div>`;
         if (focusAction) [...this.element.querySelectorAll('[data-agenda-action]')].find(button => button.dataset.agendaAction === focusAction && button.dataset.entryId === focusId && button.dataset.date === focusDate)?.focus({ preventScroll: true });
     }
 
@@ -123,6 +131,12 @@ export class TrainingAgenda {
                 this.element.querySelector('[data-agenda-action="earlier"]')?.focus({ preventScroll: true });
                 break;
             case 'later': this.daysAfter += 7; this.render(); break;
+            case 'hide-later':
+                this.daysAfter = 9;
+                if (this.selectedDate > shiftDate(this.view.today, this.daysAfter)) this.selectedDate = this.view.today;
+                this.render();
+                this.element.querySelector('[data-agenda-action="later"]')?.focus({ preventScroll: true });
+                break;
             case 'open': this.openWorkout(entry); break;
             case 'undo':
                 button.disabled = true;

@@ -191,7 +191,7 @@
             };
             document.getElementById('agenda-home-btn').addEventListener('click', () => {
                 setView('agenda');
-                agenda.render();
+                agenda.show();
             });
             document.getElementById('workout-nav-btn').addEventListener('click', () => setView('workout'));
             agendaElement.addEventListener('agenda:open-workout', async event => {
