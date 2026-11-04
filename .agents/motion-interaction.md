@@ -1,5 +1,7 @@
 # Motion and Interaction
 
+Follow [visual-design.md](visual-design.md) and [PRODUCT_SPEC.md](../PRODUCT_SPEC.md) over the historical metaphors below. Motion is optional feedback: respect reduced motion, keep responses immediate and prefer transform/opacity. Do not add decorative animation or stronger glass solely to polish layout/type.
+
 > *"If it doesn't breathe, it's dead."*
 
 ## **Role**

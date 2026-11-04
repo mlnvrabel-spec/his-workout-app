@@ -2809,4 +2809,47 @@ body[data-theme="light"] { --card-gradient: linear-gradient(145deg, #fffefa, #fa
 .finish-btn { text-transform: none; letter-spacing: 0; font-weight: 550; }
 .card, .check-wrap, .check-box, .nav-item, .save-set-btn { transition-property: transform, opacity, background-color, color, box-shadow; transition-duration: var(--dur); transition-timing-function: var(--ease); }
 body[data-theme="dark"] .dock-veil { background: linear-gradient(to bottom, transparent, rgba(23,25,28,.88)); }
+
+/* Shared visual hierarchy: functional labels remain readable on every surface. */
+.app-title, .settings-title, .history-head h2, .agenda-dialog h2 {
+    font: 550 28px/1.2 var(--font); letter-spacing: -.035em;
+}
+.settings-section-label, .detail-label {
+    font-size: 12px; font-weight: 550; letter-spacing: .02em; text-transform: none;
+}
+.settings-close, .history-head button, .agenda-dialog-heading button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; min-width: 44px; padding: 0;
+    border: 0; border-radius: 12px; background: transparent; color: var(--text2);
+    font: 400 24px/1 var(--font); flex-shrink: 0;
+}
+.settings-close:focus-visible, .history-head button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px;
+}
+.settings-close svg, .history-head button svg, .agenda-dialog-heading button svg {
+    width: 20px; height: 20px; fill: none; stroke: currentColor;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.cards { max-width: 744px; }
+body[data-view="workout"] .header-top { max-width: 744px; }
+.card-head { padding-inline: 4px 12px; gap: 4px; }
+.card-head .ex-num { width: 44px; min-width: 44px; }
+.swap-indicator { display: inline-flex; color: var(--text2); }
+.swap-indicator svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.card-wrapper.done .swap-indicator { display: none; }
+.logging-guidance { margin-top: 12px; display: grid; gap: 6px; }
+.logging-guidance .progression-cue, .logging-guidance .load-convention, .logging-guidance .exercise-hint {
+    margin: 0; font-size: 12px; line-height: 1.5; color: var(--text2);
+}
+.set-form input { min-height: 48px; }
+.set-form label { font-size: 12px; }
+.logged-sets { grid-template-columns: 1fr; max-width: none; gap: 4px; }
+.logged-sets li { flex-direction: row; align-items: center; padding: 4px 0; gap: 12px; background: transparent; }
+.logged-sets li > span { font-size: 12px; }
+.logged-sets strong { margin-left: auto; }
+.logged-sets .edit-set-btn { width: auto; min-width: 44px; text-align: right; }
+.logged-sets .edit-set-btn::after { content: none; }
+.dock-veil { height: calc(100px + env(safe-area-inset-bottom)); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+body[data-theme="dark"] .dock-veil { background: linear-gradient(to bottom, transparent, rgba(23,25,28,.65)); }
+body[data-theme="light"] .dock-veil { background: linear-gradient(to bottom, transparent, rgba(241,240,235,.65)); }
 @media (max-width: 480px) { .app-title { font-size: 28px; } }

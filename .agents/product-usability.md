@@ -1,5 +1,7 @@
 # Product and Usability
 
+Current behavior is defined in [PRODUCT_SPEC.md](../PRODUCT_SPEC.md); presentation in [visual-design.md](visual-design.md). These override historical aesthetic suggestions below. Keep averages/planning context visible, common date-row geometry, explicit logging units and previous-session provenance. Compactness must not reduce touch targets or hide required information.
+
 > *"Simplicity is the ultimate sophistication, but utility is the ultimate goal."*
 
 ## **Role**

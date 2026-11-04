@@ -1,22 +1,29 @@
-# Visual Design
+# Visual design
 
-> *"Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away." — Antoine de Saint-Exupéry*
+This is the dashboard visual brief. [PRODUCT_SPEC.md](../PRODUCT_SPEC.md), sections 12–15, governs behavior. Record evidence in [REVIEW_VERIFICATION.md](../REVIEW_VERIFICATION.md).
 
-## **Role**
-Visual Design is the guardian of the **"Invisible Luxury"** philosophy. She ensures that every pixel justifies its existence. She pushes for bold, architectural choices and refuses to compromise on whitespace or typographic hierarchy. She hates "decorations," borders, and boxes, preferring "structures," depth, and light. When the app needs to display complex data (like Garmin Readiness scores or the 24-exercise JSON library), she ensures it feels like an inevitable part of the environment, not a spreadsheet. 
+## Direction
 
-## **Core Philosophies**
-1.  **Typography is UI:** If you need a border to separate content, your typography has failed. Use `DM Serif Display` to anchor the eye and `Inter` for data.
-2.  **White Space as a Material:** Space isn't empty; it's the most expensive material we have. Use it lavishly. 
-3.  **Nature's Palette & Glassmorphism:** Colors should feel like they were ground from earth or captured from the sky. Backgrounds should leverage `backdrop-filter: blur()` and transparencies rather than solid blocks to create floating, modern luxury.
-4.  **Asymmetry creates Energy:** Centered layouts are static. Asymmetry moves the eye.
+Invisible Luxury means calm, legible training tools with restrained color and clear hierarchy. Use spacing, alignment and type before adding surfaces. Do not hide required information to make a screenshot cleaner. Inspiration: Linear for alignment, Raycast for icon discipline, Copilot for numeric hierarchy; do not copy branding.
 
-## **Responsibilities**
--   Defining the **Typographic Scale** and structural UI (The "Brutalist" aspect).
--   Curating the **Color Palette** (Dark mode `#000000` with Chrome Gold `#c9a96e` accents).
--   Setting the **Spatial Rules** (The "Levitating" aspect).
--   Designing the visual integration for **Garmin Biometrics** (e.g., how the "Load Guard" readiness score looks without cluttering the screen).
--   Rejecting any element that "looks designed" or "too app-like" rather than "feeling inevitable."
+## Type and color
 
-## **Signature Critique Style**
-*"This feels too 'app-like' and boxed in. Make it quieter. If the content is strong enough, it doesn't need that 1px border. Let the typography and the blur filter do the heavy lifting."*
+- Inter throughout, including headings. Earlier decorative serif guidance is superseded.
+- Page/overlay titles: 28px, weight 550, line-height 1.2, restrained negative tracking. Exercise names: 17px. Meaningful labels/helpers: at least 12px. Inputs: at least 16px.
+- Sentence-case labels, modest tracking, tabular training figures and explicit units/provenance.
+- Preserve charcoal/warm white and warm off-white themes. Base colors: #17191c / #f1f0eb; muted gold: #c9b179 / #8e723d. Use semantic CSS tokens. Secondary text must remain readable; color alone must not convey state.
+
+## Layout and controls
+
+- Workout cards: 18px radius, desktop content 696px inside a 744px padded container. Calendar retains its 832px container.
+- Exercise number actions: at least 44px square. Tighten adjacent spacing first. No visible Actions label below the number.
+- Saved sets: horizontal rows with a reachable Edit control. Prioritize logging inputs; group helper copy below. Preserve combined dumbbell-pair units and previous-session provenance.
+- Alternatives use a stroked swap symbol, not progress-like dots. Overlay close icons share 20px stroked geometry.
+- Calendar averages remain visible and explicitly use saved history. Planning context sits beside averages from 720px, below on phones. Preserve cadence, recovery and conflict context.
+- Preserve common past/future date-row geometry. Highlight the date button, avoiding a second broad tinted box around activity surfaces.
+- Keep Workout/Calendar as two floating destinations and Coach separate. Selected navigation uses a fill. Restrain shadows/blur and retain bottom scroll clearance.
+- Glass is optional, localized material. Respect reduced transparency, contrast and motion preferences.
+
+## Review
+
+Inspect dark/light themes, 360–390px phone widths and desktop; long names, empty/filled logs, Calendar, Preferences, Plan settings, History and Coach. Verify focus visibility, dismissal and targets. Use isolated local origins for synthetic records. Browser emulation is not real-device verification. Record actual checks and limitations in the existing verification record.

@@ -6,7 +6,7 @@ export class HistoryPanel {
         this.engine = engine;
         this.panel = document.createElement('section');
         this.panel.className = 'history-panel';
-        this.panel.innerHTML = `<div class="history-head"><h2>Training history</h2><button aria-label="Close history">×</button></div><p class="history-intro">Sessions counted toward training, saved on this device. Finish confirms every exercise; a counted session may still be editable today.</p><button class="export-history">Export history</button><div class="history-list"></div>`;
+        this.panel.innerHTML = `<div class="history-head"><h2>Training history</h2><button aria-label="Close history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p class="history-intro">Sessions counted toward training, saved on this device. Finish confirms every exercise; a counted session may still be editable today.</p><button class="export-history">Export history</button><div class="history-list"></div>`;
         const privacy = document.createElement('p');
         privacy.className = 'history-intro';
         privacy.textContent = 'Export downloads a readable JSON file with workout dates, sets and your schedule. Keep it private. It excludes Coach messages, API keys and connection credentials.';

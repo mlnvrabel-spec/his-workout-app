@@ -181,3 +181,26 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-form [hidden] { display: none !important; }
 .agenda-plan-context { margin: 8px 0 16px; color: var(--text2); font-size: 12px; line-height: 1.6; }
 .agenda-plan-context strong { color: var(--text1); font-weight: 500; }
+
+/* A quiet summary above full-size, consistently aligned date rows. */
+.agenda-overview { display: grid; gap: 12px; margin-bottom: 8px; }
+.agenda-averages { margin: 0; max-width: none; }
+.agenda-averages table, .agenda-averages caption,
+.agenda-averages caption span, .agenda-averages thead th { font-size: 12px; }
+.agenda-averages caption span { color: var(--text2); }
+.agenda-averages td { font-size: 20px; font-weight: 500; }
+.agenda-plan-context { margin: 0; line-height: 1.5; }
+.agenda-plan-context + .agenda-plan-context { margin-top: 6px; }
+#training-agenda .agenda-date, #training-agenda .agenda-range { font-size: 12px; }
+.agenda-day.is-selected { background: transparent; }
+#training-agenda .agenda-day.is-selected .agenda-date { background: var(--accent-dim); border-radius: 14px; }
+.app-nav, .coach-launcher { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+.app-nav-item, .coach-launcher { font-size: 12px; }
+body .workout-session-nav.nav-dock { max-width: 696px; }
+.coach-connection summary span, .coach-connection p { font-size: 12px; }
+.agenda-dialog h2 { font: 550 28px/1.2 var(--font); letter-spacing: -.035em; }
+.agenda-dialog-heading button { background: transparent; }
+.agenda-form input:not([type="checkbox"]), .agenda-form select { min-height: 48px; }
+@media (min-width: 720px) {
+    .agenda-overview { grid-template-columns: minmax(220px, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; margin-bottom: 16px; }
+}

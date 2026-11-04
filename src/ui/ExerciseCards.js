@@ -61,8 +61,8 @@ export class ExerciseCards {
         const technique = exercise.technique?.map((tip, tipIndex) => `<li><div class="step-n">${tipIndex + 1}</div><div class="detail-text">${tip}</div></li>`).join('') || '';
         const mistakes = exercise.mistakes?.map(mistake => `<li><div class="mistake-x">&times;</div><div class="detail-text">${mistake}</div></li>`).join('') || '';
         const swapInfo = !finished && this.engine?.getSwapGroupInfo?.(exercise._exerciseId);
-        const swapDots = swapInfo?.options?.length > 1
-            ? `<div class="swap-dots" data-slot="${index}" aria-label="Swipe to change exercise">${swapInfo.options.map((_, optionIndex) => `<span class="swap-dot ${optionIndex === swapInfo.currentIndex ? 'active' : ''}"></span>`).join('')}</div>`
+        const swapIndicator = swapInfo?.options?.length > 1
+            ? '<span class="swap-indicator" aria-label="Alternatives available"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"/></svg></span>'
             : '';
         const originalName = isCustom ? (this.engine?.exerciseLibrary?.[originalExerciseId]?.name || originalExerciseId) : '';
         const customTag = isCustom ? `<div class="ex-custom-tag">&#8634; ${originalName}</div>` : '';
@@ -88,7 +88,7 @@ export class ExerciseCards {
                             <span class="pill sets">${setPrescription}</span>
                             <span class="pill rir-${exercise.rirClass}">RIR ${exercise.rir}</span>
                             <span class="pill sets rest">${exercise.rest} rest</span>
-                            ${swapDots}
+                            ${swapIndicator}
                         </div>
                     </button>
                     <button type="button" class="check-wrap" aria-label="${escapeHTML(exercise.name)} completed" aria-pressed="${isDone}" ${finished ? 'disabled' : ''}><span class="check-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg></span></button>
@@ -139,8 +139,8 @@ export class ExerciseCards {
                 <label>Reps<input name="reps" type="number" inputmode="numeric" enterkeyhint="done" min="1" max="1000" step="1" required value="${last?.reps ?? ''}" aria-label="${escapeHTML(exercise.name)} repetitions"></label>
                 <button type="submit" class="save-set-btn">Log set ${sets.length + 1}</button>
                 <p class="set-feedback" role="status" aria-live="polite" hidden></p>
-            </form><p class="progression-cue">${prior ? `Aim within ${escapeHTML(exercise.reps)} at ${escapeHTML(exercise.rir)} RIR; reach the top of the range on all sets before adding load.` : 'Establish a comfortable baseline within the prescribed range.'}</p>
-            ${dumbbells ? '<p class="load-convention">Dumbbells: enter the combined weight of the pair.</p>' : ''}${swapInfoHint(exercise, this.engine)}`}
+            </form><div class="logging-guidance"><p class="progression-cue">${prior ? `Aim within ${escapeHTML(exercise.reps)} at ${escapeHTML(exercise.rir)} RIR; reach the top of the range on all sets before adding load.` : 'Establish a comfortable baseline within the prescribed range.'}</p>
+            ${dumbbells ? '<p class="load-convention">Dumbbells: enter the combined weight of the pair.</p>' : ''}${swapInfoHint(exercise, this.engine)}</div>`}
         </section>`;
     }
 

@@ -225,3 +225,12 @@ This user-approved contract supersedes conflicting §8/§10/§12 rules about gym
 - Share an Activity selector (Workout, Run, Rest, Other) across planned details and Add. Type changes save atomically; gym-to-run postpones that gym session. Rest-to-run creates a one-date recurrence exception. Today defaults to planning, with an explicit Record completed activity choice for runs/other activities. Past activities are records; preserve explicit past-workout selection/correction.
 - Card Undo reverses the selected card's latest explicit edit and recomputes its cascade while preserving independent later edits. Attach it to the entry or its cleared date. Block reversals conflicting with later edits or saved training and explain why. Actual-history changes retain guarded transaction Undo linked to their own date/record. Persist before success; retain stale-preview, reload and failed-write protection.
 - Share row geometry/title typography for workout, run, Rest, Recovery and other entries. Show concise recurring, one-date, flexible, chosen or recovery context. Keep recorded 14/28-day averages visible and the soft target distinct. Do not display synthetic urgency/recovery scores.
+
+
+## 15. Visual composition refinement (2026-11-04)
+
+- Follow the shared Inter hierarchy across Workout, Calendar and overlays; meaningful labels/helpers remain at least 12px, inputs at least 16px, and primary touch controls at least 44px. The presentation authority is [.agents/visual-design.md](.agents/visual-design.md).
+- Keep exercise actions on the number, with a recognizable swap indicator for alternatives. Preserve gesture/keyboard alternatives, logging units, previous-session provenance and edit access. Present saved sets as compact horizontal rows and group logging guidance below the form.
+- Calendar always shows saved-history averages and planning context. Arrange them side by side on desktop and vertically on phones. Preserve common date-row geometry and highlight the selected date without a second surrounding activity box.
+- Keep Workout/Calendar navigation and the separate Coach action; preserve selected fills and bottom clearance while reducing decorative shadow/blur. Constrain desktop workout width and align its header/session navigation/cards.
+- Preserve the existing data, scheduling, accessibility and reduced-motion contracts. This refinement does not authorize publication or change training rules.

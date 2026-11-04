@@ -30,7 +30,7 @@ export class SettingsPanel {
         panel.innerHTML = `
             <div class="settings-header">
                 <div class="settings-title">Preferences</div>
-                <button class="settings-close" id="settings-close" aria-label="Close">✕</button>
+                <button class="settings-close" id="settings-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
             </div>
             <div class="settings-body">
                 <div class="settings-row">
