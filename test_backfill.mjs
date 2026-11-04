@@ -53,13 +53,13 @@ try {
     await a.refresh();
     assert.throws(() => a.previewSchedule({ type: 'recordGym', id, date: '2026-11-02' }), /Started workouts/);
 
-    // Runs, rest and other past activity all reflow the unfinished plan.
+    // Backfilled activities preserve explicitly chosen future gym dates.
     for (const kind of ['run', 'rest', 'activity']) {
         environment(); a = await engine();
         const first = `${a.cycleId}:0`;
         await a.applySchedule(a.previewSchedule({ type: 'move', id: first, date: '2026-11-06' }));
         const result = a.previewSchedule({ type: 'add', kind, date: '2026-11-01', performed: true, title: kind });
-        assert.equal(result.schedule.entries.find(entry => entry.id === first).date, '2026-11-03');
+        assert.equal(result.schedule.entries.find(entry => entry.id === first).date, '2026-11-06');
         assert.equal(await a.applySchedule(result), true);
         assert.equal(await a.undoSchedule(), true);
         assert.equal(a.state.schedule.entries.find(entry => entry.id === first).date, '2026-11-06');

@@ -7,6 +7,8 @@
 import { StorageManager } from './StorageManager.js';
 import { buildProtocolData, resolveExercise } from './ProtocolData.js';
 import { trainingAverages } from './TrainingStats.js';
+import { recordCalendarEdit, calendarUndoFor, undoCalendarEdit } from './CalendarEdits.js';
+import { planningSummary, schedulePreferences } from './TrainingSchedule.js';
 import { arrangeExercises, sequenceConflict } from './ExerciseOrder.js';
 import { reconcileSchedule, proposeSchedule, scheduleEntries, nextScheduleCycleId, firstScheduleDay, scheduleDaySkipped, suggestedRunDate } from './TrainingSchedule.js';
 
@@ -327,7 +329,15 @@ export class WorkoutEngine {
         if (!schedule) return { entries: [], today: context.today, officeDays: [1, 4], canUndo: false };
         const rule = schedule.officeRules?.filter(rule => rule.from <= context.today).at(-1);
         const entries = scheduleEntries(schedule, since ? { ...context, since } : context);
-        return { entries, averages: trainingAverages(entries, context.today), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
+        const trainingToken = this._calendarTrainingToken();
+        const undoFor = selection => calendarUndoFor(schedule, trainingToken, selection);
+        const undoDates = Object.fromEntries([...new Set((schedule.editHistory || []).flatMap(edit => edit.scopes.filter(scope => scope.startsWith('date:')).map(scope => scope.slice(5))))].map(date => [date, undoFor({ date })]));
+        const legacy = this.state.scheduleUndo;
+        if (legacy?.token === this._scheduleToken() && legacy.date && (!undoDates[legacy.date] || legacy.record)) undoDates[legacy.date] = { id: null, available: true, reason: '' };
+        return { entries: entries.map(entry => ({ ...entry, undo: legacy?.record && undoDates[entry.date]?.id === null ? undoDates[entry.date] : undoFor(entry) || undoDates[entry.date] || null })), undoDates,
+            settingsUndo: undoFor({ scope: 'settings' }), recurrenceUndo: undoFor({ scope: 'recurrence' }),
+            preferences: schedulePreferences(schedule), planning: planningSummary(schedule, context),
+            averages: trainingAverages(entries, context.today), today: context.today, currentCycleId: this.cycleId, currentDay: this.state.activeDay,
             workouts: this.protocolData.map((day, index) => ({ day: index, title: day.title, nextTitle: this.protocolData[(index + 1) % this.protocolData.length].title })),
             officeDays: rule?.days || [], restExceptions: schedule.officeExceptions || [], canUndo: Boolean(this.state.scheduleUndo && this.state.scheduleUndo.token === this._scheduleToken()),
             runSuggestion: suggestedRunDate(schedule, context) };
@@ -337,6 +347,13 @@ export class WorkoutEngine {
         if (this.pending) throw new Error('Wait for the workout to finish saving.');
         const result = proposeSchedule(this.state.schedule, intent, this._scheduleContext());
         return { ...result, intent: structuredClone(intent), token: this._scheduleToken() };
+    }
+
+    _calendarTrainingToken(workout = this.state, summaries = this.summaries, logs = this.logs) {
+        return JSON.stringify([workout.cycleId, workout.done, workout.completedDays, workout.nextCycleDraft,
+            summaries.map(value => [value.id, value.sessionId, value.completedExercises]).sort((a, b) => a[0].localeCompare(b[0])),
+            logs.map(value => [value.session_id, value.exercise_id, value.sets]).sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1])),
+            workout.schedule?.entries.filter(entry => entry.kind !== 'gym' && entry.status === 'completed')]);
     }
 
     async applySchedule(preview) {
@@ -408,14 +425,23 @@ export class WorkoutEngine {
                 this._reconcileSchedule(workout, summaries, logs);
             }
             if (result.removedGym) this._reconcileSchedule(workout, summaries, logs);
-            workout.scheduleUndo = { before, ...(summary || result.removedGym || result.removedRecord ? { beforeWorkout, addedSummaryId: summary?.id, restoreWorkout: Boolean(result.removedGym || result.removedRecord), removedSummary: result.removedRecord } : {}), token: this._scheduleToken(workout, summaries, logs) };
+            recordCalendarEdit(workout.schedule, before, preview.intent, this._calendarTrainingToken(workout, summaries, logs), this.storage.getDateKey());
+            workout.scheduleUndo = { before, date: preview.intent.date || before.entries.find(entry => entry.id === preview.intent.id)?.date,
+                record: Boolean(preview.intent.performed || ['complete', 'recordGym', 'correctGym', 'removeGymRecord'].includes(preview.intent.type)),
+                ...(summary || result.removedGym || result.removedRecord ? { beforeWorkout, addedSummaryId: summary?.id, restoreWorkout: Boolean(result.removedGym || result.removedRecord), removedSummary: result.removedRecord } : {}), token: this._scheduleToken(workout, summaries, logs) };
             return summary || result.removedRecord ? { ...(summary ? { summary, summariesToSave: [summary], automatic: true } : {}), ...(result.removedRecord ? { deleteSummary: result.removedRecord.id } : {}) } : true;
         });
     }
 
-    async undoSchedule() {
+    async undoSchedule(editId = null) {
         if (this.pending) return false;
         return this._commit('schedule_undo', (workout, summaries, logs) => {
+            if (editId) {
+                workout.schedule = undoCalendarEdit(workout.schedule, editId, this._calendarTrainingToken(workout, summaries, logs));
+                this._reconcileSchedule(workout, summaries, logs);
+                delete workout.scheduleUndo;
+                return true;
+            }
             const undo = workout.scheduleUndo;
             if (!undo || undo.token !== this._scheduleToken(workout, summaries, logs)) {
                 throw new Error('Training or calendar changes prevent Undo. Move the remaining planned session instead.');

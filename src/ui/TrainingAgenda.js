@@ -60,12 +60,11 @@ export class TrainingAgenda {
                 <h2>${escape(dayDate(selected).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }))}</h2>
                 <div class="agenda-calendar-actions" aria-label="Calendar actions">
                     <button type="button" data-agenda-action="today">Today</button>
-                    ${this.view.canUndo ? '<button type="button" data-agenda-action="undo">Undo</button>' : ''}
-                    <button type="button" class="agenda-options" data-agenda-action="office" aria-label="Recurring rest days" title="Recurring rest days"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+                    <button type="button" class="agenda-options" data-agenda-action="preferences" aria-label="Plan settings" title="Plan settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
                 </div>
             </div>
             ${this.view.averages ? `<section class="agenda-averages" aria-label="Training averages"><table><caption>Sessions / week <span>Recorded training</span></caption><thead><tr><th scope="col"><span class="sr-only">Activity</span></th>${this.view.averages.map(period => `<th scope="col">${period.weeks * 7} days</th>`).join('')}</tr></thead><tbody>${[['gym', 'Gym'], ['run', 'Runs']].map(([kind, title]) => `<tr><th scope="row">${title}</th>${this.view.averages.map(period => `<td aria-label="${period[kind].count} recorded sessions over ${period.weeks * 7} days, ${period[kind].perWeek.toFixed(1)} per week">${period[kind].perWeek.toFixed(1)}</td>`).join('')}</tr>`).join('')}</tbody></table></section>` : ''}
-            ${this.view.runSuggestion ? `<p class="agenda-suggestion">Next free 4×4 date, keeping gym plans: <button type="button" data-agenda-action="add" data-date="${this.view.runSuggestion}">${escape(dateLabel(this.view.runSuggestion))}</button></p>` : ''}
+            ${this.view.planning ? `<p class="agenda-plan-context">28-day gym target: ${this.view.planning.gymTargetPerWeek} / week · Recorded values use saved history only.</p><p class="agenda-plan-context">Run every ${this.view.planning.runTargetDays}–${this.view.planning.runLatestDays} days · Recovery the following day.${this.view.planning.nextRunDate ? ` Next: ${escape(dateLabel(this.view.planning.nextRunDate))}.` : ' Record your last run or choose a run date.'}${this.view.planning.conflict ? ' Fixed dates prevent the preferred run window.' : ''}</p>` : ''}
             <p class="agenda-notice" role="status" aria-live="polite">${escape(this.notice || '')}</p>
             ${overdue.length ? `<section class="agenda-overdue" aria-label="Earlier unfinished sessions"><h3>Still to account for</h3>${overdue.map(entry => this.entryHTML(entry, true)).join('')}</section>` : ''}
             <div class="agenda-range-actions">
@@ -88,8 +87,7 @@ export class TrainingAgenda {
 
     emptyDayHTML(date, today) {
         if (date < today) return '<p class="agenda-empty"><span class="sr-only">No activity recorded</span></p>';
-        if (this.view.restExceptions?.includes(date)) return '<p class="agenda-empty">Available</p>';
-        return `<button type="button" class="agenda-entry agenda-entry--rest" data-agenda-action="rest-options" data-date="${date}" aria-label="Rest · ${escape(dateLabel(date))} · Available day, no saved Rest"><span class="agenda-entry-copy"><span class="agenda-entry-title">Rest</span></span></button>`;
+        return `<button type="button" class="agenda-entry agenda-entry--available" data-agenda-action="add" data-date="${date}" aria-label="Available · ${escape(dateLabel(date))} · Add activity${this.view.undoDates?.[date] ? ' or undo this date’s edit' : ''}"><span class="agenda-entry-copy"><span class="agenda-entry-title">Available</span><span class="agenda-entry-context">${this.view.undoDates?.[date] ? 'Appointment removed · Undo in details' : 'Nothing planned'}</span></span></button>`;
     }
 
     restOptionsDialog(date) {
@@ -101,10 +99,12 @@ export class TrainingAgenda {
     entryHTML(entry, includeDate = false, compact = false) {
         const movable = Boolean(entry.movable);
         const recorded = entry.status === 'completed';
-        const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'rest' ? (entry.recurring ? 'Repeats weekly' : 'Manual Rest') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
-        const title = entry.kind === 'rest' ? 'Rest' : entry.title;
-        const context = [includeDate ? dateLabel(entry.date) : '', entry.missedDate ? `Carried from ${dateLabel(entry.missedDate)}` : '', entry.demanding ? 'Demanding activity' : ''].filter(Boolean).join(' · ');
-        return `<button type="button" class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-agenda-action="details" data-entry-id="${escape(entry.id)}" data-movable="${movable}" aria-label="${escape(`${title} · ${dateLabel(entry.date)} · ${label}${entry.correctable ? ' · Edit manual record' : entry.movableReason ? ` · ${entry.movableReason}` : ''}`)}">
+        const label = recorded ? (entry.kind === 'gym' ? (this.engine.getSessionStatus?.(entry.day, entry.cycleId) || 'Recorded') : 'Recorded') : entry.status === 'started' ? 'In progress' : entry.kind === 'rest' ? (entry.recovery ? 'Recovery after run' : entry.recurring ? 'Repeats weekly' : 'Manual Rest') : entry.date < this.view.today ? (entry.kind === 'gym' ? 'Unfinished' : 'Scheduled · not recorded') : 'Planned';
+        const title = entry.recovery && !entry.recurring ? 'Recovery' : entry.kind === 'rest' ? 'Rest' : entry.title;
+        const source = entry.recovery ? (entry.recurring ? 'Weekly rest · recovery after run' : 'Day after running') : entry.recurring ? 'Repeats weekly'
+            : entry.kind === 'rest' ? 'This date only' : entry.status !== 'planned' ? label : entry.source === 'planner' ? 'Run · cadence plan' : entry.kind === 'gym' ? (entry.pinnedDate ? 'Workout · chosen date' : 'Workout · flexible date') : `${entry.kind === 'run' ? 'Run' : 'Activity'} · chosen date`;
+        const context = [includeDate ? dateLabel(entry.date) : '', source, entry.missedDate ? `Carried from ${dateLabel(entry.missedDate)}` : '', entry.demanding ? 'Demanding activity' : ''].filter(Boolean).join(' · ');
+        return `<button type="button" class="agenda-entry agenda-entry--${escape(entry.kind)} ${recorded ? 'is-recorded' : ''} ${compact ? 'agenda-entry--context' : ''}" data-agenda-action="details" data-entry-id="${escape(entry.id)}" data-date="${entry.date}" data-movable="${movable}" aria-label="${escape(`${title} · ${dateLabel(entry.date)} · ${label}${entry.correctable ? ' · Edit manual record' : entry.movableReason ? ` · ${entry.movableReason}` : ''}`)}">
             <span class="agenda-entry-copy"><span class="agenda-entry-title">${escape(title)}</span>${context && !compact ? `<span class="agenda-entry-context">${escape(context)}</span>` : ''}</span>
             ${recorded ? '<svg class="agenda-recorded-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>' : entry.status === 'started' ? '<span class="agenda-progress-mark" aria-hidden="true"></span>' : ''}
         </button>`;
@@ -121,6 +121,7 @@ export class TrainingAgenda {
             case 'move': if (entry) this.moveDialog(entry); break;
             case 'record': if (entry) this.commitChange({ type: 'complete', id: entry.id }); break;
             case 'office': this.officeDialog(); break;
+            case 'preferences': this.preferencesDialog(); break;
             case 'select': this.selectedDate = button.dataset.date; this.render(); break;
             case 'today': this.selectedDate = this.view.today; this.render(); this.element.querySelector(`.agenda-day[data-date="${this.view.today}"]`)?.scrollIntoView({ behavior: this.scrollBehavior(), block: 'start' }); break;
             case 'earlier': this.daysBefore += 7; this.render(); break;
@@ -172,14 +173,82 @@ export class TrainingAgenda {
         if (previous?.agendaAction) {
             const buttons = [...this.element.querySelectorAll('[data-agenda-action]')];
             (buttons.find(button => button.dataset.agendaAction === previous.agendaAction && button.dataset.entryId === previous.entryId && button.dataset.date === previous.date)
+                || buttons.find(button => button.dataset.agendaAction === 'details' && previous.date && button.dataset.date === previous.date)
                 || buttons.find(button => button.dataset.agendaAction === 'add' && button.dataset.date === previous.date)
                 || buttons.find(button => button.dataset.agendaAction === 'add'))?.focus({ preventScroll: true });
         }
     }
 
+    bindCardUndo(undo) {
+        if (!undo) return;
+        const footer = this.dialog.querySelector('.agenda-dialog-footer');
+        if (!footer?.insertAdjacentHTML) return;
+        footer.insertAdjacentHTML('beforeend', `<button type="button" data-card-undo ${undo.available ? '' : 'disabled'}>Undo this change</button>${undo.reason ? `<p class="agenda-form-help">${escape(undo.reason)}</p>` : ''}`);
+        this.dialog.querySelector('[data-card-undo]')?.addEventListener('click', async event => {
+            event.currentTarget.disabled = true;
+            try {
+                if (!await this.engine.undoSchedule(undo.id)) throw new Error(this.engine.state?.scheduleNotice || 'This change could not be undone.');
+                this.closeDialog(); this.announce('This card’s edit was undone. Independent edits were kept.'); this.render();
+            } catch (error) {
+                event.currentTarget.disabled = false;
+                this.dialog.querySelector('.agenda-dialog-error').textContent = error.message;
+            }
+        });
+    }
+
+    plannedDialog(entry, date) {
+        const title = entry ? (entry.kind === 'rest' ? 'Rest' : entry.title) : 'Add activity';
+        this.dialogHTML(title, `<form id="agenda-plan-form" class="agenda-form"><label>Activity<select name="kind"><option value="gym">Workout</option><option value="run">Run · Norwegian 4×4</option><option value="rest">Rest</option><option value="activity">Other activity</option></select></label><label>Date<input name="date" type="date" value="${date}" min="${this.view.today}" required></label><div class="agenda-activity-fields" hidden><label>Name<input name="title" type="text" maxlength="80" value="${entry?.kind === 'activity' ? escape(entry.title) : ''}" required></label><label class="agenda-checkbox"><input name="demanding" type="checkbox" ${entry?.demanding ? 'checked' : ''}>Demanding activity</label></div><label class="agenda-checkbox agenda-record-choice" hidden><input name="performed" type="checkbox">Record completed activity</label><p class="agenda-form-help" aria-live="polite"></p></form>`, `${entry ? '<button type="button" class="agenda-remove">Delete</button>' : ''}<button type="button" data-agenda-cancel>Cancel</button>${entry?.kind === 'rest' ? '<button type="button" data-agenda-recurring>Recurring rest days</button>' : ''}${entry?.kind === 'gym' && entry.cycleId === this.view.currentCycleId ? '<button type="button" data-agenda-open>Open workout</button>' : ''}<button type="submit" class="agenda-primary" form="agenda-plan-form">Save activity</button>`);
+        const form = this.dialog.querySelector('form');
+        const save = this.dialog.querySelector('[form="agenda-plan-form"]');
+        form.elements.kind.value = entry?.kind || 'run';
+        const update = () => {
+            const kind = form.elements.kind.value;
+            form.querySelector('.agenda-activity-fields').hidden = kind !== 'activity';
+            form.elements.title.disabled = kind !== 'activity';
+            const canRecord = ['run', 'activity'].includes(kind) && form.elements.date.value === this.view.today;
+            form.querySelector('.agenda-record-choice').hidden = !canRecord;
+            if (!canRecord) form.elements.performed.checked = false;
+            const changed = !entry || kind !== entry.kind || form.elements.date.value !== entry.date || form.elements.performed.checked
+                || (kind === 'activity' && (form.elements.title.value.trim() !== entry.title || form.elements.demanding.checked !== Boolean(entry.demanding)));
+            save.disabled = !changed;
+            save.textContent = form.elements.performed.checked ? 'Record activity' : entry ? 'Save activity' : 'Plan activity';
+            form.querySelector('.agenda-form-help').textContent = form.elements.performed.checked ? 'Record what you completed today.' : kind === 'run' ? 'Reserve this date and the following recovery day. Unfinished gym workouts keep their order.'
+                : entry?.recurring ? 'Changes apply to this occurrence only.' : kind === 'gym' ? 'Plan the next eligible workout in your rolling split.' : 'Reserve this date. Flexible workouts will update.';
+        };
+        form.addEventListener('change', update); form.addEventListener('input', update); update();
+        form.addEventListener('submit', event => {
+            event.preventDefault(); if (save.disabled) return;
+            const kind = form.elements.kind.value, selectedDate = form.elements.date.value;
+            const performed = form.elements.performed.checked;
+            const extra = kind === 'activity' ? { title: form.elements.title.value.trim(), demanding: form.elements.demanding.checked } : {};
+            const intent = !entry ? { type: 'add', kind, date: selectedDate, performed, ...extra }
+                : performed && kind === entry.kind && selectedDate === entry.date ? { type: 'complete', id: entry.id }
+                : kind === entry.kind && kind !== 'activity' ? { type: 'move', id: entry.id, date: selectedDate, performed }
+                : { type: 'change', id: entry.id, kind, date: selectedDate, performed, ...extra };
+            this.saveChange(intent, save);
+        });
+        this.dialog.querySelector('.agenda-remove')?.addEventListener('click', event => this.saveChange({ type: 'remove', id: entry.id }, event.currentTarget, 'Appointment deleted. Undo is available on this date.'));
+        this.dialog.querySelector('[data-agenda-recurring]')?.addEventListener('click', () => this.officeDialog());
+        this.dialog.querySelector('[data-agenda-open]')?.addEventListener('click', () => { this.closeDialog(); this.openWorkout(entry); });
+        this.bindCardUndo(entry?.undo || this.view.undoDates?.[date]);
+    }
+
+    preferencesDialog() {
+        const prefs = this.view.preferences || { runTargetDays: 7, runLatestDays: 10, gymTargetPerWeek: 3.5 };
+        this.dialogHTML('Plan settings', `<form id="agenda-preferences-form" class="agenda-form"><label>Aim for a run every (days)<input type="number" name="target" min="2" max="30" step="1" value="${prefs.runTargetDays}" required></label><label>Give running priority by (days)<input type="number" name="latest" min="2" max="60" step="1" value="${prefs.runLatestDays}" required></label><label>28-day gym target (sessions / week)<input type="number" name="gym" min="0.5" max="7" step="0.5" value="${prefs.gymTargetPerWeek}" required></label><p>Running reserves the following day for recovery. The gym target is a rolling average, with no weekly minimum or catch-up quota. Recorded training and chosen dates stay protected.</p></form>`, '<button type="button" data-agenda-cancel>Close</button><button type="button" data-agenda-recurring>Recurring rest days</button><button type="submit" class="agenda-primary" form="agenda-preferences-form">Save preferences</button>');
+        this.dialog.querySelector('[data-agenda-recurring]').addEventListener('click', () => this.officeDialog());
+        this.dialog.querySelector('form').addEventListener('submit', event => {
+            event.preventDefault(); const values = event.currentTarget.elements;
+            this.commitChange({ type: 'preferences', preferences: { runTargetDays: Number(values.target.value), runLatestDays: Number(values.latest.value), gymTargetPerWeek: Number(values.gym.value) } });
+        });
+        this.bindCardUndo(this.view.settingsUndo);
+    }
+
     addDialog(date) {
+        if (date >= this.view.today) return this.plannedDialog(null, date);
         const workouts = this.view.workouts || [];
-        this.dialogHTML('Add to your agenda', `<form id="agenda-add-form" class="agenda-form"><label>Activity<select name="kind"><option value="gym">Gym session (past)</option><option value="run">Norwegian 4×4</option><option value="rest">Rest</option><option value="activity">Other activity</option></select></label><div class="agenda-gym-fields" hidden><label>Workout performed<select name="workoutDay" required><option value="">Choose workout</option>${workouts.map(workout => `<option value="${workout.day}">${escape(workout.title)}</option>`).join('')}</select></label></div><label>Date<input name="date" type="date" value="${date}" required></label><div class="agenda-activity-fields" hidden><label>Name<input name="title" type="text" maxlength="80" placeholder="For example, a hike"></label><label class="agenda-checkbox"><input name="demanding" type="checkbox">Demanding activity</label></div><p class="agenda-form-help" aria-live="polite"></p></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-add-form">Save activity</button>');
+        this.dialogHTML('Add to your agenda', `<form id="agenda-add-form" class="agenda-form"><label>Activity<select name="kind"><option value="gym">Gym session (past)</option><option value="run">Norwegian 4×4</option><option value="rest">Rest</option><option value="activity">Other activity</option></select></label><div class="agenda-gym-fields" hidden><label>Workout performed<select name="workoutDay" required><option value="">Choose workout</option>${workouts.map(workout => `<option value="${workout.day}">${escape(workout.title)}</option>`).join('')}</select></label></div><label>Date<input name="date" type="date" value="${date}" max="${shiftDate(this.view.today, -1)}" required></label><div class="agenda-activity-fields" hidden><label>Name<input name="title" type="text" maxlength="80" placeholder="For example, a hike"></label><label class="agenda-checkbox"><input name="demanding" type="checkbox">Demanding activity</label></div><p class="agenda-form-help" aria-live="polite"></p></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-add-form">Save activity</button>');
         const form = this.dialog.querySelector('form');
         const submit = this.dialog.querySelector('[form="agenda-add-form"]');
         form.elements.kind.value = date < this.view.today ? 'gym' : 'run';
@@ -207,6 +276,7 @@ export class TrainingAgenda {
             if (kind === 'gym') this.saveWorkout({ type: 'recordGym', day: form.elements.workoutDay.value === '' ? null : Number(form.elements.workoutDay.value), date: form.elements.date.value }, submit);
             else this.commitChange({ type: 'add', kind, date: form.elements.date.value, ...(kind === 'activity' ? { title: form.elements.title.value.trim(), demanding: form.elements.demanding.checked } : {}), performed: (['run', 'activity'].includes(kind) && form.elements.date.value <= this.view.today) || (kind === 'rest' && form.elements.date.value < this.view.today) });
         });
+        this.bindCardUndo(this.view.undoDates?.[date]);
     }
 
     async saveWorkout(intent, button) {
@@ -248,14 +318,16 @@ export class TrainingAgenda {
 
     entryDialog(entry, date = entry.date) {
         if (entry.correctable) return this.recordDialog(entry);
-        const title = entry.kind === 'rest' ? 'Rest' : entry.title;
+        if (entry.movable && entry.date >= this.view.today && date >= this.view.today) return this.plannedDialog(entry, date);
+        const title = entry.recovery && !entry.recurring ? 'Recovery' : entry.kind === 'rest' ? 'Rest' : entry.title;
         const editable = Boolean(entry.movable);
         const currentGym = entry.kind === 'gym' && entry.cycleId === this.view.currentCycleId;
         const recordable = ['run', 'activity'].includes(entry.kind) && entry.status !== 'completed' && entry.date <= this.view.today;
         const exercises = (this.engine.summaries?.find(summary => summary.id === entry.id)?.exercises || this.engine.protocolData?.[entry.day]?.exercises || []);
         const prescription = entry.kind === 'gym' && exercises.length ? `<ul class="agenda-exercises">${exercises.map(exercise => `<li>${escape(exercise.name)}</li>`).join('')}</ul>` : '';
-        const restDescription = entry.kind === 'rest' ? `<p class="agenda-form-help">${entry.recurring ? 'Recurring Rest. Repeats weekly; moving or deleting this date changes only this occurrence.' : entry.status === 'completed' ? 'Rest recorded for this date only.' : 'Manual Rest. Reserved for this date only.'}</p>` : '';
+        const restDescription = entry.kind === 'rest' ? `<p class="agenda-form-help">${entry.recovery ? 'Recovery is reserved by the preceding run. Move or change that run to update this day.' : entry.recurring ? 'Recurring Rest. Repeats weekly; moving or deleting this date changes only this occurrence.' : entry.status === 'completed' ? 'Rest recorded for this date only.' : 'Manual Rest. Reserved for this date only.'}</p>` : '';
         this.dialogHTML(title, `<p class="agenda-entry-date">${escape(dateLabel(entry.date))}</p>${restDescription}${editable ? `<form id="agenda-move-form" class="agenda-form"><label>Date<input name="date" type="date" value="${date}" ${entry.kind === 'gym' ? `min="${this.view.today}"` : ''} required></label><p class="agenda-form-help"></p></form>` : `<p class="agenda-form-help">${escape(entry.movableReason || 'Recorded history stays unchanged.')}</p>`}${prescription}`, `${editable ? '<button type="button" class="agenda-remove">Delete</button>' : ''}<button type="button" data-agenda-cancel>Close</button>${entry.kind === 'rest' ? '<button type="button" data-agenda-recurring>Recurring rest days</button>' : ''}${currentGym ? '<button type="button" data-agenda-open>Open workout</button>' : ''}${recordable ? '<button type="button" data-agenda-record>Record activity</button>' : ''}${editable ? '<button type="submit" class="agenda-primary" form="agenda-move-form">Save date</button>' : ''}`);
+        this.bindCardUndo(entry.undo || this.view.undoDates?.[entry.date]);
         this.dialog.querySelector('[data-agenda-recurring]')?.addEventListener('click', () => this.officeDialog());
         this.dialog.querySelector('[data-agenda-open]')?.addEventListener('click', () => { this.closeDialog(); this.openWorkout(entry); });
         this.dialog.querySelector('[data-agenda-record]')?.addEventListener('click', () => this.commitChange({ type: 'complete', id: entry.id }));
@@ -285,12 +357,14 @@ export class TrainingAgenda {
             this.saveChange({ type: 'correctGym', id: entry.id, day }, submit, 'Workout corrected. Future plan updated. Undo is available.');
         });
         this.dialog.querySelector('.agenda-remove').addEventListener('click', event => this.saveChange({ type: 'removeGymRecord', id: entry.id }, event.currentTarget, 'Manual workout removed. Future plan updated. Undo is available.'));
+        this.bindCardUndo(entry.undo || this.view.undoDates?.[entry.date]);
     }
 
     officeDialog() {
         const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        this.dialogHTML('Rest days', `<form id="agenda-office-form" class="agenda-form"><p>Rest repeats on Mondays and Thursdays by default. Recorded and started workouts stay in place. Newly free days are not filled automatically.</p><label>Apply from<input name="effectiveDate" type="date" value="${this.view.today}" min="${this.view.today}" required></label><fieldset><legend>Repeat on</legend><div class="agenda-weekdays">${[1, 2, 3, 4, 5, 6, 0].map(day => `<label class="agenda-checkbox"><input type="checkbox" name="days" value="${day}" ${this.view.officeDays.includes(day) ? 'checked' : ''}>${names[day]}</label>`).join('')}</div></fieldset></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-office-form">Save Rest days</button>');
+        this.dialogHTML('Rest days', `<form id="agenda-office-form" class="agenda-form"><p>Rest repeats on Mondays and Thursdays by default. Recorded and started workouts stay in place. Flexible workouts use newly available dates. Dates you explicitly cleared stay available.</p><label>Apply from<input name="effectiveDate" type="date" value="${this.view.today}" min="${this.view.today}" required></label><fieldset><legend>Repeat on</legend><div class="agenda-weekdays">${[1, 2, 3, 4, 5, 6, 0].map(day => `<label class="agenda-checkbox"><input type="checkbox" name="days" value="${day}" ${this.view.officeDays.includes(day) ? 'checked' : ''}>${names[day]}</label>`).join('')}</div></fieldset></form>`, '<button type="button" data-agenda-cancel>Cancel</button><button type="submit" class="agenda-primary" form="agenda-office-form">Save Rest days</button>');
         this.dialog.querySelector('form').addEventListener('submit', event => { event.preventDefault(); this.commitChange({ type: 'officeDays', days: [...this.dialog.querySelectorAll('input[name="days"]:checked')].map(input => Number(input.value)), effectiveDate: event.currentTarget.elements.effectiveDate.value }); });
+        this.bindCardUndo(this.view.recurrenceUndo);
     }
 
     async commitChange(intent) {
@@ -335,7 +409,7 @@ export class TrainingAgenda {
             const entry = this.view.entries.find(item => item.id === drag.id);
             if (!entry || !date || date === entry.date) { this.announce('Move cancelled. The schedule is unchanged.'); return; }
             if (error) { this.announce(error); return; }
-            if (['run', 'activity'].includes(entry.kind) && date <= this.view.today) this.moveDialog(entry, date);
+            if (['run', 'activity'].includes(entry.kind) && date < this.view.today) this.moveDialog(entry, date);
             else this.commitChange({ type: 'move', id: entry.id, date });
         });
         this.element.addEventListener('pointercancel', () => this.cancelDrag());
@@ -356,7 +430,7 @@ export class TrainingAgenda {
             const entry = this.view.entries.find(item => item.id === drag.id);
             if (target && entry && target.dataset.date !== entry.date) {
                 try {
-                    this.engine.previewSchedule({ type: 'move', id: entry.id, date: target.dataset.date, performed: ['run', 'activity'].includes(entry.kind) && target.dataset.date <= this.view.today });
+                    this.engine.previewSchedule({ type: 'move', id: entry.id, date: target.dataset.date, performed: ['run', 'activity'].includes(entry.kind) && target.dataset.date < this.view.today });
                     this.announce(`Release on ${dateLabel(target.dataset.date)} to save the move.`);
                 } catch (error) { this.dropError = error.message; this.announce(error.message); }
             }

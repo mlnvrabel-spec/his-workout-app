@@ -4,6 +4,7 @@ const MAX_FORWARD_DAYS = 730;
 const DEFAULT_OFFICE_DAYS = [1, 4];
 const ACTIVITY_KINDS = new Set(['rest', 'run', 'activity']);
 const TITLES = { rest: 'REST', run: 'Norwegian 4×4', activity: 'Activity' };
+const DEFAULT_PREFERENCES = { runTargetDays: 7, runLatestDays: 10, gymTargetPerWeek: 3.5 };
 
 export function dateKey(value = new Date()) {
     if (typeof value === 'string') {
@@ -42,9 +43,19 @@ function officeOn(schedule, date) {
     return Boolean(rule?.days.includes(weekday(date)));
 }
 
+export function schedulePreferences(schedule) {
+    return { ...DEFAULT_PREFERENCES, ...schedule?.preferences };
+}
+
+function recoveryRun(schedule, date) {
+    return schedule.entries.find(entry => entry.kind === 'run' && addDays(entry.date, 1) === date);
+}
+
 function blockedDate(schedule, date, ignoredId = null) {
     if (officeOn(schedule, date)) return 'REST';
-    const occupied = schedule.entries.find(entry => entry.id !== ignoredId && entry.date === date && (entry.kind !== 'gym' || isProtected(entry)));
+    if (recoveryRun(schedule, date)) return 'Recovery after running';
+    if (schedule.clearedDates?.includes(date)) return 'A date you cleared';
+    const occupied = schedule.entries.find(entry => entry.id !== ignoredId && entry.date === date && (entry.kind !== 'gym' || isProtected(entry) || entry.pinnedDate));
     return occupied?.title || '';
 }
 
@@ -110,7 +121,7 @@ function earliestDate(schedule, requested, ignoredId) {
     throw new Error('No available date within two years. Change the rest or activity dates first.');
 }
 
-/** Move only the necessary future chain. A freed date never pulls later sessions backward. */
+/** Reflow flexible sessions in split order; explicit dates and actual training stay fixed. */
 function placeGyms(schedule, today, { exactId = null, exactDate = null, strict = false } = {}) {
     let previous = null;
     for (const entry of gymEntries(schedule)) {
@@ -122,10 +133,12 @@ function placeGyms(schedule, today, { exactId = null, exactDate = null, strict =
             continue;
         }
         if (entry.date && entry.date < today) entry.missedDate ||= entry.date;
-        const requested = entry.id === exactId ? exactDate : latest(entry.date, today);
+        const pinned = entry.pinnedDate && entry.pinnedDate >= today ? entry.pinnedDate : null;
+        const requested = entry.id === exactId ? exactDate : pinned || latest(entry.date, today);
         const floor = latest(requested, previous && addDays(previous, 1), today);
         if (entry.id === exactId && floor !== exactDate) throw new Error('This date would put the workout before an unfinished earlier session.');
         const date = earliestDate(schedule, floor, entry.id);
+        if (pinned && date !== pinned) throw new Error(`This change conflicts with ${entry.title} fixed on ${pinned}. Move that workout first.`);
         if (date > addDays(today, MAX_FORWARD_DAYS)) throw new Error('This change moves training more than two years ahead. Change the blocking dates first.');
         if (entry.id === exactId && date !== exactDate) throw new Error(`${blockedDate(schedule, exactDate, entry.id) || 'Another session'} occupies this date. Move it first.`);
         // A started session later in the sequence is a fixed boundary for a requested move.
@@ -173,6 +186,82 @@ function reconcileActuals(schedule, context) {
     }
 }
 
+function recordedGymAverage(schedule, today) {
+    const since = addDays(today, -27);
+    return new Set(schedule.entries.filter(entry => entry.kind === 'gym' && entry.status === 'completed'
+        && entry.date >= since && entry.date <= today).map(entry => entry.id)).size / 4;
+}
+
+function runDateAvailable(schedule, date) {
+    if (blockedDate(schedule, date)) return false;
+    const after = addDays(date, 1);
+    return !schedule.entries.some(entry => entry.date === after && entry.kind !== 'rest'
+        && (entry.kind !== 'gym' || isProtected(entry) || entry.pinnedDate));
+}
+
+/** Cadence is a planning preference. Recorded history, user dates and recovery win. */
+function planTraining(schedule, context, options = {}) {
+    const { today } = contextValues(context);
+    const preferences = schedulePreferences(schedule);
+    schedule.entries = schedule.entries.filter(entry => entry.source !== 'planner' || entry.status !== 'planned');
+    const actual = schedule.entries.filter(entry => entry.kind === 'run' && entry.status === 'completed' && entry.date <= today)
+        .sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+    const manual = schedule.entries.filter(entry => entry.kind === 'run' && entry.status === 'planned' && entry.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    // Without actual history, an explicit run is still useful; do not invent an overdue run.
+    let anchor = actual?.date || manual[0]?.date;
+    let ordinal = 0;
+    const horizon = addDays(today, 42);
+    const gymPressure = Math.max(0, preferences.gymTargetPerWeek - recordedGymAverage(schedule, today));
+    while (anchor && anchor < horizon) {
+        const chosen = manual.find(entry => entry.date > anchor || (!actual && entry.date === anchor && ordinal === 0));
+        if (chosen) { anchor = chosen.date; ordinal++; continue; }
+        const target = latest(today, addDays(anchor, preferences.runTargetDays));
+        const deadline = latest(today, addDays(anchor, preferences.runLatestDays));
+        if (target > horizon) break;
+        const candidates = [];
+        for (let date = target; date <= deadline && date <= horizon; date = addDays(date, 1)) {
+            if (!runDateAvailable(schedule, date)) continue;
+            // A run consumes this gym opportunity; recovery may already be a blocked day.
+            const lostSlots = 1 + (blockedDate(schedule, addDays(date, 1)) ? 0 : 1);
+            const delay = (new Date(`${date}T12:00:00Z`) - new Date(`${target}T12:00:00Z`)) / DAY_MS;
+            candidates.push({ date, cost: gymPressure * lostSlots + delay / (preferences.runLatestDays - preferences.runTargetDays + 1) });
+        }
+        candidates.sort((a, b) => a.cost - b.cost || a.date.localeCompare(b.date));
+        let date = candidates[0]?.date;
+        if (!date) {
+            date = addDays(deadline, 1);
+            while (date <= horizon && !runDateAvailable(schedule, date)) date = addDays(date, 1);
+        }
+        if (date > horizon) break;
+        const id = `planned-run:${anchor}:${ordinal++}`;
+        schedule.entries.push({ id, kind: 'run', title: TITLES.run, date, originalDate: date, status: 'planned', source: 'planner', dueDate: addDays(anchor, preferences.runTargetDays), latestDate: addDays(anchor, preferences.runLatestDays) });
+        anchor = date;
+    }
+    for (const entry of gymEntries(schedule)) {
+        if (entry.status !== 'planned') continue;
+        if (entry.date && entry.date < today) entry.missedDate ||= entry.date;
+        if (!entry.pinnedDate || entry.pinnedDate < today) {
+            delete entry.pinnedDate;
+            entry.date = today;
+        }
+    }
+    placeGyms(schedule, today, options);
+}
+
+export function planningSummary(schedule, context) {
+    const preferences = schedulePreferences(schedule);
+    const lastRun = schedule.entries.filter(entry => entry.kind === 'run' && entry.status === 'completed' && entry.date <= context.today)
+        .sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+    const nextRun = schedule.entries.filter(entry => entry.kind === 'run' && entry.status === 'planned' && entry.date >= context.today)
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const due = lastRun ? addDays(lastRun.date, preferences.runTargetDays) : null;
+    const latestDate = lastRun ? addDays(lastRun.date, preferences.runLatestDays) : null;
+    return { ...preferences, gymAverage: recordedGymAverage(schedule, context.today), lastRunDate: lastRun?.date || null,
+        nextRunDate: nextRun?.date || null, dueDate: due, latestDate, overdue: Boolean(latestDate && context.today >= latestDate),
+        conflict: Boolean(latestDate && (!nextRun || nextRun.date > latestDate)) };
+}
+
 /** Safe to call repeatedly. Input objects are never mutated. */
 export function reconcileSchedule(saved, context) {
     const { today, cycleId, protocol } = contextValues(context);
@@ -185,7 +274,9 @@ export function reconcileSchedule(saved, context) {
     schedule.cycleIds ||= [cycleId];
     schedule.baseCycleId ||= schedule.cycleIds[0];
     schedule.nextCycleNumber ||= 1;
-    schedule.version = 1;
+    schedule.version = 2;
+    schedule.preferences = schedulePreferences(schedule);
+    schedule.clearedDates ||= [];
     if (new Set(schedule.entries.map(entry => entry.id)).size !== schedule.entries.length) throw new Error('The calendar contains duplicate sessions. Reload before changing it.');
     if (!schedule.cycleIds.includes(cycleId)) schedule.cycleIds.push(cycleId);
     // Starting a skipped split explicitly in Workout restores its planned identity.
@@ -195,11 +286,12 @@ export function reconcileSchedule(saved, context) {
         && !protocol.some((_, day) => id === sessionId(cycleId, day) && Object.values(context.workout?.done?.[day] || {}).some(Boolean)));
     addPlannedCycles(schedule, cycleId, protocol);
     reconcileActuals(schedule, context);
-    placeGyms(schedule, today);
+    planTraining(schedule, context);
     return schedule;
 }
 
 export function movableReason(entry, context) {
+    if (entry.recovery) return 'Recovery follows its run. Change the run to change this day.';
     if (entry.status === 'completed') return 'Completed sessions stay in history.';
     if (entry.status === 'started') return 'This workout has started. Its checks and sets stay on this date.';
     return '';
@@ -224,6 +316,13 @@ export function scheduleEntries(schedule, context) {
     const range = Math.min(MAX_FORWARD_DAYS, Math.round((new Date(`${end}T12:00:00Z`) - new Date(`${date}T12:00:00Z`)) / DAY_MS));
     for (let day = 0; day <= range; day++, date = addDays(date, 1)) {
         if (officeOn(schedule, date) && !entries.some(entry => ['rest', 'office'].includes(entry.kind) && entry.date === date)) entries.push({ id: `office:${date}`, kind: 'rest', title: 'REST', date, status: 'planned', recurring: true });
+    }
+    for (const run of schedule.entries.filter(entry => entry.kind === 'run')) {
+        const date = addDays(run.date, 1);
+        if (date < today || (context.since && date < context.since) || date > end) continue;
+        const rest = entries.find(entry => entry.kind === 'rest' && entry.date === date);
+        if (rest) { rest.recovery = true; rest.runId = run.id; }
+        else entries.push({ id: `recovery:${run.id}`, kind: 'rest', title: 'Recovery', date, status: 'planned', recovery: true, runId: run.id });
     }
     return entries.map(entry => ({ ...entry, movable: !movableReason(entry, context), movableReason: movableReason(entry, context), correctable: correctableGymRecord(entry, context) }))
         .sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
@@ -255,6 +354,7 @@ function assertDestination(schedule, entry, date, today, performed = false) {
     }
     const reason = blockedDate(schedule, date, entry.id);
     if (reason) throw new Error(`${reason} occupies this date. Move or remove it first.`);
+    if (entry.kind === 'run' && !runDateAvailable(schedule, date)) throw new Error('The day after this run has a fixed or recorded activity. Choose another run date or move the planned activity first.');
 }
 
 function resolveEntry(schedule, id, context) {
@@ -283,10 +383,11 @@ function warningsFor(schedule, context) {
         warnings.push(`${entry.title} is already recorded or started on ${entry.date}, now a REST day. Its history stays unchanged.`);
     }
     for (const entry of entries.filter(value => value.kind === 'run')) {
-        const previous = entries.filter(value => value.kind === 'run' && value.status === 'completed' && value.date < entry.date).sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+        const previous = entries.filter(value => value.kind === 'run' && value.date < entry.date && (value.status === 'completed' || value.date >= context.today)).sort((a, b) => a.date.localeCompare(b.date)).at(-1);
         if (previous && entry.date >= context.today) {
             const gap = Math.round((new Date(`${entry.date}T12:00:00Z`) - new Date(`${previous.date}T12:00:00Z`)) / DAY_MS);
-            if (gap < 7 || gap > 10) warnings.push(`The 4×4 on ${entry.date} is ${gap} days after the last recorded run. The 7–10 day aim is a preference.`);
+            const prefs = schedulePreferences(schedule);
+            if (gap < prefs.runTargetDays || gap > prefs.runLatestDays) warnings.push(`The run on ${entry.date} is ${gap} days after the preceding run. Your ${prefs.runTargetDays}–${prefs.runLatestDays} day interval is a preference.`);
         }
         if (entry.status === 'completed' && entries.some(other => other.kind === 'gym' && isProtected(other) && other.date === entry.date)) warnings.push(`Recorded gym training and a run share ${entry.date}. Both actual records are preserved.`);
     }
@@ -294,6 +395,29 @@ function warningsFor(schedule, context) {
         if (entries.some(other => other.kind === 'gym' && other.date === addDays(entry.date, 1))) warnings.push(`Gym training follows ${entry.title} on the next day. Keep or move it based on how you feel; no rest day is added automatically.`);
     }
     return [...new Set(warnings)];
+}
+
+function validatePreferences(value) {
+    const { runTargetDays, runLatestDays, gymTargetPerWeek } = value;
+    if (!Number.isInteger(runTargetDays) || runTargetDays < 2 || runTargetDays > 30
+        || !Number.isInteger(runLatestDays) || runLatestDays < runTargetDays || runLatestDays > 60
+        || typeof gymTargetPerWeek !== 'number' || !Number.isFinite(gymTargetPerWeek) || gymTargetPerWeek < 0.5 || gymTargetPerWeek > 7) {
+        throw new Error('Choose a run target of 2–30 days, a latest interval from the target to 60 days, and a gym average of 0.5–7 per week.');
+    }
+    return { runTargetDays, runLatestDays, gymTargetPerWeek };
+}
+
+function releaseDate(schedule, date) {
+    schedule.clearedDates = (schedule.clearedDates || []).filter(value => value !== date);
+}
+
+function pinNextGym(schedule, date, today) {
+    const next = gymEntries(schedule).find(entry => entry.status === 'planned' && entry.date >= date);
+    if (!next) throw new Error('No unfinished workout is available for this date. Choose a nearer date.');
+    assertDestination(schedule, next, date, today);
+    next.pinnedDate = date;
+    next.date = date;
+    return next;
 }
 
 /** A proposal is an isolated value; only the engine may commit it. */
@@ -307,7 +431,6 @@ export function proposeSchedule(saved, intent, context) {
     let removedGym = null;
     let removedRecord = null;
     let correctedGym = null;
-    let freedRestDate = null;
     const notices = [];
     let replacement = null;
     if (intent.type === 'recordGym') {
@@ -395,6 +518,28 @@ export function proposeSchedule(saved, intent, context) {
             next.source = 'manual_backfill';
             recordedGym = structuredClone(next);
         }
+    } else if (intent.type === 'preferences') {
+        schedule.preferences = validatePreferences(intent.preferences);
+    } else if (intent.type === 'change') {
+        const entry = resolveEntry(schedule, intent.id, context);
+        const date = dateKey(intent.date || entry.date);
+        if (entry.date < today || date < today) throw new Error('Change the type of a planned activity on today or a future date.');
+        if (!['gym', ...ACTIVITY_KINDS].includes(intent.kind)) throw new Error('Choose an activity type.');
+        if (entry.kind === 'gym') { delete schedule.entries.find(value => value.id === entry.id).pinnedDate; }
+        else removeEntry(schedule, entry);
+        schedule.entries = schedule.entries.filter(value => value.source !== 'planner' || value.status !== 'planned');
+        releaseDate(schedule, date);
+        if (intent.kind === 'gym') {
+            const next = entry.kind === 'gym' ? schedule.entries.find(value => value.id === entry.id) : pinNextGym(schedule, date, today);
+            assertDestination(schedule, next, date, today);
+            next.date = next.pinnedDate = date;
+        } else {
+            const next = { id: entry.kind === 'gym' || entry.recurring ? activityId(schedule, intent.kind, date) : entry.id,
+                kind: intent.kind, title: String(intent.title || TITLES[intent.kind]).trim().slice(0, 100) || TITLES[intent.kind], date, originalDate: date,
+                status: intent.performed ? 'completed' : 'planned', source: 'manual', demanding: Boolean(intent.demanding) };
+            assertDestination(schedule, next, date, today, Boolean(intent.performed));
+            schedule.entries.push(next);
+        }
     } else if (intent.type === 'officeDays') {
         if (!Array.isArray(intent.days) || intent.days.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw new Error('Choose valid rest weekdays.');
         const days = [...new Set(intent.days)].sort();
@@ -405,68 +550,60 @@ export function proposeSchedule(saved, intent, context) {
         schedule.officeRules.push({ from, days });
         // A changed availability rule can coexist with actual training; never rewrite history.
     } else if (intent.type === 'add') {
-        if (!ACTIVITY_KINDS.has(intent.kind)) throw new Error('Choose an activity type.');
+        if (!ACTIVITY_KINDS.has(intent.kind) && intent.kind !== 'gym') throw new Error('Choose an activity type.');
         const date = dateKey(intent.date);
-        const entry = { id: intent.id || activityId(schedule, intent.kind, date), kind: intent.kind, title: String(intent.title || TITLES[intent.kind]).trim().slice(0, 100) || TITLES[intent.kind], date, originalDate: date,
-            status: intent.performed ? 'completed' : 'planned', source: 'manual', demanding: Boolean(intent.demanding) };
-        if (schedule.entries.some(value => value.id === entry.id)) throw new Error('This activity already exists. Move the existing activity instead.');
-        assertDestination(schedule, entry, date, today, Boolean(intent.performed));
-        schedule.entries.push(entry);
+        releaseDate(schedule, date);
+        if (intent.kind === 'run' && !intent.performed) schedule.entries = schedule.entries.filter(entry => entry.source !== 'planner' || entry.status !== 'planned');
+        if (intent.kind === 'gym') {
+            if (intent.performed || date < today) throw new Error('Use Record workout for past gym training.');
+            const next = pinNextGym(schedule, date, today);
+            exactId = next.id; exactDate = date;
+        } else {
+            const entry = { id: intent.id || activityId(schedule, intent.kind, date), kind: intent.kind, title: String(intent.title || TITLES[intent.kind]).trim().slice(0, 100) || TITLES[intent.kind], date, originalDate: date,
+                status: intent.performed ? 'completed' : 'planned', source: 'manual', demanding: Boolean(intent.demanding) };
+            if (schedule.entries.some(value => value.id === entry.id)) throw new Error('This activity already exists. Move the existing activity instead.');
+            assertDestination(schedule, entry, date, today, Boolean(intent.performed));
+            schedule.entries.push(entry);
+        }
     } else if (intent.type === 'move') {
         const entry = resolveEntry(schedule, intent.id, context);
         const date = dateKey(intent.date);
         if (entry.date !== date || intent.performed) {
             // Free the original occurrence before checking an office destination.
             removeEntry(schedule, entry);
+            if (entry.kind === 'run') schedule.entries = schedule.entries.filter(value => value.source !== 'planner' || value.status !== 'planned');
+            releaseDate(schedule, date);
             const moved = { ...entry, date, source: entry.source || 'manual' };
+            if (moved.source === 'planner') moved.source = 'manual';
             delete moved.recurring; delete moved.movable; delete moved.movableReason;
             assertDestination(schedule, moved, date, today, Boolean(intent.performed));
             if (entry.recurring) moved.id = activityId(schedule, 'rest', date);
             if (intent.performed) moved.status = 'completed';
             schedule.entries.push(moved);
-            if (entry.kind === 'gym') { exactId = moved.id; exactDate = date; }
+            if (entry.kind === 'gym') { moved.pinnedDate = date; exactId = moved.id; exactDate = date; }
         }
     } else if (intent.type === 'remove') {
         const entry = resolveEntry(schedule, intent.id, context);
         if (entry.kind === 'gym') {
-            schedule.skippedSessionIds ||= [];
-            schedule.skippedSessionIds.push(entry.id);
-            removedGym = structuredClone(entry);
+            const gym = schedule.entries.find(value => value.id === entry.id);
+            delete gym.pinnedDate;
+        } else {
+            removeEntry(schedule, entry);
         }
-        removeEntry(schedule, entry);
-        if (entry.kind === 'rest' && entry.date >= today) freedRestDate = entry.date;
+        if (entry.date >= today && !schedule.clearedDates.includes(entry.date)) schedule.clearedDates.push(entry.date);
     } else if (intent.type === 'complete') {
         const entry = resolveEntry(schedule, intent.id, context);
         if (entry.kind !== 'run' && entry.kind !== 'activity') throw new Error('Use the workout checklist to complete gym training.');
         if (entry.date > today) throw new Error('A future activity cannot be recorded as completed.');
-        schedule.entries.find(value => value.id === entry.id).status = 'completed';
+        const recorded = schedule.entries.find(value => value.id === entry.id);
+        recorded.status = 'completed';
     } else throw new Error('Unknown calendar action.');
-    if (freedRestDate && !blockedDate(schedule, freedRestDate)) {
-        const nextGym = gymEntries(schedule).find(entry => entry.status === 'planned' && entry.date > freedRestDate);
-        if (nextGym) nextGym.date = freedRestDate;
-    }
-    const backfilled = intent.type === 'recordGym' || (['add', 'move'].includes(intent.type) && intent.performed && intent.date < today);
-    if (backfilled) {
-        const pending = gymEntries(schedule).filter(entry => !isProtected(entry));
-        // The user explicitly requested recalculation, including bringing planned
-        // sessions forward. Actual history and non-gym appointments stay fixed.
-        for (const entry of pending) entry.date = today;
-        placeGyms(schedule, today, { strict: true });
-    } else {
-        placeGyms(schedule, today, { exactId, exactDate, strict: true });
-    }
+    planTraining(schedule, context, { exactId, exactDate, strict: true });
     return { schedule, recordedGym, restartedCycleId, removedGym, removedRecord, correctedGym, changes: entryDiff(before, schedule, context), warnings: [...notices, ...warningsFor(schedule, context)] };
 }
 
-/** Suggestions respect gym dates. Selecting a run explicitly is a separate user action. */
+/** The next generated cadence appointment, distinct from an explicitly chosen run. */
 export function suggestedRunDate(schedule, context) {
-    const last = schedule.entries.filter(entry => entry.kind === 'run' && entry.status === 'completed').sort((a, b) => a.date.localeCompare(b.date)).at(-1);
-    if (!last) return null;
-    if (schedule.entries.some(entry => entry.kind === 'run' && entry.status === 'planned' && entry.date >= context.today)) return null;
-    const first = latest(addDays(last.date, 7), context.today);
-    let date = first;
-    for (let offset = 0; offset <= MAX_FORWARD_DAYS; offset++, date = addDays(date, 1)) {
-        if (!officeOn(schedule, date) && !schedule.entries.some(entry => entry.date === date)) return date;
-    }
-    return null;
+    return schedule.entries.filter(entry => entry.kind === 'run' && entry.source === 'planner' && entry.status === 'planned' && entry.date >= context.today)
+        .sort((a, b) => a.date.localeCompare(b.date))[0]?.date || null;
 }

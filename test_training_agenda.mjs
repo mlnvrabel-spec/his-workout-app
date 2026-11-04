@@ -106,6 +106,14 @@ try {
     element.querySelectorAll = () => [{ dataset: { agendaAction: 'add', date: '2026-11-01' }, focus() { throw new Error('Focus must stay on the saved Rest date'); } }, replacement];
     ui.closeDialog();
     assert.equal(focused, true, 'Saving an available-day Rest returns focus to the same date');
+    let cardFocused = false;
+    ui.modal.previousFocus.dataset = { agendaAction: 'details', entryId: 'old-gym', date: '2026-11-06' };
+    element.querySelectorAll = () => [
+        { dataset: { agendaAction: 'details', entryId: 'old-gym', date: '2026-11-08' }, focus() { throw new Error('Do not follow the displaced gym'); } },
+        { dataset: { agendaAction: 'details', entryId: 'new-run', date: '2026-11-06' }, focus() { cardFocused = true; } },
+    ];
+    ui.closeDialog();
+    assert.equal(cardFocused, true, 'Changing a card type keeps keyboard focus on the edited date');
     const calendar = Object.create(TrainingAgenda.prototype);
     calendar.element = { contains: () => false, querySelectorAll: () => [], querySelector: () => ({ scrollIntoView() {} }) };
     calendar.daysBefore = 2; calendar.daysAfter = 9;
@@ -132,10 +140,10 @@ try {
     const select = { dataset: { agendaAction: 'select', date: '2026-11-04' } };
     await calendar.onClick({ target: { closest: () => select } });
     assert.equal(calendar.selectedDate, '2026-11-04');
-    assert.match(calendar.element.innerHTML, />Rest</);
+    assert.match(calendar.element.innerHTML, />Available</);
     calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry], restExceptions: ['2026-11-04'] });
     calendar.render();
-    assert.match(calendar.element.innerHTML, /agenda-empty">Available</, 'A deleted recurring REST is visibly free');
+    assert.match(calendar.element.innerHTML, /agenda-entry-title">Available</, 'A deleted recurring REST is visibly free');
     assert.match(calendar.element.innerHTML, /data-agenda-action="add" data-date="2026-11-04"/);
     assert.doesNotMatch(calendar.element.innerHTML, /agenda-primary" data-agenda-action="open"/);
     assert.match(calendar.element.innerHTML, /aria-label="Select [^"]+" aria-pressed="true"/);
@@ -146,7 +154,7 @@ try {
     calendar.engine.getScheduleView = () => ({ today: '2026-11-03', currentCycleId: 'c1', currentDay: 0, entries: [entry], averages, canUndo: true });
     calendar.render();
     assert.match(calendar.element.innerHTML, /<section class="agenda-averages"/);
-    assert.match(calendar.element.innerHTML, /data-agenda-action="undo"/);
+    assert.doesNotMatch(calendar.element.innerHTML, /data-agenda-action="undo"/);
     assert.doesNotMatch(calendar.element.innerHTML, /<details|<summary/);
     assert.match(calendar.element.innerHTML, />3.5<.*>1.8</s);
     // PRODUCT_SPEC §8.1: earlier dates can expand repeatedly and return to the recent range.
@@ -228,10 +236,10 @@ try {
     // All Rest rows share the entry title, while details distinguish available/manual/recurring days.
     calendar.view = { today: '2026-11-03', entries: [] };
     const emptyRest = calendar.emptyDayHTML('2026-11-03', calendar.view.today);
-    assert.match(emptyRest, /class="agenda-entry agenda-entry--rest"/);
-    assert.match(emptyRest, /class="agenda-entry-title">Rest</);
-    assert.match(emptyRest, /data-agenda-action="rest-options"/);
-    assert.match(emptyRest, /Available day, no saved Rest/);
+    assert.match(emptyRest, /class="agenda-entry agenda-entry--available"/);
+    assert.match(emptyRest, /class="agenda-entry-title">Available</);
+    assert.match(emptyRest, /data-agenda-action="add"/);
+    assert.match(emptyRest, /Nothing planned/);
     assert.doesNotMatch(calendar.emptyDayHTML('2026-11-02', calendar.view.today), /rest-options|agenda-entry-title/);
     const restUI = Object.create(TrainingAgenda.prototype);
     const restHandlers = {};

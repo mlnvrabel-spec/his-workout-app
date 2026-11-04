@@ -13,6 +13,15 @@ Accepted context updated **29 October 2026**. Research searched **18 October 202
 - Adding an activity that happened today or a few days ago should record it without an exercise checklist. A future appointment is still a plan. After Garmin integration, imported activities are the default actual record, with a labelled manual override that survives sync and can be reverted.
 - Build the manual scheduler first; defer new Garmin integration until its planning/recording semantics are tested. Preserve the existing bridge. No publication is authorized by the implementation request.
 
+## Accepted scheduling revision — 3 November 2026
+
+The user explicitly approved implementation of PRODUCT_SPEC §14. This revision overrides conflicting older scheduling preferences below; the research evidence remains unchanged.
+
+- Running has a configurable 7-day target and 10-day latest preference. Use actual completion history and upcoming availability together. The 28-day recorded gym average has a soft target of 3.5/week, not a weekly minimum: constrained weeks may contain two or three sessions, other weeks more. Prefer run/recovery placement that preserves gym opportunities when the average is low, without postponing a due run indefinitely or imposing catch-up training.
+- The user requires the calendar day after a run to be protected from gym/running. Friday run → Saturday Recovery → Sunday gym if free → Monday recurring Rest; Thursday run → Friday Recovery. This is an explicit user planning constraint, not a claim that all people require a universal recovery interval. The previous written rule against automatic recovery days is superseded for running only. Hikes and biometric values still do not invent rest requirements.
+- Delete clears an appointment, retaining unfinished gym work in the rolling sequence and leaving the cleared date available. It does not mean skip. Use a shared editable activity type, distinct planning/recording on today, and card-specific Undo that preserves independent later edits.
+- Keep recurring rest and explicit appointments fixed, preserve actual checks/sets/history, and show conflicts when preferences cannot fit. Do not manufacture run urgency when no actual run is recorded, or treat sparse gym history as verified inactivity. No publication or new Garmin integration is included.
+
 ## Inputs actually inspected
 
 The source of programming truth is `src/data/core_protocol.json` v1.1.0. The engine's 50% automatic completion, same-day edits, manual Finish, cycle rollover, Undo, stable session IDs and IndexedDB transaction behavior were inspected. Completion records are adherence indicators, not proof that every prescribed set was performed.

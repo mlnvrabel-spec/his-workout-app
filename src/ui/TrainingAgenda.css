@@ -96,9 +96,9 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-entry:hover { filter: brightness(.98); }
 .agenda-entry-copy { min-width: 0; }
 .agenda-entry-title { display: block; font-size: 15px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
-.agenda-entry-context { display: block; font-size: 10px; line-height: 1.5; color: var(--text2); margin-top: 5px; }
+.agenda-entry-context { display: block; font-size: 12px; line-height: 1.5; color: var(--text2); margin-top: 5px; }
 .agenda-entry--run .agenda-entry-title { color: var(--accent); }
-#training-agenda .agenda-entry--rest { background: transparent; }
+#training-agenda .agenda-entry--available { background: transparent; }
 .agenda-entry--rest .agenda-entry-title { font-size: 15px; color: var(--text2); }
 .agenda-recorded-mark { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: var(--text2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .agenda-progress-mark { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
@@ -109,7 +109,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-empty { padding: 17px 14px 6px; font-size: 12px; line-height: 1.5; color: var(--text2); }
 #training-agenda .agenda-day-add { position: absolute; right: 0; top: 14px; min-width: 44px; min-height: 44px; padding: 6px; background: transparent; color: var(--text2); font-size: 20px; }
 #training-agenda .agenda-day.is-past .agenda-entry { background: var(--surface); }
-#training-agenda .agenda-day.is-past .agenda-entry--rest { background: transparent; }
+
 .agenda-day.is-past .agenda-entry-title, .agenda-day.is-past .agenda-date strong { color: var(--text2); }
 .agenda-items.is-grouped { background: var(--surface2); border-radius: 16px; }
 .agenda-day.is-past .agenda-items.is-grouped { background: var(--surface); }
@@ -130,7 +130,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .agenda-form { display: grid; gap: 18px; }
 .agenda-form > p, .agenda-preview-intro, .agenda-form-help { color: var(--text2); font-size: 12px; line-height: 1.7; }
 .agenda-form label { display: grid; gap: 8px; font-size: 12px; color: var(--text2); }
-.agenda-form input:not([type="checkbox"]), .agenda-form select { width: 100%; min-width: 0; min-height: 46px; padding: 11px 12px; border: 1px solid var(--check-border); border-radius: 10px; background: var(--bg); color: var(--text1); font: 14px var(--font); user-select: text; color-scheme: dark; }
+.agenda-form input:not([type="checkbox"]), .agenda-form select { width: 100%; min-width: 0; min-height: 46px; padding: 11px 12px; border: 1px solid var(--check-border); border-radius: 10px; background: var(--bg); color: var(--text1); font: 16px var(--font); user-select: text; color-scheme: dark; }
 [data-theme="light"] .agenda-form input, [data-theme="light"] .agenda-form select { color-scheme: light; }
 .agenda-activity-fields:not([hidden]) { display: grid; gap: 16px; }
 .agenda-form .agenda-checkbox { display: flex; align-items: center; gap: 10px; min-height: 40px; color: var(--text1); }
@@ -177,3 +177,7 @@ body .workout-session-nav .nav-item.active { background: var(--bg); box-shadow: 
 .chat-window:has(.coach-connection[open]) .chat-foot { display: none; }
 .coach-connection[open] { flex: 1; scrollbar-width: thin; scrollbar-color: var(--text3) transparent; }
 .coach-connection[open] form { max-height: none; overflow: visible; }
+
+.agenda-form [hidden] { display: none !important; }
+.agenda-plan-context { margin: 8px 0 16px; color: var(--text2); font-size: 12px; line-height: 1.6; }
+.agenda-plan-context strong { color: var(--text1); font-weight: 500; }
